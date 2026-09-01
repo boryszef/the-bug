@@ -5,9 +5,7 @@ use game::{Player, RegionMap};
 use ratatui::{
     DefaultTerminal, Frame,
     buffer::Buffer,
-    layout::Rect,
-    style::Stylize,
-    symbols::border,
+    layout::{Constraint, Layout, Rect},
     text::{Line, Text},
     widgets::{Block, Paragraph, Widget},
 };
@@ -17,7 +15,6 @@ use std::io;
 pub struct App {
     player: Player,
     map: RegionMap,
-    counter: u8,
     exit: bool,
 }
 
@@ -28,13 +25,37 @@ impl Default for App {
         App {
             player,
             map,
-            counter: 0,
             exit: false,
         }
     }
 }
 
 impl App {
+    fn render_map(&self, area: Rect, buf: &mut Buffer) {
+        let block = Block::bordered().title(" Map ");
+
+        let map = &self.map;
+        Paragraph::new(format!("{map:?}"))
+            .block(block)
+            .render(area, buf);
+    }
+
+    fn render_player(&self, area: Rect, buf: &mut Buffer) {
+        let block = Block::bordered().title(" Player ");
+
+        let text = Text::from(vec![Line::from(format!("{:?}", self.player))]);
+
+        Paragraph::new(text).block(block).render(area, buf);
+    }
+
+    fn render_events(&self, area: Rect, buf: &mut Buffer) {
+        let block = Block::bordered().title(" Events ");
+
+        Paragraph::new("You entered the world.")
+            .block(block)
+            .render(area, buf);
+    }
+
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
@@ -91,6 +112,20 @@ impl App {
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        let columns =
+            Layout::horizontal([Constraint::Min(50), Constraint::Percentage(100)]).split(area);
+
+        let menu = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .split(columns[0]);
+
+        self.render_map(columns[1], buf);
+        self.render_player(menu[0], buf);
+        self.render_events(menu[1], buf);
+    }
+}
+
+/*impl Widget for &App {
+    fn render(self, area: Rect, buf: &mut Buffer) {
         let title = Line::from(" Counter App Tutorial ".bold());
         let instructions = Line::from(vec![
             " Move: ".into(),
@@ -120,7 +155,7 @@ impl Widget for &App {
             .block(block)
             .render(area, buf);
     }
-}
+}*/
 
 fn main() -> io::Result<()> {
     ratatui::run(|terminal| App::default().run(terminal))
