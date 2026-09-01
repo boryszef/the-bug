@@ -6,8 +6,9 @@ use ratatui::{
     DefaultTerminal, Frame,
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
+    style::{Color, Style},
     text::{Line, Text},
-    widgets::{Block, Paragraph, Widget},
+    widgets::{Block, Paragraph, Widget, canvas::Canvas},
 };
 use std::io;
 
@@ -32,12 +33,35 @@ impl Default for App {
 
 impl App {
     fn render_map(&self, area: Rect, buf: &mut Buffer) {
-        let block = Block::bordered().title(" Map ");
+        let width = self.map.size.0 as f64;
+        let height = self.map.size.1 as f64;
 
-        let map = &self.map;
-        Paragraph::new(format!("{map:?}"))
-            .block(block)
-            .render(area, buf);
+        let canvas = Canvas::default()
+            .block(Block::bordered().title(" Map "))
+            .x_bounds([
+                self.map.boundaries.0 as f64 - 1.0,
+                self.map.boundaries.1 as f64 + 1.0,
+            ])
+            .y_bounds([
+                self.map.boundaries.2 as f64 - 1.0,
+                self.map.boundaries.3 as f64 + 1.0,
+            ])
+            .paint(|ctx| {
+                for (y, row) in self.map.tiles.iter().enumerate() {
+                    for (x, tile) in row.iter().enumerate() {
+                        let world_x = self.map.boundaries.0 + x as i32;
+                        let world_y = self.map.boundaries.3 - y as i32;
+                        ctx.print(world_x as f64, world_y as f64, format!("{:?}", tile));
+                    }
+                }
+                ctx.print(
+                    self.player.coordinates.0 as f64,
+                    self.player.coordinates.1 as f64,
+                    Line::from("🯅").style(Style::default().fg(Color::Yellow)),
+                );
+            });
+
+        canvas.render(area, buf);
     }
 
     fn render_player(&self, area: Rect, buf: &mut Buffer) {

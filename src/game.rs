@@ -1,13 +1,13 @@
 use rand::prelude::IndexedRandom;
 use std::fmt;
 
-const MAP_MIN_SIZE: u32 = 3;
+const MAP_MIN_SIZE: u32 = 15;
 const MAP_PER_LEVEL_INCREMENT: u32 = 2;
 
 #[derive(Debug)]
 pub struct Player {
     level: u32,
-    coordinates: (i32, i32),
+    pub coordinates: (i32, i32),
     resources: Vec<Resource>,
 }
 
@@ -35,13 +35,13 @@ impl Player {
     }
 
     pub fn walk_north(&mut self, boundaries: (i32, i32, i32, i32)) {
-        if self.coordinates.1 < boundaries.2 {
+        if self.coordinates.1 < boundaries.3 {
             self.coordinates.1 += 1;
         }
     }
 
     pub fn walk_south(&mut self, boundaries: (i32, i32, i32, i32)) {
-        if self.coordinates.1 > boundaries.3 {
+        if self.coordinates.1 > boundaries.2 {
             self.coordinates.1 -= 1;
         }
     }
@@ -78,7 +78,7 @@ const TERRAIN_TYPES: &[TerrainType] = &[
     TerrainType::Deadland,
 ];
 
-struct MapTile {
+pub struct MapTile {
     terrain_type: TerrainType,
     resources: Vec<Resource>,
 }
@@ -111,8 +111,8 @@ impl MapTile {
 
 #[derive(Debug)]
 pub struct RegionMap {
-    tiles: Vec<Vec<MapTile>>,
-    size: (u32, u32),
+    pub tiles: Vec<Vec<MapTile>>,
+    pub size: (u32, u32),
     pub boundaries: (i32, i32, i32, i32), // (-max_x, max_x, -max_y, max_y)
 }
 
@@ -138,9 +138,16 @@ impl RegionMap {
             boundaries: (
                 -(middle.0 as i32),
                 middle.1 as i32,
-                middle.0 as i32,
-                -(middle.1 as i32),
+                -(middle.0 as i32),
+                middle.1 as i32,
             ),
         }
+    }
+
+    pub fn world_to_tile(&self, pos: (i32, i32)) -> (usize, usize) {
+        let x = (pos.0 - self.boundaries.0) as usize;
+        let y = (pos.1 - self.boundaries.2) as usize;
+
+        (x, y)
     }
 }
