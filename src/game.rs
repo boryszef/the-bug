@@ -6,7 +6,7 @@ const MAP_PER_LEVEL_INCREMENT: u32 = 2;
 
 #[derive(Debug)]
 pub struct Player {
-    level: u32,
+    pub level: u32,
     pub coordinates: (i32, i32),
     resources: Vec<Resource>,
 }
@@ -52,15 +52,15 @@ enum Resource {
     Wood,
 }
 
-#[derive(Clone, Copy)]
-enum TerrainType {
+#[derive(Clone, Copy, Debug)]
+pub enum TerrainType {
     Meadow,
     Forest,
     Village,
     Deadland,
 }
 
-impl fmt::Debug for TerrainType {
+impl fmt::Display for TerrainType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let symbol = match self {
             TerrainType::Meadow => '𖧧',
@@ -78,15 +78,16 @@ const TERRAIN_TYPES: &[TerrainType] = &[
     TerrainType::Deadland,
 ];
 
+#[derive(Debug)]
 pub struct MapTile {
-    terrain_type: TerrainType,
+    pub terrain_type: TerrainType,
     resources: Vec<Resource>,
 }
 
-impl fmt::Debug for MapTile {
+impl fmt::Display for MapTile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let terrain = self.terrain_type;
-        write!(f, "{:?}", terrain)
+        write!(f, "{terrain}")
     }
 }
 
@@ -144,10 +145,19 @@ impl RegionMap {
         }
     }
 
-    pub fn world_to_tile(&self, pos: (i32, i32)) -> (usize, usize) {
+    fn world_to_tile(&self, pos: (i32, i32)) -> (usize, usize) {
         let x = (pos.0 - self.boundaries.0) as usize;
         let y = (pos.1 - self.boundaries.2) as usize;
 
         (x, y)
+    }
+
+    pub fn get_tile(&self, pos: (i32, i32)) -> Option<&MapTile> {
+        let (x, y) = self.world_to_tile(pos);
+        if x < self.size.0 as usize && y < self.size.1 as usize {
+            Some(&self.tiles[y][x])
+        } else {
+            None
+        }
     }
 }

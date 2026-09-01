@@ -17,41 +17,48 @@ pub struct App {
     player: Player,
     map: RegionMap,
     exit: bool,
+    events: Vec<String>,
 }
 
 impl Default for App {
     fn default() -> App {
         let player = Player::default();
         let map = RegionMap::new(&player);
+        let events = vec!["You entered the world.".to_string()];
         App {
             player,
             map,
             exit: false,
+            events,
         }
     }
 }
 
 impl App {
     fn render_map(&self, area: Rect, buf: &mut Buffer) {
-        let width = self.map.size.0 as f64;
-        let height = self.map.size.1 as f64;
+        let block = Block::bordered().title(" Map ");
+        let inner = block.inner(area);
 
         let canvas = Canvas::default()
-            .block(Block::bordered().title(" Map "))
+            .block(block)
             .x_bounds([
-                self.map.boundaries.0 as f64 - 1.0,
-                self.map.boundaries.1 as f64 + 1.0,
+                //self.map.boundaries.0 as f64 - 1.0,
+                //self.map.boundaries.1 as f64 + 1.0,
+                inner.width as f64 / -6.2,
+                inner.width as f64 / 6.2,
             ])
             .y_bounds([
-                self.map.boundaries.2 as f64 - 1.0,
-                self.map.boundaries.3 as f64 + 1.0,
+                //self.map.boundaries.2 as f64 - 1.0,
+                //self.map.boundaries.3 as f64 + 1.0,
+                inner.height as f64 / -4.08,
+                inner.height as f64 / 4.08,
             ])
             .paint(|ctx| {
                 for (y, row) in self.map.tiles.iter().enumerate() {
                     for (x, tile) in row.iter().enumerate() {
                         let world_x = self.map.boundaries.0 + x as i32;
                         let world_y = self.map.boundaries.3 - y as i32;
-                        ctx.print(world_x as f64, world_y as f64, format!("{:?}", tile));
+                        ctx.print(world_x as f64, world_y as f64, format!("{tile}"));
                     }
                 }
                 ctx.print(
@@ -67,7 +74,7 @@ impl App {
     fn render_player(&self, area: Rect, buf: &mut Buffer) {
         let block = Block::bordered().title(" Player ");
 
-        let text = Text::from(vec![Line::from(format!("{:?}", self.player))]);
+        let text = Text::from(vec![Line::from(format!("Level: {}", self.player.level))]);
 
         Paragraph::new(text).block(block).render(area, buf);
     }
@@ -75,9 +82,15 @@ impl App {
     fn render_events(&self, area: Rect, buf: &mut Buffer) {
         let block = Block::bordered().title(" Events ");
 
-        Paragraph::new("You entered the world.")
-            .block(block)
-            .render(area, buf);
+        let text = Text::from(
+            self.events
+                .iter()
+                .rev()
+                .take(10)
+                .map(|e| Line::from(e.clone()))
+                .collect::<Vec<Line>>(),
+        );
+        Paragraph::new(text).block(block).render(area, buf);
     }
 
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
@@ -115,18 +128,38 @@ impl App {
 
     fn walk_west(&mut self) {
         self.player.walk_west(self.map.boundaries);
+        let current_tile = self.map.get_tile(self.player.coordinates);
+        self.events.push(format!(
+            "You walk west and visit {:?}.",
+            current_tile.unwrap().terrain_type
+        ));
     }
 
     fn walk_east(&mut self) {
         self.player.walk_east(self.map.boundaries);
+        let current_tile = self.map.get_tile(self.player.coordinates);
+        self.events.push(format!(
+            "You walk east and visit {:?}",
+            current_tile.unwrap().terrain_type
+        ));
     }
 
     fn walk_north(&mut self) {
         self.player.walk_north(self.map.boundaries);
+        let current_tile = self.map.get_tile(self.player.coordinates);
+        self.events.push(format!(
+            "You walk north and visit {:?}.",
+            current_tile.unwrap().terrain_type
+        ));
     }
 
     fn walk_south(&mut self) {
         self.player.walk_south(self.map.boundaries);
+        let current_tile = self.map.get_tile(self.player.coordinates);
+        self.events.push(format!(
+            "You walk south and visit {:?}.",
+            current_tile.unwrap().terrain_type
+        ));
     }
 
     fn draw(&self, frame: &mut Frame) {
