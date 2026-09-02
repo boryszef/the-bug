@@ -1,9 +1,11 @@
 use rand::RngExt;
 use std::collections::HashMap;
 use std::fmt;
+use std::time::Instant;
 
 const MAP_MIN_SIZE: u32 = 15;
 const MAP_PER_LEVEL_INCREMENT: u32 = 2;
+const DECAY_WINDOW_SECS: f64 = 60.0;
 
 #[derive(Debug)]
 pub struct Player {
@@ -13,11 +15,39 @@ pub struct Player {
 }
 
 impl Default for Player {
-    fn default() -> Player {
-        Player {
+    fn default() -> Self {
+        Self {
             level: 1,
             coordinates: (0, 0),
             inventory: HashMap::new(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Direction {
+    North,
+    South,
+    East,
+    West,
+}
+
+impl Direction {
+    fn delta(self) -> (i32, i32) {
+        match self {
+            Direction::North => (0, 1),
+            Direction::South => (0, -1),
+            Direction::East => (1, 0),
+            Direction::West => (-1, 0),
+        }
+    }
+
+    fn name(self) -> &'static str {
+        match self {
+            Direction::North => "north",
+            Direction::South => "south",
+            Direction::East => "east",
+            Direction::West => "west",
         }
     }
 }
@@ -76,13 +106,12 @@ pub enum Material {
 pub struct MapTile {
     pub terrain_type: TerrainType,
     materials: HashMap<Material, f64>,
-    last_search_time: Option<std::time::Instant>,
+    last_search_time: Option<Instant>,
 }
 
 impl fmt::Display for MapTile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let terrain = self.terrain_type;
-        write!(f, "{terrain}")
+        write!(f, "{}", self.terrain_type)
     }
 }
 
@@ -92,91 +121,76 @@ const TERRAIN_MATERIALS: &[(TerrainType, Material, f64)] = &[
     (TerrainType::Meadow, Material::Vine, 0.2),
 ];
 
-fn get_materials_for_terrain(terrain: TerrainType) -> HashMap<Material, f64> {
-    let mut materials = HashMap::new();
-    for &(t, material, probability) in TERRAIN_MATERIALS {
-        if t == terrain {
-            materials.insert(material, probability);
-        }
-    }
-    materials
-}
-
-fn generate_tile_by_type(terrain_type: TerrainType) -> MapTile {
-    let materials = get_materials_for_terrain(terrain_type);
-    let last_search_time = None;
-
-    MapTile {
-        terrain_type,
-        materials,
-        last_search_time,
-    }
+fn materials_for_terrain(terrain: TerrainType) -> HashMap<Material, f64> {
+    TERRAIN_MATERIALS
+        .iter()
+        .filter(|&&(t, _, _)| t == terrain)
+        .map(|&(_, material, probability)| (material, probability))
+        .collect()
 }
 
 impl MapTile {
+    fn with_terrain(terrain_type: TerrainType) -> MapTile {
+        MapTile {
+            terrain_type,
+            materials: materials_for_terrain(terrain_type),
+            last_search_time: None,
+        }
+    }
+
     fn new() -> MapTile {
-        let mut rng = rand::rng();
-        //        let terrain_type = *RANDOM_TERRAIN_TYPES.choose(&mut rng).unwrap();
-        let terrain_type = choose_weighted(RANDOM_TERRAIN_TYPES, &mut rng);
-        generate_tile_by_type(terrain_type)
+        Self::with_terrain(choose_weighted(RANDOM_TERRAIN_TYPES, &mut rand::rng()))
     }
 }
 
 #[derive(Debug)]
 pub struct Map {
     pub tiles: Vec<Vec<MapTile>>,
-    size: (u32, u32),
-    pub boundary: (i32, i32, i32, i32), // (-max_x, max_x, -max_y, max_y)
+    pub half: i32,
 }
 
 impl Map {
     pub fn new(player: &Player) -> Map {
         let size = MAP_MIN_SIZE + player.level * MAP_PER_LEVEL_INCREMENT;
-        let mut map = Vec::new();
         let middle = (size / 2, size / 2);
-        for x in 0..size {
-            let mut row = Vec::new();
-            for y in 0..size {
-                let tile = match (x, y) {
-                    pos if pos == middle => generate_tile_by_type(TerrainType::Village),
-                    _ => MapTile::new(),
-                };
-                row.push(tile);
-            }
-            map.push(row);
-        }
+
+        let tiles: Vec<Vec<MapTile>> = (0..size)
+            .map(|x| {
+                (0..size)
+                    .map(|y| {
+                        if (x, y) == middle {
+                            MapTile::with_terrain(TerrainType::Village)
+                        } else {
+                            MapTile::new()
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+
         Map {
-            tiles: map,
-            size: (size, size),
-            boundary: (
-                -(middle.0 as i32),
-                middle.1 as i32,
-                -(middle.0 as i32),
-                middle.1 as i32,
-            ),
+            tiles,
+            half: (size / 2) as i32,
         }
     }
 
     fn world_to_tile(&self, pos: (i32, i32)) -> (usize, usize) {
-        let x = (pos.0 - self.boundary.0) as usize;
-        let y = (pos.1 - self.boundary.2) as usize;
-
-        (x, y)
+        ((pos.0 + self.half) as usize, (pos.1 + self.half) as usize)
     }
 
     pub fn get_tile(&self, pos: (i32, i32)) -> Option<&MapTile> {
         let (x, y) = self.world_to_tile(pos);
-        if x < self.size.0 as usize && y < self.size.1 as usize {
-            Some(&self.tiles[y][x])
-        } else {
-            None
-        }
+        self.tiles.get(y)?.get(x)
+    }
+
+    fn get_tile_mut(&mut self, pos: (i32, i32)) -> Option<&mut MapTile> {
+        let (x, y) = self.world_to_tile(pos);
+        self.tiles.get_mut(y)?.get_mut(x)
     }
 
     pub fn update_tile_last_search_time(&mut self, pos: (i32, i32)) {
-        let (x, y) = self.world_to_tile(pos);
-        if x < self.size.0 as usize && y < self.size.1 as usize {
-            self.tiles[y][x].last_search_time = Some(std::time::Instant::now());
+        if let Some(tile) = self.get_tile_mut(pos) {
+            tile.last_search_time = Some(Instant::now());
         }
     }
 }
@@ -189,97 +203,69 @@ pub struct Game {
 }
 
 impl Default for Game {
-    fn default() -> Game {
+    fn default() -> Self {
         let player = Player::default();
         let map = Map::new(&player);
-        let events = vec!["You wake up and decide to have a walk.".to_string()];
-        Game {
+        Self {
             player,
             map,
-            events,
+            events: vec!["You wake up and decide to have a walk.".to_string()],
         }
     }
 }
 
 impl Game {
-    pub fn walk_west(&mut self) {
-        if self.player.coordinates.0 > self.map.boundary.0 {
-            self.player.coordinates.0 -= 1;
-            let current_tile = self.map.get_tile(self.player.coordinates);
-            self.events.push(format!(
-                "You walk west and visit {:?}.",
-                current_tile.unwrap().terrain_type
-            ));
-        }
-    }
+    pub fn walk(&mut self, dir: Direction) {
+        let (dx, dy) = dir.delta();
+        let (x, y) = self.player.coordinates;
+        let (nx, ny) = (x + dx, y + dy);
 
-    pub fn walk_east(&mut self) {
-        if self.player.coordinates.0 < self.map.boundary.1 {
-            self.player.coordinates.0 += 1;
-            let current_tile = self.map.get_tile(self.player.coordinates);
-            self.events.push(format!(
-                "You walk east and visit {:?}.",
-                current_tile.unwrap().terrain_type
-            ));
+        if nx.abs() > self.map.half || ny.abs() > self.map.half {
+            return;
         }
-    }
 
-    pub fn walk_north(&mut self) {
-        if self.player.coordinates.1 < self.map.boundary.3 {
-            self.player.coordinates.1 += 1;
-            let current_tile = self.map.get_tile(self.player.coordinates);
+        self.player.coordinates = (nx, ny);
+        if let Some(tile) = self.map.get_tile((nx, ny)) {
             self.events.push(format!(
-                "You walk north and visit {:?}.",
-                current_tile.unwrap().terrain_type
-            ));
-        }
-    }
-
-    pub fn walk_south(&mut self) {
-        if self.player.coordinates.1 > self.map.boundary.2 {
-            self.player.coordinates.1 -= 1;
-            let current_tile = self.map.get_tile(self.player.coordinates);
-            self.events.push(format!(
-                "You walk south and visit {:?}.",
-                current_tile.unwrap().terrain_type
+                "You walk {} and visit {:?}.",
+                dir.name(),
+                tile.terrain_type
             ));
         }
     }
 
     pub fn search(&mut self) {
-        let coordinates = self.player.coordinates;
+        let coords = self.player.coordinates;
+        let Some(tile) = self.map.get_tile(coords) else {
+            return;
+        };
+        let terrain = tile.terrain_type;
+        let last_search = tile.last_search_time;
+
         let mut rng = rand::rng();
+        let found: Vec<Material> = tile
+            .materials
+            .iter()
+            .filter(|&(_, &base)| {
+                rng.random_range(0.0..1.0) < adjust_probability(base, last_search)
+            })
+            .map(|(&material, _)| material)
+            .collect();
 
-        {
-            let current_tile = self.map.get_tile(coordinates).unwrap();
-
-            for (material, base_probability) in &current_tile.materials {
-                let probability =
-                    adjust_probability(*base_probability, current_tile.last_search_time);
-
-                if rng.random_range(0.0..1.0) < probability {
-                    let count = self.player.inventory.entry(*material).or_insert(0);
-                    *count += 1;
-
-                    self.events.push(format!(
-                        "You found a {:?} in the {:?}.",
-                        material, current_tile.terrain_type
-                    ));
-                }
-            }
+        for material in found {
+            *self.player.inventory.entry(material).or_insert(0) += 1;
+            self.events
+                .push(format!("You found a {material:?} in the {terrain:?}."));
         }
-
-        self.map.update_tile_last_search_time(coordinates);
+        self.map.update_tile_last_search_time(coords);
     }
 }
 
-fn adjust_probability(base_probability: f64, last_search_time: Option<std::time::Instant>) -> f64 {
-    let time_elapsed = last_search_time
-        .map(|t| t.elapsed().as_secs_f64())
-        .unwrap_or(f64::INFINITY);
+fn adjust_probability(base_probability: f64, last_search_time: Option<Instant>) -> f64 {
+    let time_elapsed = last_search_time.map_or(f64::INFINITY, |t| t.elapsed().as_secs_f64());
 
-    if time_elapsed < 60.0 {
-        base_probability * (time_elapsed / 60.0)
+    if time_elapsed < DECAY_WINDOW_SECS {
+        base_probability * (time_elapsed / DECAY_WINDOW_SECS)
     } else {
         base_probability
     }
@@ -293,11 +279,10 @@ mod tests {
     fn world_to_tile_corners() {
         let player = Player::default();
         let map = Map::new(&player);
-        let (min_x, max_x, min_y, max_y) = map.boundary;
-        assert_eq!(map.world_to_tile((min_x, min_y)), (0usize, 0usize));
-        let size_x = map.size.0 as usize;
-        let size_y = map.size.1 as usize;
-        assert_eq!(map.world_to_tile((max_x, max_y)), (size_x - 1, size_y - 1));
+        let h = map.half;
+        assert_eq!(map.world_to_tile((-h, -h)), (0usize, 0usize));
+        let last = map.tiles.len() - 1;
+        assert_eq!(map.world_to_tile((h, h)), (last, last));
     }
 
     #[test]
@@ -305,27 +290,24 @@ mod tests {
         let player = Player::default();
         let map = Map::new(&player);
         // center in world coords is (0,0)
-        let center_idx = map.world_to_tile((0, 0));
-        let (cx, cy) = center_idx;
+        let (cx, cy) = map.world_to_tile((0, 0));
         // ensure center tile is the village created at middle
         let tile = map.get_tile((0, 0)).expect("center tile exists");
         match tile.terrain_type {
             TerrainType::Village => (),
-            other => panic!("expected Village at center, found {:?}", other),
+            other => panic!("expected Village at center, found {other:?}"),
         }
         // also ensure indices point to the middle
-        let middle = ((map.size.0 / 2) as usize, (map.size.1 / 2) as usize);
-        assert_eq!((cx, cy), middle);
+        let mid = map.tiles.len() / 2;
+        assert_eq!((cx, cy), (mid, mid));
     }
 
     #[test]
     fn world_to_tile_out_of_bounds() {
         let player = Player::default();
         let map = Map::new(&player);
-        // pick a coordinate just outside the boundary to see mapping still returns index beyond size
-        let (_min_x, max_x, _min_y, max_y) = map.boundary;
-        let outside = (max_x + 1, max_y + 1);
-        // get_tile should return None for outside positions
+        // get_tile should return None for positions outside the boundary
+        let outside = (map.half + 1, map.half + 1);
         assert!(map.get_tile(outside).is_none());
     }
 
@@ -333,19 +315,18 @@ mod tests {
     fn walk_west_moves_and_logs_and_respects_boundary() {
         let mut game = Game::default();
         let initial = game.player.coordinates;
-        // move west once
-        game.walk_west();
+        game.walk(Direction::West);
         assert_eq!(game.player.coordinates, (initial.0 - 1, initial.1));
         assert_eq!(game.events.len(), 2);
         let last = game.events.last().unwrap();
         assert!(last.starts_with("You walk west"));
 
         // set to left boundary and ensure no move
-        let (min_x, _max_x, _min_y, _max_y) = game.map.boundary;
-        game.player.coordinates = (min_x, 0);
+        let h = game.map.half;
+        game.player.coordinates = (-h, 0);
         let before_events = game.events.len();
-        game.walk_west();
-        assert_eq!(game.player.coordinates.0, min_x);
+        game.walk(Direction::West);
+        assert_eq!(game.player.coordinates.0, -h);
         assert_eq!(game.events.len(), before_events);
     }
 
@@ -353,18 +334,18 @@ mod tests {
     fn walk_east_moves_and_logs_and_respects_boundary() {
         let mut game = Game::default();
         let initial = game.player.coordinates;
-        game.walk_east();
+        game.walk(Direction::East);
         assert_eq!(game.player.coordinates, (initial.0 + 1, initial.1));
         assert_eq!(game.events.len(), 2);
         let last = game.events.last().unwrap();
         assert!(last.starts_with("You walk east"));
 
         // set to right boundary and ensure no move
-        let (_min_x, max_x, _min_y, _max_y) = game.map.boundary;
-        game.player.coordinates = (max_x, 0);
+        let h = game.map.half;
+        game.player.coordinates = (h, 0);
         let before_events = game.events.len();
-        game.walk_east();
-        assert_eq!(game.player.coordinates.0, max_x);
+        game.walk(Direction::East);
+        assert_eq!(game.player.coordinates.0, h);
         assert_eq!(game.events.len(), before_events);
     }
 
@@ -372,18 +353,18 @@ mod tests {
     fn walk_north_moves_and_logs_and_respects_boundary() {
         let mut game = Game::default();
         let initial = game.player.coordinates;
-        game.walk_north();
+        game.walk(Direction::North);
         assert_eq!(game.player.coordinates, (initial.0, initial.1 + 1));
         assert_eq!(game.events.len(), 2);
         let last = game.events.last().unwrap();
         assert!(last.starts_with("You walk north"));
 
         // set to top boundary and ensure no move
-        let (_min_x, _max_x, _min_y, max_y) = game.map.boundary;
-        game.player.coordinates = (0, max_y);
+        let h = game.map.half;
+        game.player.coordinates = (0, h);
         let before_events = game.events.len();
-        game.walk_north();
-        assert_eq!(game.player.coordinates.1, max_y);
+        game.walk(Direction::North);
+        assert_eq!(game.player.coordinates.1, h);
         assert_eq!(game.events.len(), before_events);
     }
 
@@ -391,18 +372,18 @@ mod tests {
     fn walk_south_moves_and_logs_and_respects_boundary() {
         let mut game = Game::default();
         let initial = game.player.coordinates;
-        game.walk_south();
+        game.walk(Direction::South);
         assert_eq!(game.player.coordinates, (initial.0, initial.1 - 1));
         assert_eq!(game.events.len(), 2);
         let last = game.events.last().unwrap();
         assert!(last.starts_with("You walk south"));
 
         // set to bottom boundary and ensure no move
-        let (_min_x, _max_x, min_y, _max_y) = game.map.boundary;
-        game.player.coordinates = (0, min_y);
+        let h = game.map.half;
+        game.player.coordinates = (0, -h);
         let before_events = game.events.len();
-        game.walk_south();
-        assert_eq!(game.player.coordinates.1, min_y);
+        game.walk(Direction::South);
+        assert_eq!(game.player.coordinates.1, -h);
         assert_eq!(game.events.len(), before_events);
     }
 
@@ -414,11 +395,11 @@ mod tests {
         let tile_coordinates = game.map.world_to_tile(game.player.coordinates);
 
         game.map.tiles[tile_coordinates.0 - 1][tile_coordinates.1] =
-            generate_tile_by_type(TerrainType::Meadow);
+            MapTile::with_terrain(TerrainType::Meadow);
         game.map.tiles[tile_coordinates.0 + 1][tile_coordinates.1] =
-            generate_tile_by_type(TerrainType::Forest);
+            MapTile::with_terrain(TerrainType::Forest);
 
-        game.walk_north();
+        game.walk(Direction::North);
         assert_eq!(game.player.coordinates, (0, 1));
         assert_eq!(
             game.map
@@ -446,7 +427,7 @@ mod tests {
         // recent search (about 30s ago) scales probability down
         let last_recent = Instant::now() - Duration::from_secs(30);
         let elapsed = last_recent.elapsed().as_secs_f64();
-        let expected_recent = base * (elapsed / 60.0);
+        let expected_recent = base * (elapsed / DECAY_WINDOW_SECS);
         let p_recent = adjust_probability(base, Some(last_recent));
         assert!((p_recent - expected_recent).abs() < 1e-6);
 

@@ -1,7 +1,7 @@
 mod game;
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
-use game::Game;
+use game::{Direction, Game};
 use ratatui::{
     DefaultTerminal, Frame,
     buffer::Buffer,
@@ -12,46 +12,39 @@ use ratatui::{
 };
 use std::io;
 
-#[derive(Debug)]
+// Empirical zoom factors so the map roughly fills its pane.
+const MAP_X_SCALE: f64 = 6.2;
+const MAP_Y_SCALE: f64 = 4.08;
+
+#[derive(Debug, Default)]
 pub struct App {
     game: Game,
     exit: bool,
-}
-
-impl Default for App {
-    fn default() -> App {
-        let game = Game::default();
-        App { game, exit: false }
-    }
 }
 
 impl App {
     fn render_map(&self, area: Rect, buf: &mut Buffer) {
         let block = Block::bordered().title(" Map ");
         let inner = block.inner(area);
-        let boundary = self.game.map.boundary;
+        let half = self.game.map.half;
         let player_pos = self.game.player.coordinates;
 
         let canvas = Canvas::default()
             .block(block)
             .x_bounds([
-                //self.map.boundaries.0 as f64 - 1.0,
-                //self.map.boundaries.1 as f64 + 1.0,
-                inner.width as f64 / -6.2,
-                inner.width as f64 / 6.2,
+                inner.width as f64 / -MAP_X_SCALE,
+                inner.width as f64 / MAP_X_SCALE,
             ])
             .y_bounds([
-                //self.map.boundaries.2 as f64 - 1.0,
-                //self.map.boundaries.3 as f64 + 1.0,
-                inner.height as f64 / -4.08,
-                inner.height as f64 / 4.08,
+                inner.height as f64 / -MAP_Y_SCALE,
+                inner.height as f64 / MAP_Y_SCALE,
             ])
             .paint(|ctx| {
                 for (y, row) in self.game.map.tiles.iter().enumerate() {
                     for (x, tile) in row.iter().enumerate() {
-                        let world_x = boundary.0 + x as i32;
-                        let world_y = boundary.2 + y as i32;
-                        ctx.print(world_x as f64, world_y as f64, format!("{tile}"));
+                        let world_x = (x as i32 - half) as f64;
+                        let world_y = (y as i32 - half) as f64;
+                        ctx.print(world_x, world_y, format!("{tile}"));
                     }
                 }
                 ctx.print(
@@ -78,16 +71,18 @@ impl App {
     fn render_events(&self, area: Rect, buf: &mut Buffer) {
         let block = Block::bordered().title(" Events ");
 
-        let text = Text::from(
-            self.game
-                .events
-                .iter()
-                .rev()
-                .take(10)
-                .map(|e| Line::from(e.clone()))
-                .collect::<Vec<Line>>(),
-        );
-        Paragraph::new(text).block(block).render(area, buf);
+        let lines: Vec<Line> = self
+            .game
+            .events
+            .iter()
+            .rev()
+            .take(10)
+            .map(|e| Line::from(e.as_str()))
+            .collect();
+
+        Paragraph::new(Text::from(lines))
+            .block(block)
+            .render(area, buf);
     }
 
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
@@ -99,49 +94,24 @@ impl App {
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
-        match event::read()? {
-            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                self.handle_key_event(key_event)
-            }
-            _ => {}
-        };
+        if let Event::Key(key_event) = event::read()?
+            && key_event.kind == KeyEventKind::Press
+        {
+            self.handle_key_event(key_event);
+        }
         Ok(())
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('q') => self.exit(),
-            KeyCode::Char('s') => self.search(),
-            KeyCode::Left => self.walk_west(),
-            KeyCode::Right => self.walk_east(),
-            KeyCode::Up => self.walk_north(),
-            KeyCode::Down => self.walk_south(),
+            KeyCode::Char('q') => self.exit = true,
+            KeyCode::Char('s') => self.game.search(),
+            KeyCode::Left => self.game.walk(Direction::West),
+            KeyCode::Right => self.game.walk(Direction::East),
+            KeyCode::Up => self.game.walk(Direction::North),
+            KeyCode::Down => self.game.walk(Direction::South),
             _ => {}
         }
-    }
-
-    fn exit(&mut self) {
-        self.exit = true;
-    }
-
-    fn walk_west(&mut self) {
-        self.game.walk_west();
-    }
-
-    fn walk_east(&mut self) {
-        self.game.walk_east();
-    }
-
-    fn walk_north(&mut self) {
-        self.game.walk_north();
-    }
-
-    fn walk_south(&mut self) {
-        self.game.walk_south();
-    }
-
-    fn search(&mut self) {
-        self.game.search();
     }
 
     fn draw(&self, frame: &mut Frame) {
@@ -162,39 +132,6 @@ impl Widget for &App {
         self.render_events(menu[1], buf);
     }
 }
-
-/*impl Widget for &App {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Line::from(" Counter App Tutorial ".bold());
-        let instructions = Line::from(vec![
-            " Move: ".into(),
-            "<Left> ".blue().bold(),
-            "<Right> ".blue().bold(),
-            "<Up> ".blue().bold(),
-            "<Down>".blue().bold(),
-            " Quit: ".into(),
-            "<Q> ".blue().bold(),
-        ]);
-        let block = Block::bordered()
-            .title(title.centered())
-            .title_bottom(instructions.centered())
-            .border_set(border::THICK);
-
-        let player = &self.player;
-        let map = &self.map;
-
-        let counter_text = Text::from(vec![
-            Line::from(vec!["Value: ".into(), self.counter.to_string().yellow()]),
-            Line::from(vec![format!("{player:?}").into()]),
-            Line::from(vec![format!("{map:?}").into()]),
-        ]);
-
-        Paragraph::new(counter_text)
-            .centered()
-            .block(block)
-            .render(area, buf);
-    }
-}*/
 
 fn main() -> io::Result<()> {
     ratatui::run(|terminal| App::default().run(terminal))
