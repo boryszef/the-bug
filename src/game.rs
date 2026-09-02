@@ -1,3 +1,4 @@
+use rand::RngExt;
 use rand::prelude::IndexedRandom;
 use std::fmt;
 
@@ -48,12 +49,26 @@ impl fmt::Display for TerrainType {
     }
 }
 
-const RANDOM_TERRAIN_TYPES: &[TerrainType] = &[
-    TerrainType::Meadow,
-    TerrainType::Forest,
-    TerrainType::Cave,
-    TerrainType::Deadland,
+const RANDOM_TERRAIN_TYPES: &[(TerrainType, u32)] = &[
+    (TerrainType::Meadow, 30),
+    (TerrainType::Forest, 15),
+    (TerrainType::Deadland, 50),
+    (TerrainType::Cave, 5),
 ];
+
+fn choose_weighted<T: Copy>(choices: &[(T, u32)], rng: &mut impl rand::Rng) -> T {
+    let total: u32 = choices.iter().map(|(_, weight)| weight).sum();
+    let mut n = rng.random_range(0..total);
+
+    for &(value, weight) in choices {
+        if n < weight {
+            return value;
+        }
+        n -= weight;
+    }
+
+    unreachable!()
+}
 
 #[derive(Debug)]
 pub struct MapTile {
@@ -71,7 +86,8 @@ impl fmt::Display for MapTile {
 impl MapTile {
     fn new() -> MapTile {
         let mut rng = rand::rng();
-        let terrain_type = *RANDOM_TERRAIN_TYPES.choose(&mut rng).unwrap();
+        //        let terrain_type = *RANDOM_TERRAIN_TYPES.choose(&mut rng).unwrap();
+        let terrain_type = choose_weighted(RANDOM_TERRAIN_TYPES, &mut rng);
 
         MapTile {
             terrain_type,
