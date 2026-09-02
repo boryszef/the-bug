@@ -12,6 +12,7 @@ pub struct Player {
     pub level: u32,
     pub coordinates: (i32, i32),
     pub inventory: HashMap<Material, u32>,
+    recipes: Vec<Recipe>,
 }
 
 impl Default for Player {
@@ -20,6 +21,7 @@ impl Default for Player {
             level: 1,
             coordinates: (0, 0),
             inventory: HashMap::new(),
+            recipes: Vec::new(),
         }
     }
 }
@@ -100,6 +102,8 @@ pub enum Material {
     Stick,
     Stone,
     Vine,
+    Cord,
+    StoneAxe,
 }
 
 #[derive(Debug)]
@@ -195,6 +199,36 @@ impl Map {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+struct Recipe {
+    name: &'static str,
+    inputs: &'static [(Material, u32)],
+    output: Material,
+}
+
+impl PartialEq for Recipe {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+const RECIPES: &[Recipe] = &[
+    Recipe {
+        name: "Cord",
+        inputs: &[(Material::Vine, 2)],
+        output: Material::Cord,
+    },
+    Recipe {
+        name: "Stone Axe",
+        inputs: &[
+            (Material::Stick, 1),
+            (Material::Stone, 1),
+            (Material::Cord, 1),
+        ],
+        output: Material::StoneAxe,
+    },
+];
+
 #[derive(Debug)]
 pub struct Game {
     pub player: Player,
@@ -258,6 +292,66 @@ impl Game {
                 .push(format!("You found a {material:?} in the {terrain:?}."));
         }
         self.map.update_tile_last_search_time(coords);
+    }
+
+    pub fn craft(&mut self, recipe_name: &str) {
+        let Some(recipe) = self.player.recipes.iter().find(|r| r.name.eq(recipe_name)) else {
+            self.events
+                .push(format!("You don't know how to craft {recipe_name}"));
+            return;
+        };
+
+        for &(material, amount) in recipe.inputs {
+            let entry = self.player.inventory.entry(material).or_insert(0);
+            if *entry < amount {
+                self.events.push(format!(
+                    "Not enough {:?} to craft {}.",
+                    material, recipe.name
+                ));
+                return;
+            }
+        }
+
+        for &(material, amount) in recipe.inputs {
+            *self.player.inventory.get_mut(&material).unwrap() -= amount;
+        }
+
+        *self.player.inventory.entry(recipe.output).or_insert(0) += 1;
+        self.events.push(format!("You crafted a {}.", recipe.name));
+    }
+
+    pub fn experiment(&mut self, materials: &[(Material, u32)]) {
+        for &(material, amount) in materials {
+            let available = self.player.inventory.get(&material).copied().unwrap_or(0);
+
+            if available < amount {
+                self.events
+                    .push(format!("Not enough {:?} to experiment.", material));
+                return;
+            }
+        }
+
+        for &(material, amount) in materials {
+            *self.player.inventory.get_mut(&material).unwrap() -= amount;
+        }
+
+        let Some(recipe) = RECIPES.iter().find(|recipe| {
+            recipe.inputs.len() == materials.len()
+                && recipe.inputs.iter().all(|input| materials.contains(input))
+        }) else {
+            self.events.push("The experiment failed.".to_string());
+            return;
+        };
+
+        if !self.player.recipes.contains(recipe) {
+            self.player.recipes.push(*recipe);
+            self.events
+                .push(format!("You discovered how to craft {}!", recipe.name));
+        }
+
+        *self.player.inventory.entry(recipe.output).or_insert(0) += 1;
+
+        self.events.push(format!("You created a {}.", recipe.name));
     }
 }
 
