@@ -111,14 +111,14 @@ impl MapTile {
 }
 
 #[derive(Debug)]
-pub struct RegionMap {
+pub struct Map {
     pub tiles: Vec<Vec<MapTile>>,
-    pub size: (u32, u32),
-    pub boundaries: (i32, i32, i32, i32), // (-max_x, max_x, -max_y, max_y)
+    size: (u32, u32),
+    pub boundary: (i32, i32, i32, i32), // (-max_x, max_x, -max_y, max_y)
 }
 
-impl RegionMap {
-    pub fn new(player: &Player) -> RegionMap {
+impl Map {
+    pub fn new(player: &Player) -> Map {
         let size = MAP_MIN_SIZE + player.level * MAP_PER_LEVEL_INCREMENT;
         let mut map = Vec::new();
         let middle = (size / 2, size / 2);
@@ -133,10 +133,10 @@ impl RegionMap {
             }
             map.push(row);
         }
-        RegionMap {
+        Map {
             tiles: map,
             size: (size, size),
-            boundaries: (
+            boundary: (
                 -(middle.0 as i32),
                 middle.1 as i32,
                 -(middle.0 as i32),
@@ -146,8 +146,8 @@ impl RegionMap {
     }
 
     fn world_to_tile(&self, pos: (i32, i32)) -> (usize, usize) {
-        let x = (pos.0 - self.boundaries.0) as usize;
-        let y = (pos.1 - self.boundaries.2) as usize;
+        let x = (pos.0 - self.boundary.0) as usize;
+        let y = (pos.1 - self.boundary.2) as usize;
 
         (x, y)
     }
@@ -158,6 +158,26 @@ impl RegionMap {
             Some(&self.tiles[y][x])
         } else {
             None
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Game {
+    pub player: Player,
+    pub map: Map,
+    pub events: Vec<String>,
+}
+
+impl Default for Game {
+    fn default() -> Game {
+        let player = Player::default();
+        let map = Map::new(&player);
+        let events = vec!["You wake up.".to_string()];
+        Game {
+            player,
+            map,
+            events,
         }
     }
 }
