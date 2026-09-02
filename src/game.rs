@@ -204,3 +204,48 @@ impl Game {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn world_to_tile_corners() {
+        let player = Player::default();
+        let map = Map::new(&player);
+        let (min_x, max_x, min_y, max_y) = map.boundary;
+        assert_eq!(map.world_to_tile((min_x, min_y)), (0usize, 0usize));
+        let size_x = map.size.0 as usize;
+        let size_y = map.size.1 as usize;
+        assert_eq!(map.world_to_tile((max_x, max_y)), (size_x - 1, size_y - 1));
+    }
+
+    #[test]
+    fn world_to_tile_center_is_village() {
+        let player = Player::default();
+        let map = Map::new(&player);
+        // center in world coords is (0,0)
+        let center_idx = map.world_to_tile((0, 0));
+        let (cx, cy) = center_idx;
+        // ensure center tile is the village created at middle
+        let tile = map.get_tile((0, 0)).expect("center tile exists");
+        match tile.terrain_type {
+            TerrainType::Village => (),
+            other => panic!("expected Village at center, found {:?}", other),
+        }
+        // also ensure indices point to the middle
+        let middle = ((map.size.0 / 2) as usize, (map.size.1 / 2) as usize);
+        assert_eq!((cx, cy), middle);
+    }
+
+    #[test]
+    fn world_to_tile_out_of_bounds() {
+        let player = Player::default();
+        let map = Map::new(&player);
+        // pick a coordinate just outside the boundary to see mapping still returns index beyond size
+        let (_min_x, max_x, _min_y, max_y) = map.boundary;
+        let outside = (max_x + 1, max_y + 1);
+        // get_tile should return None for outside positions
+        assert!(map.get_tile(outside).is_none());
+    }
+}
