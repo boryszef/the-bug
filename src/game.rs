@@ -155,9 +155,9 @@ impl Map {
         let middle = (size / 2, size / 2);
 
         let tiles: Vec<Vec<MapTile>> = (0..size)
-            .map(|x| {
+            .map(|y| {
                 (0..size)
-                    .map(|y| {
+                    .map(|x| {
                         if (x, y) == middle {
                             MapTile::with_terrain(TerrainType::Village)
                         } else {
