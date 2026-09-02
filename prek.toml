@@ -1,0 +1,18 @@
+# prek configuration — runs Rust checks on every commit.
+# https://prek.j178.dev
+#
+# One-time setup:
+#   cargo install prek   # installs the `prek` binary into ~/.cargo/bin
+#   prek install         # installs the git pre-commit hook in this repo
+#
+# Run manually:  prek run --all-files
+# Skip once:     git commit --no-verify
+#
+#:schema https://www.schemastore.org/prek.json
+
+[[repos]]
+repo = "local"
+hooks = [
+    { id = "cargo-fmt", name = "cargo fmt", entry = "cargo fmt --all -- --check", language = "system", types = ["rust"], pass_filenames = false },
+    { id = "cargo-clippy", name = "cargo clippy", entry = "cargo clippy --all-targets -- -D warnings", language = "system", types = ["rust"], pass_filenames = false },
+]
