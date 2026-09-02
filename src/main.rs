@@ -79,6 +79,13 @@ impl ExperimentState {
         }
     }
 
+    fn selected_quantity(&self, material: Material) -> u32 {
+        self.selected
+            .iter()
+            .find(|(m, _)| *m == material)
+            .map_or(0, |(_, quantity)| *quantity)
+    }
+
     fn selected_materials(&self) -> Vec<(Material, u32)> {
         self.selected.clone()
     }
@@ -240,7 +247,7 @@ impl App {
             ExperimentFocus::Selected => None,
         };
 
-        let inventory = self.sorted_inventory();
+        let inventory = self.experiment_available();
         let available = inventory
             .iter()
             .map(|(material, quantity)| (material, quantity))
@@ -274,6 +281,19 @@ impl App {
             .collect::<Vec<_>>();
         materials.sort_by_key(|(material, _)| format!("{material:?}"));
         materials
+    }
+
+    /// Inventory with the amounts already moved into the experiment removed, so
+    /// the "Available" pane shows what the player can still add.
+    fn experiment_available(&self) -> Vec<(Material, u32)> {
+        let experiment = self.experiment.as_ref();
+        self.sorted_inventory()
+            .into_iter()
+            .map(|(material, quantity)| {
+                let taken = experiment.map_or(0, |e| e.selected_quantity(material));
+                (material, quantity.saturating_sub(taken))
+            })
+            .collect()
     }
 
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
@@ -390,9 +410,15 @@ impl App {
             return;
         }
 
-        let Some((material, _)) = self.sorted_inventory().get(experiment.cursor).copied() else {
+        let Some((material, available)) = self.sorted_inventory().get(experiment.cursor).copied()
+        else {
             return;
         };
+
+        // Never let the selection exceed what the player actually owns.
+        if experiment.selected_quantity(material) >= available {
+            return;
+        }
 
         if let Some(experiment) = self.experiment.as_mut() {
             experiment.add_material(material);
