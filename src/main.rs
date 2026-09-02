@@ -50,7 +50,7 @@ impl App {
                 for (y, row) in self.game.map.tiles.iter().enumerate() {
                     for (x, tile) in row.iter().enumerate() {
                         let world_x = boundary.0 + x as i32;
-                        let world_y = boundary.3 - y as i32;
+                        let world_y = boundary.2 + y as i32;
                         ctx.print(world_x as f64, world_y as f64, format!("{tile}"));
                     }
                 }

@@ -27,7 +27,7 @@ enum Resource {
     Wood,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TerrainType {
     Meadow,
     Forest,
@@ -340,5 +340,32 @@ mod tests {
         game.walk_south();
         assert_eq!(game.player.coordinates.1, min_y);
         assert_eq!(game.events.len(), before_events);
+    }
+
+    #[test]
+    fn test_y_axis_inversion() {
+        let mut game = Game::default();
+
+        game.player.coordinates = (0, 0);
+        let tile_coordinates = game.map.world_to_tile(game.player.coordinates);
+
+        game.map.tiles[tile_coordinates.0 - 1][tile_coordinates.1] =
+            MapTile::generate(TerrainType::Meadow);
+        game.map.tiles[tile_coordinates.0 + 1][tile_coordinates.1] =
+            MapTile::generate(TerrainType::Forest);
+
+        game.walk_north();
+        assert_eq!(game.player.coordinates, (0, 1));
+        assert_eq!(
+            game.map
+                .get_tile(game.player.coordinates)
+                .unwrap()
+                .terrain_type,
+            TerrainType::Forest
+        );
+        assert_eq!(
+            game.events.last().unwrap(),
+            "You walk north and visit Forest."
+        );
     }
 }
