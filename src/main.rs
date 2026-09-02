@@ -67,10 +67,10 @@ impl App {
     fn render_player(&self, area: Rect, buf: &mut Buffer) {
         let block = Block::bordered().title(" Player ");
 
-        let text = Text::from(vec![Line::from(format!(
-            "Level: {}",
-            self.game.player.level
-        ))]);
+        let text = Text::from(vec![
+            Line::from(format!("Level: {}", self.game.player.level)),
+            Line::from(format!("Inventory: {:?}", self.game.player.inventory)),
+        ]);
 
         Paragraph::new(text).block(block).render(area, buf);
     }
@@ -111,6 +111,7 @@ impl App {
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q') => self.exit(),
+            KeyCode::Char('s') => self.search(),
             KeyCode::Left => self.walk_west(),
             KeyCode::Right => self.walk_east(),
             KeyCode::Up => self.walk_north(),
@@ -137,6 +138,10 @@ impl App {
 
     fn walk_south(&mut self) {
         self.game.walk_south();
+    }
+
+    fn search(&mut self) {
+        self.game.search();
     }
 
     fn draw(&self, frame: &mut Frame) {

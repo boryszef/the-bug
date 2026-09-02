@@ -1,5 +1,6 @@
 use rand::RngExt;
 use rand::prelude::IndexedRandom;
+use std::collections::HashMap;
 use std::fmt;
 
 const MAP_MIN_SIZE: u32 = 15;
@@ -9,7 +10,7 @@ const MAP_PER_LEVEL_INCREMENT: u32 = 2;
 pub struct Player {
     pub level: u32,
     pub coordinates: (i32, i32),
-    resources: Vec<Resource>,
+    pub inventory: HashMap<Material, u32>,
 }
 
 impl Default for Player {
@@ -17,14 +18,9 @@ impl Default for Player {
         Player {
             level: 1,
             coordinates: (0, 0),
-            resources: Vec::new(),
+            inventory: HashMap::new(),
         }
     }
-}
-
-#[derive(Debug)]
-enum Resource {
-    Wood,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -70,10 +66,17 @@ fn choose_weighted<T: Copy>(choices: &[(T, u32)], rng: &mut impl rand::Rng) -> T
     unreachable!()
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum Material {
+    Stick,
+    Stone,
+    Vine,
+}
+
 #[derive(Debug)]
 pub struct MapTile {
     pub terrain_type: TerrainType,
-    resources: Vec<Resource>,
+    materials: HashMap<Material, f64>,
 }
 
 impl fmt::Display for MapTile {
@@ -83,22 +86,40 @@ impl fmt::Display for MapTile {
     }
 }
 
+const TERRAIN_MATERIALS: &[(TerrainType, Material, f64)] = &[
+    (TerrainType::Forest, Material::Stick, 0.5),
+    (TerrainType::Cave, Material::Stone, 0.3),
+    (TerrainType::Meadow, Material::Vine, 0.2),
+];
+
+fn get_materials_for_terrain(terrain: TerrainType) -> HashMap<Material, f64> {
+    let mut materials = HashMap::new();
+    for &(t, material, probability) in TERRAIN_MATERIALS {
+        if t == terrain {
+            materials.insert(material, probability);
+        }
+    }
+    materials
+}
+
 impl MapTile {
     fn new() -> MapTile {
         let mut rng = rand::rng();
         //        let terrain_type = *RANDOM_TERRAIN_TYPES.choose(&mut rng).unwrap();
         let terrain_type = choose_weighted(RANDOM_TERRAIN_TYPES, &mut rng);
+        let materials = get_materials_for_terrain(terrain_type);
 
         MapTile {
             terrain_type,
-            resources: Vec::new(),
+            materials,
         }
     }
 
     fn generate(terrain_type: TerrainType) -> MapTile {
+        let materials = get_materials_for_terrain(terrain_type);
         MapTile {
             terrain_type,
-            resources: Vec::new(),
+            materials,
         }
     }
 }
@@ -166,7 +187,7 @@ impl Default for Game {
     fn default() -> Game {
         let player = Player::default();
         let map = Map::new(&player);
-        let events = vec!["You wake up.".to_string()];
+        let events = vec!["You wake up and decide to have a walk.".to_string()];
         Game {
             player,
             map,
@@ -217,6 +238,22 @@ impl Game {
                 "You walk south and visit {:?}.",
                 current_tile.unwrap().terrain_type
             ));
+        }
+    }
+
+    pub fn search(&mut self) {
+        let current_tile = self.map.get_tile(self.player.coordinates);
+        for (material, probability) in &current_tile.unwrap().materials {
+            let mut rng = rand::rng();
+            if rng.random_range(0.0..1.0) < *probability {
+                let count = self.player.inventory.entry(*material).or_insert(0);
+                *count += 1;
+                self.events.push(format!(
+                    "You found a {:?} in the {:?}.",
+                    material,
+                    current_tile.unwrap().terrain_type
+                ));
+            }
         }
     }
 }
