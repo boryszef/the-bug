@@ -1,5 +1,4 @@
 use rand::RngExt;
-use rand::prelude::IndexedRandom;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -255,12 +254,8 @@ impl Game {
             let current_tile = self.map.get_tile(coordinates).unwrap();
 
             for (material, base_probability) in &current_tile.materials {
-                let time_elapsed = current_tile
-                    .last_search_time
-                    .map(|t| t.elapsed().as_secs_f64())
-                    .unwrap_or(f64::INFINITY);
-
-                let probability = adjust_probability(*base_probability, time_elapsed);
+                let probability =
+                    adjust_probability(*base_probability, current_tile.last_search_time);
 
                 if rng.random_range(0.0..1.0) < probability {
                     let count = self.player.inventory.entry(*material).or_insert(0);
@@ -278,7 +273,11 @@ impl Game {
     }
 }
 
-fn adjust_probability(base_probability: f64, time_elapsed: f64) -> f64 {
+fn adjust_probability(base_probability: f64, last_search_time: Option<std::time::Instant>) -> f64 {
+    let time_elapsed = last_search_time
+        .map(|t| t.elapsed().as_secs_f64())
+        .unwrap_or(f64::INFINITY);
+
     if time_elapsed < 60.0 {
         base_probability * (time_elapsed / 60.0)
     } else {
@@ -415,9 +414,9 @@ mod tests {
         let tile_coordinates = game.map.world_to_tile(game.player.coordinates);
 
         game.map.tiles[tile_coordinates.0 - 1][tile_coordinates.1] =
-            MapTile::generate(TerrainType::Meadow);
+            generate_tile_by_type(TerrainType::Meadow);
         game.map.tiles[tile_coordinates.0 + 1][tile_coordinates.1] =
-            MapTile::generate(TerrainType::Forest);
+            generate_tile_by_type(TerrainType::Forest);
 
         game.walk_north();
         assert_eq!(game.player.coordinates, (0, 1));
@@ -432,5 +431,28 @@ mod tests {
             game.events.last().unwrap(),
             "You walk north and visit Forest."
         );
+    }
+
+    #[test]
+    fn adjust_probability_tests() {
+        use std::time::{Duration, Instant};
+
+        let base = 0.6f64;
+
+        // None => returns base_probability
+        let p_none = adjust_probability(base, None);
+        assert!((p_none - base).abs() < f64::EPSILON);
+
+        // recent search (about 30s ago) scales probability down
+        let last_recent = Instant::now() - Duration::from_secs(30);
+        let elapsed = last_recent.elapsed().as_secs_f64();
+        let expected_recent = base * (elapsed / 60.0);
+        let p_recent = adjust_probability(base, Some(last_recent));
+        assert!((p_recent - expected_recent).abs() < 1e-6);
+
+        // old search (>= 60s) returns base_probability unchanged
+        let last_old = Instant::now() - Duration::from_secs(120);
+        let p_old = adjust_probability(base, Some(last_old));
+        assert!((p_old - base).abs() < f64::EPSILON);
     }
 }
