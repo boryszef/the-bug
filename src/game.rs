@@ -248,4 +248,81 @@ mod tests {
         // get_tile should return None for outside positions
         assert!(map.get_tile(outside).is_none());
     }
+
+    #[test]
+    fn walk_west_moves_and_logs_and_respects_boundary() {
+        let mut game = Game::default();
+        let initial = game.player.coordinates;
+        // move west once
+        game.walk_west();
+        assert_eq!(game.player.coordinates, (initial.0 - 1, initial.1));
+        assert_eq!(game.events.len(), 2);
+        let last = game.events.last().unwrap();
+        assert!(last.starts_with("You walk west"));
+
+        // set to left boundary and ensure no move
+        let (min_x, _max_x, _min_y, _max_y) = game.map.boundary;
+        game.player.coordinates = (min_x, 0);
+        let before_events = game.events.len();
+        game.walk_west();
+        assert_eq!(game.player.coordinates.0, min_x);
+        assert_eq!(game.events.len(), before_events);
+    }
+
+    #[test]
+    fn walk_east_moves_and_logs_and_respects_boundary() {
+        let mut game = Game::default();
+        let initial = game.player.coordinates;
+        game.walk_east();
+        assert_eq!(game.player.coordinates, (initial.0 + 1, initial.1));
+        assert_eq!(game.events.len(), 2);
+        let last = game.events.last().unwrap();
+        assert!(last.starts_with("You walk east"));
+
+        // set to right boundary and ensure no move
+        let (_min_x, max_x, _min_y, _max_y) = game.map.boundary;
+        game.player.coordinates = (max_x, 0);
+        let before_events = game.events.len();
+        game.walk_east();
+        assert_eq!(game.player.coordinates.0, max_x);
+        assert_eq!(game.events.len(), before_events);
+    }
+
+    #[test]
+    fn walk_north_moves_and_logs_and_respects_boundary() {
+        let mut game = Game::default();
+        let initial = game.player.coordinates;
+        game.walk_north();
+        assert_eq!(game.player.coordinates, (initial.0, initial.1 + 1));
+        assert_eq!(game.events.len(), 2);
+        let last = game.events.last().unwrap();
+        assert!(last.starts_with("You walk north"));
+
+        // set to top boundary and ensure no move
+        let (_min_x, _max_x, _min_y, max_y) = game.map.boundary;
+        game.player.coordinates = (0, max_y);
+        let before_events = game.events.len();
+        game.walk_north();
+        assert_eq!(game.player.coordinates.1, max_y);
+        assert_eq!(game.events.len(), before_events);
+    }
+
+    #[test]
+    fn walk_south_moves_and_logs_and_respects_boundary() {
+        let mut game = Game::default();
+        let initial = game.player.coordinates;
+        game.walk_south();
+        assert_eq!(game.player.coordinates, (initial.0, initial.1 - 1));
+        assert_eq!(game.events.len(), 2);
+        let last = game.events.last().unwrap();
+        assert!(last.starts_with("You walk south"));
+
+        // set to bottom boundary and ensure no move
+        let (_min_x, _max_x, min_y, _max_y) = game.map.boundary;
+        game.player.coordinates = (0, min_y);
+        let before_events = game.events.len();
+        game.walk_south();
+        assert_eq!(game.player.coordinates.1, min_y);
+        assert_eq!(game.events.len(), before_events);
+    }
 }
