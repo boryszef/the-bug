@@ -21,32 +21,6 @@ impl Default for Player {
     }
 }
 
-impl Player {
-    pub fn walk_west(&mut self, boundaries: (i32, i32, i32, i32)) {
-        if self.coordinates.0 > boundaries.0 {
-            self.coordinates.0 -= 1;
-        }
-    }
-
-    pub fn walk_east(&mut self, boundaries: (i32, i32, i32, i32)) {
-        if self.coordinates.0 < boundaries.1 {
-            self.coordinates.0 += 1;
-        }
-    }
-
-    pub fn walk_north(&mut self, boundaries: (i32, i32, i32, i32)) {
-        if self.coordinates.1 < boundaries.3 {
-            self.coordinates.1 += 1;
-        }
-    }
-
-    pub fn walk_south(&mut self, boundaries: (i32, i32, i32, i32)) {
-        if self.coordinates.1 > boundaries.2 {
-            self.coordinates.1 -= 1;
-        }
-    }
-}
-
 #[derive(Debug)]
 enum Resource {
     Wood,
@@ -56,6 +30,7 @@ enum Resource {
 pub enum TerrainType {
     Meadow,
     Forest,
+    Cave,
     Village,
     Deadland,
 }
@@ -65,6 +40,7 @@ impl fmt::Display for TerrainType {
         let symbol = match self {
             TerrainType::Meadow => '𖧧',
             TerrainType::Forest => '𖠰',
+            TerrainType::Cave => '🪨',
             TerrainType::Village => '🛖',
             TerrainType::Deadland => ' ',
         };
@@ -72,9 +48,10 @@ impl fmt::Display for TerrainType {
     }
 }
 
-const TERRAIN_TYPES: &[TerrainType] = &[
+const RANDOM_TERRAIN_TYPES: &[TerrainType] = &[
     TerrainType::Meadow,
     TerrainType::Forest,
+    TerrainType::Cave,
     TerrainType::Deadland,
 ];
 
@@ -94,7 +71,7 @@ impl fmt::Display for MapTile {
 impl MapTile {
     fn new() -> MapTile {
         let mut rng = rand::rng();
-        let terrain_type = *TERRAIN_TYPES.choose(&mut rng).unwrap();
+        let terrain_type = *RANDOM_TERRAIN_TYPES.choose(&mut rng).unwrap();
 
         MapTile {
             terrain_type,
@@ -178,6 +155,52 @@ impl Default for Game {
             player,
             map,
             events,
+        }
+    }
+}
+
+impl Game {
+    pub fn walk_west(&mut self) {
+        if self.player.coordinates.0 > self.map.boundary.0 {
+            self.player.coordinates.0 -= 1;
+            let current_tile = self.map.get_tile(self.player.coordinates);
+            self.events.push(format!(
+                "You walk west and visit {:?}.",
+                current_tile.unwrap().terrain_type
+            ));
+        }
+    }
+
+    pub fn walk_east(&mut self) {
+        if self.player.coordinates.0 < self.map.boundary.1 {
+            self.player.coordinates.0 += 1;
+            let current_tile = self.map.get_tile(self.player.coordinates);
+            self.events.push(format!(
+                "You walk east and visit {:?}.",
+                current_tile.unwrap().terrain_type
+            ));
+        }
+    }
+
+    pub fn walk_north(&mut self) {
+        if self.player.coordinates.1 < self.map.boundary.3 {
+            self.player.coordinates.1 += 1;
+            let current_tile = self.map.get_tile(self.player.coordinates);
+            self.events.push(format!(
+                "You walk north and visit {:?}.",
+                current_tile.unwrap().terrain_type
+            ));
+        }
+    }
+
+    pub fn walk_south(&mut self) {
+        if self.player.coordinates.1 > self.map.boundary.2 {
+            self.player.coordinates.1 -= 1;
+            let current_tile = self.map.get_tile(self.player.coordinates);
+            self.events.push(format!(
+                "You walk south and visit {:?}.",
+                current_tile.unwrap().terrain_type
+            ));
         }
     }
 }

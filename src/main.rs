@@ -124,39 +124,19 @@ impl App {
     }
 
     fn walk_west(&mut self) {
-        self.game.player.walk_west(self.game.map.boundary);
-        let current_tile = self.game.map.get_tile(self.game.player.coordinates);
-        self.game.events.push(format!(
-            "You walk west and visit {:?}.",
-            current_tile.unwrap().terrain_type
-        ));
+        self.game.walk_west();
     }
 
     fn walk_east(&mut self) {
-        self.game.player.walk_east(self.game.map.boundary);
-        let current_tile = self.game.map.get_tile(self.game.player.coordinates);
-        self.game.events.push(format!(
-            "You walk east and visit {:?}",
-            current_tile.unwrap().terrain_type
-        ));
+        self.game.walk_east();
     }
 
     fn walk_north(&mut self) {
-        self.game.player.walk_north(self.game.map.boundary);
-        let current_tile = self.game.map.get_tile(self.game.player.coordinates);
-        self.game.events.push(format!(
-            "You walk north and visit {:?}.",
-            current_tile.unwrap().terrain_type
-        ));
+        self.game.walk_north();
     }
 
     fn walk_south(&mut self) {
-        self.game.player.walk_south(self.game.map.boundary);
-        let current_tile = self.game.map.get_tile(self.game.player.coordinates);
-        self.game.events.push(format!(
-            "You walk south and visit {:?}.",
-            current_tile.unwrap().terrain_type
-        ));
+        self.game.walk_south();
     }
 
     fn draw(&self, frame: &mut Frame) {
