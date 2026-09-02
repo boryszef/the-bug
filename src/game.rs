@@ -77,6 +77,7 @@ pub enum Material {
 pub struct MapTile {
     pub terrain_type: TerrainType,
     materials: HashMap<Material, f64>,
+    last_search_time: Option<std::time::Instant>,
 }
 
 impl fmt::Display for MapTile {
@@ -102,25 +103,23 @@ fn get_materials_for_terrain(terrain: TerrainType) -> HashMap<Material, f64> {
     materials
 }
 
+fn generate_tile_by_type(terrain_type: TerrainType) -> MapTile {
+    let materials = get_materials_for_terrain(terrain_type);
+    let last_search_time = None;
+
+    MapTile {
+        terrain_type,
+        materials,
+        last_search_time,
+    }
+}
+
 impl MapTile {
     fn new() -> MapTile {
         let mut rng = rand::rng();
         //        let terrain_type = *RANDOM_TERRAIN_TYPES.choose(&mut rng).unwrap();
         let terrain_type = choose_weighted(RANDOM_TERRAIN_TYPES, &mut rng);
-        let materials = get_materials_for_terrain(terrain_type);
-
-        MapTile {
-            terrain_type,
-            materials,
-        }
-    }
-
-    fn generate(terrain_type: TerrainType) -> MapTile {
-        let materials = get_materials_for_terrain(terrain_type);
-        MapTile {
-            terrain_type,
-            materials,
-        }
+        generate_tile_by_type(terrain_type)
     }
 }
 
@@ -140,7 +139,7 @@ impl Map {
             let mut row = Vec::new();
             for y in 0..size {
                 let tile = match (x, y) {
-                    pos if pos == middle => MapTile::generate(TerrainType::Village),
+                    pos if pos == middle => generate_tile_by_type(TerrainType::Village),
                     _ => MapTile::new(),
                 };
                 row.push(tile);
@@ -172,6 +171,13 @@ impl Map {
             Some(&self.tiles[y][x])
         } else {
             None
+        }
+    }
+
+    pub fn update_tile_last_search_time(&mut self, pos: (i32, i32)) {
+        let (x, y) = self.world_to_tile(pos);
+        if x < self.size.0 as usize && y < self.size.1 as usize {
+            self.tiles[y][x].last_search_time = Some(std::time::Instant::now());
         }
     }
 }
@@ -242,19 +248,41 @@ impl Game {
     }
 
     pub fn search(&mut self) {
-        let current_tile = self.map.get_tile(self.player.coordinates);
-        for (material, probability) in &current_tile.unwrap().materials {
-            let mut rng = rand::rng();
-            if rng.random_range(0.0..1.0) < *probability {
-                let count = self.player.inventory.entry(*material).or_insert(0);
-                *count += 1;
-                self.events.push(format!(
-                    "You found a {:?} in the {:?}.",
-                    material,
-                    current_tile.unwrap().terrain_type
-                ));
+        let coordinates = self.player.coordinates;
+        let mut rng = rand::rng();
+
+        {
+            let current_tile = self.map.get_tile(coordinates).unwrap();
+
+            for (material, base_probability) in &current_tile.materials {
+                let time_elapsed = current_tile
+                    .last_search_time
+                    .map(|t| t.elapsed().as_secs_f64())
+                    .unwrap_or(f64::INFINITY);
+
+                let probability = adjust_probability(*base_probability, time_elapsed);
+
+                if rng.random_range(0.0..1.0) < probability {
+                    let count = self.player.inventory.entry(*material).or_insert(0);
+                    *count += 1;
+
+                    self.events.push(format!(
+                        "You found a {:?} in the {:?}.",
+                        material, current_tile.terrain_type
+                    ));
+                }
             }
         }
+
+        self.map.update_tile_last_search_time(coordinates);
+    }
+}
+
+fn adjust_probability(base_probability: f64, time_elapsed: f64) -> f64 {
+    if time_elapsed < 60.0 {
+        base_probability * (time_elapsed / 60.0)
+    } else {
+        base_probability
     }
 }
 
