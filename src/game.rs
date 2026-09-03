@@ -65,15 +65,6 @@ impl Direction {
             Direction::West => (-1, 0),
         }
     }
-
-    fn name(self) -> &'static str {
-        match self {
-            Direction::North => "north",
-            Direction::South => "south",
-            Direction::East => "east",
-            Direction::West => "west",
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -304,19 +295,39 @@ const RECIPES: &[Recipe] = &[
     },
 ];
 
-/// A message in the event log, tagged with how far into the session it happened.
+/// Which part of the game an event belongs to. Used to colour the log.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EventCategory {
+    #[default]
+    General,
+    Experiment,
+    Crafting,
+}
+
+/// A message in the event log, tagged with its category and how far into the
+/// session it happened.
 #[derive(Debug)]
 pub struct Event {
+    category: EventCategory,
     text: String,
     elapsed: Duration,
 }
 
 impl Event {
-    pub(crate) fn new(text: impl Into<String>, elapsed: Duration) -> Event {
+    pub(crate) fn new(
+        category: EventCategory,
+        text: impl Into<String>,
+        elapsed: Duration,
+    ) -> Event {
         Event {
+            category,
             text: text.into(),
             elapsed,
         }
+    }
+
+    pub fn category(&self) -> EventCategory {
+        self.category
     }
 
     pub fn text(&self) -> &str {
@@ -345,6 +356,7 @@ impl Default for Game {
             player,
             map,
             events: vec![Event::new(
+                EventCategory::General,
                 "You wake up and decide to go for a walk.",
                 Duration::ZERO,
             )],
@@ -381,8 +393,9 @@ impl Game {
 
     /// Appends a message to the event log, timestamped with the current session
     /// elapsed time.
-    fn log(&mut self, text: impl Into<String>) {
-        self.events.push(Event::new(text, self.started.elapsed()));
+    fn log(&mut self, category: EventCategory, text: impl Into<String>) {
+        self.events
+            .push(Event::new(category, text, self.started.elapsed()));
     }
 
     pub fn walk(&mut self, dir: Direction) {
@@ -395,10 +408,6 @@ impl Game {
         }
 
         self.player.coordinates = (nx, ny);
-        if let Some(tile) = self.map.get_tile((nx, ny)) {
-            let terrain = tile.terrain_type;
-            self.log(format!("You walk {} into the {terrain}.", dir.name()));
-        }
     }
 
     pub fn search(&mut self) {
@@ -421,7 +430,10 @@ impl Game {
 
         for material in found {
             *self.player.inventory.entry(material).or_insert(0) += 1;
-            self.log(format!("You find a {material} in the {terrain}."));
+            self.log(
+                EventCategory::General,
+                format!("You find a {material} in the {terrain}."),
+            );
         }
         self.map.update_tile_last_search_time(coords);
     }
@@ -434,17 +446,23 @@ impl Game {
             .find(|r| r.name.eq(recipe_name))
             .copied()
         else {
-            self.log(format!("You don't know how to craft a {recipe_name}."));
+            self.log(
+                EventCategory::Crafting,
+                format!("You don't know how to craft a {recipe_name}."),
+            );
             return;
         };
 
         for &(material, amount) in recipe.inputs {
             let entry = self.player.inventory.entry(material).or_insert(0);
             if *entry < amount {
-                self.log(format!(
-                    "You don't have enough {material} to craft a {}.",
-                    recipe.name
-                ));
+                self.log(
+                    EventCategory::Crafting,
+                    format!(
+                        "You don't have enough {material} to craft a {}.",
+                        recipe.name
+                    ),
+                );
                 return;
             }
         }
@@ -454,15 +472,28 @@ impl Game {
         }
 
         *self.player.inventory.entry(recipe.output).or_insert(0) += 1;
-        self.log(format!("You craft a {}.", recipe.name));
+        self.log(
+            EventCategory::Crafting,
+            format!("You craft a {}.", recipe.name),
+        );
     }
 
     pub fn experiment(&mut self, materials: &[(Material, u32)]) {
+        if materials.is_empty() {
+            return;
+        }
+
+        let inputs = describe_inputs(materials);
+
         for &(material, amount) in materials {
             let available = self.player.inventory.get(&material).copied().unwrap_or(0);
-
             if available < amount {
-                self.log(format!("You don't have enough {material} to experiment."));
+                self.log(
+                    EventCategory::Experiment,
+                    format!(
+                        "Experiment: {inputs} → not enough {material} (have {available}, need {amount})"
+                    ),
+                );
                 return;
             }
         }
@@ -475,19 +506,38 @@ impl Game {
             recipe.inputs.len() == materials.len()
                 && recipe.inputs.iter().all(|input| materials.contains(input))
         }) else {
-            self.log("Nothing comes of the experiment.");
+            self.log(
+                EventCategory::Experiment,
+                format!("Experiment: {inputs} → nothing"),
+            );
             return;
         };
 
-        if !self.player.recipes.contains(recipe) {
+        let newly_learned = !self.player.recipes.contains(recipe);
+        if newly_learned {
             self.player.recipes.push(*recipe);
-            self.log(format!("You discover how to craft a {}!", recipe.name));
         }
 
         *self.player.inventory.entry(recipe.output).or_insert(0) += 1;
 
-        self.log(format!("You put together a {}.", recipe.name));
+        let suffix = if newly_learned { " (new recipe!)" } else { "" };
+        self.log(
+            EventCategory::Experiment,
+            format!("Experiment: {inputs} → {}{suffix}", recipe.name),
+        );
     }
+}
+
+/// A stable, human-readable rendering of a set of materials, e.g.
+/// `"1 Stick + 1 Stone + 1 Cord"`.
+fn describe_inputs(materials: &[(Material, u32)]) -> String {
+    let mut sorted = materials.to_vec();
+    sorted.sort_by_key(|&(material, _)| material);
+    sorted
+        .iter()
+        .map(|(material, quantity)| format!("{quantity} {material}"))
+        .collect::<Vec<_>>()
+        .join(" + ")
 }
 
 fn adjust_probability(base_probability: f64, last_search_time: Option<Instant>) -> f64 {
@@ -541,79 +591,33 @@ mod tests {
     }
 
     #[test]
-    fn walk_west_moves_and_logs_and_respects_boundary() {
-        let mut game = Game::default();
-        let initial = game.player.coordinates;
-        game.walk(Direction::West);
-        assert_eq!(game.player.coordinates, (initial.0 - 1, initial.1));
-        assert_eq!(game.events().len(), 2);
-        let last = game.events().last().unwrap();
-        assert!(last.text().starts_with("You walk west"));
+    fn walk_moves_and_respects_boundary() {
+        for (dir, delta) in [
+            (Direction::West, (-1, 0)),
+            (Direction::East, (1, 0)),
+            (Direction::North, (0, 1)),
+            (Direction::South, (0, -1)),
+        ] {
+            let mut game = Game::default();
+            let (x, y) = game.player.coordinates;
+            game.walk(dir);
+            assert_eq!(game.player.coordinates, (x + delta.0, y + delta.1));
 
-        // set to left boundary and ensure no move
-        let h = game.map.half;
-        game.player.coordinates = (-h, 0);
-        let before_events = game.events().len();
-        game.walk(Direction::West);
-        assert_eq!(game.player.coordinates.0, -h);
-        assert_eq!(game.events().len(), before_events);
+            // at the boundary the move is refused
+            let h = game.map.half;
+            game.player.coordinates = (delta.0 * h, delta.1 * h);
+            game.walk(dir);
+            assert_eq!(game.player.coordinates, (delta.0 * h, delta.1 * h));
+        }
     }
 
     #[test]
-    fn walk_east_moves_and_logs_and_respects_boundary() {
+    fn walk_does_not_log() {
         let mut game = Game::default();
-        let initial = game.player.coordinates;
-        game.walk(Direction::East);
-        assert_eq!(game.player.coordinates, (initial.0 + 1, initial.1));
-        assert_eq!(game.events().len(), 2);
-        let last = game.events().last().unwrap();
-        assert!(last.text().starts_with("You walk east"));
-
-        // set to right boundary and ensure no move
-        let h = game.map.half;
-        game.player.coordinates = (h, 0);
-        let before_events = game.events().len();
-        game.walk(Direction::East);
-        assert_eq!(game.player.coordinates.0, h);
-        assert_eq!(game.events().len(), before_events);
-    }
-
-    #[test]
-    fn walk_north_moves_and_logs_and_respects_boundary() {
-        let mut game = Game::default();
-        let initial = game.player.coordinates;
+        let before = game.events().len();
         game.walk(Direction::North);
-        assert_eq!(game.player.coordinates, (initial.0, initial.1 + 1));
-        assert_eq!(game.events().len(), 2);
-        let last = game.events().last().unwrap();
-        assert!(last.text().starts_with("You walk north"));
-
-        // set to top boundary and ensure no move
-        let h = game.map.half;
-        game.player.coordinates = (0, h);
-        let before_events = game.events().len();
-        game.walk(Direction::North);
-        assert_eq!(game.player.coordinates.1, h);
-        assert_eq!(game.events().len(), before_events);
-    }
-
-    #[test]
-    fn walk_south_moves_and_logs_and_respects_boundary() {
-        let mut game = Game::default();
-        let initial = game.player.coordinates;
-        game.walk(Direction::South);
-        assert_eq!(game.player.coordinates, (initial.0, initial.1 - 1));
-        assert_eq!(game.events().len(), 2);
-        let last = game.events().last().unwrap();
-        assert!(last.text().starts_with("You walk south"));
-
-        // set to bottom boundary and ensure no move
-        let h = game.map.half;
-        game.player.coordinates = (0, -h);
-        let before_events = game.events().len();
-        game.walk(Direction::South);
-        assert_eq!(game.player.coordinates.1, -h);
-        assert_eq!(game.events().len(), before_events);
+        game.walk(Direction::East);
+        assert_eq!(game.events().len(), before);
     }
 
     #[test]
@@ -636,10 +640,6 @@ mod tests {
                 .unwrap()
                 .terrain_type,
             TerrainType::Forest
-        );
-        assert_eq!(
-            game.events().last().unwrap().text(),
-            "You walk north into the Forest."
         );
     }
 
@@ -688,14 +688,63 @@ mod tests {
         }
     }
 
+    fn last_event(game: &Game) -> &Event {
+        game.events().last().unwrap()
+    }
+
     #[test]
-    fn experiment_shortage_message_uses_display_name() {
+    fn experiment_logs_are_precise() {
+        // shortage: shows have / need
         let mut game = Game::default();
-        game.experiment(&[(Material::StoneAxe, 1)]);
+        game.player.inventory.insert(Material::Stone, 1);
+        game.experiment(&[(Material::Stone, 5)]);
         assert_eq!(
-            game.events().last().unwrap().text(),
-            "You don't have enough Stone Axe to experiment."
+            last_event(&game).text(),
+            "Experiment: 5 Stone → not enough Stone (have 1, need 5)"
         );
+        assert_eq!(last_event(&game).category(), EventCategory::Experiment);
+
+        // failure: shows the inputs and "nothing"
+        let mut game = Game::default();
+        game.player.inventory.insert(Material::Stick, 1);
+        game.player.inventory.insert(Material::Vine, 1);
+        game.experiment(&[(Material::Vine, 1), (Material::Stick, 1)]);
+        assert_eq!(
+            last_event(&game).text(),
+            "Experiment: 1 Stick + 1 Vine → nothing"
+        );
+
+        // success + discovery, then success without
+        let mut game = Game::default();
+        game.player.inventory.insert(Material::Vine, 4);
+        game.experiment(&[(Material::Vine, 2)]);
+        assert_eq!(
+            last_event(&game).text(),
+            "Experiment: 2 Vine → Cord (new recipe!)"
+        );
+        game.experiment(&[(Material::Vine, 2)]);
+        assert_eq!(last_event(&game).text(), "Experiment: 2 Vine → Cord");
+    }
+
+    #[test]
+    fn empty_experiment_does_nothing() {
+        let mut game = Game::default();
+        let before = game.events().len();
+        game.experiment(&[]);
+        assert_eq!(game.events().len(), before);
+    }
+
+    #[test]
+    fn craft_events_are_categorised_crafting() {
+        let mut game = Game::default();
+        game.craft("Cord"); // unknown recipe
+        assert_eq!(last_event(&game).category(), EventCategory::Crafting);
+
+        game.player.grant_recipe("Cord");
+        game.player.inventory.insert(Material::Vine, 2);
+        game.craft("Cord");
+        assert_eq!(last_event(&game).text(), "You craft a Cord.");
+        assert_eq!(last_event(&game).category(), EventCategory::Crafting);
     }
 
     #[test]
@@ -720,10 +769,11 @@ mod tests {
         let mut game = Game::default();
         assert!(game.events()[0].elapsed() < Duration::from_secs(1));
 
-        game.walk(Direction::North);
-        game.walk(Direction::South);
+        game.craft("Cord"); // unknown recipe -> one log line
+        game.craft("Cord");
 
         let elapsed: Vec<Duration> = game.events().iter().map(Event::elapsed).collect();
+        assert!(elapsed.len() >= 3);
         assert!(elapsed.windows(2).all(|w| w[0] <= w[1]));
     }
 }

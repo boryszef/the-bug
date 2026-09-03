@@ -9,7 +9,7 @@ use ratatui::{
 };
 use std::io;
 
-use crate::game::{Direction, Game};
+use crate::game::{Direction, EventCategory, Game};
 use crate::viewmodel;
 
 use super::craft::{self, Craft};
@@ -123,7 +123,7 @@ impl App {
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let columns =
-            Layout::horizontal([Constraint::Min(50), Constraint::Percentage(100)]).split(area);
+            Layout::horizontal([Constraint::Min(70), Constraint::Percentage(100)]).split(area);
         let menu = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
             .split(columns[0]);
 
@@ -200,10 +200,26 @@ fn render_events(game: &Game, area: Rect, buf: &mut Buffer) {
     let block = Block::bordered().title(" Events ");
 
     let lines: Vec<Line> = viewmodel::events::recent(game, 10)
-        .map(|event| Line::from(format!("[{}] {}", event.timestamp, event.text)))
+        .map(|event| {
+            let line = Line::from(format!("[{}] {}", event.timestamp, event.text));
+            match category_color(event.category) {
+                Some(color) => line.style(Style::default().fg(color)),
+                None => line,
+            }
+        })
         .collect();
 
     Paragraph::new(Text::from(lines))
         .block(block)
         .render(area, buf);
+}
+
+/// The colour an event-log line gets from its category; `None` keeps the
+/// default foreground.
+fn category_color(category: EventCategory) -> Option<Color> {
+    match category {
+        EventCategory::General => None,
+        EventCategory::Crafting => Some(Color::Yellow),
+        EventCategory::Experiment => Some(Color::Cyan),
+    }
 }

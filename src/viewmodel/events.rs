@@ -2,11 +2,13 @@
 
 use std::time::Duration;
 
-use crate::game::Game;
+use crate::game::{EventCategory, Game};
 
-/// One event-log line ready to show: a compact session timestamp plus the text.
+/// One event-log line ready to show: a compact session timestamp, the category
+/// (for colouring) and the text.
 pub struct RecentEvent<'a> {
     pub timestamp: String,
+    pub category: EventCategory,
     pub text: &'a str,
 }
 
@@ -18,6 +20,7 @@ pub fn recent(game: &Game, count: usize) -> impl Iterator<Item = RecentEvent<'_>
         .take(count)
         .map(|event| RecentEvent {
             timestamp: compact(event.elapsed()),
+            category: event.category(),
             text: event.text(),
         })
 }
@@ -36,18 +39,17 @@ fn compact(elapsed: Duration) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::Direction;
 
     #[test]
     fn returns_newest_first_and_respects_count() {
         let mut game = Game::default();
-        game.walk(Direction::East);
-        game.walk(Direction::North);
+        game.craft("aaa"); // unknown recipe -> deterministic log line
+        game.craft("bbb");
 
         let recent: Vec<RecentEvent> = recent(&game, 2).collect();
         assert_eq!(recent.len(), 2);
-        assert!(recent[0].text.starts_with("You walk north"));
-        assert!(recent[1].text.starts_with("You walk east"));
+        assert!(recent[0].text.contains("bbb"));
+        assert!(recent[1].text.contains("aaa"));
     }
 
     #[test]
@@ -60,6 +62,16 @@ mod tests {
     fn first_event_of_a_fresh_game_is_stamped_zero() {
         let game = Game::default();
         assert_eq!(recent(&game, 1).next().unwrap().timestamp, "00:00");
+    }
+
+    #[test]
+    fn recent_exposes_the_event_category() {
+        let mut game = Game::default();
+        game.craft("whatever");
+        assert_eq!(
+            recent(&game, 1).next().unwrap().category,
+            EventCategory::Crafting
+        );
     }
 
     #[test]

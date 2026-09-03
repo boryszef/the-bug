@@ -10,7 +10,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
-use crate::game::{Event, Game, Map, Material, Player, TerrainType};
+use crate::game::{Event, EventCategory, Game, Map, Material, Player, TerrainType};
 
 /// The game's semantic version, stamped into every save file.
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -65,6 +65,9 @@ struct MapState {
 
 #[derive(Serialize, Deserialize)]
 struct EventState {
+    /// Absent in older / hand-made files; defaults to `General`.
+    #[serde(default)]
+    category: EventCategory,
     text: String,
     elapsed_secs: f64,
 }
@@ -122,6 +125,7 @@ fn capture(game: &Game) -> SaveState {
             .events()
             .iter()
             .map(|event| EventState {
+                category: event.category(),
                 text: event.text().to_string(),
                 elapsed_secs: event.elapsed().as_secs_f64(),
             })
@@ -145,6 +149,7 @@ fn restore(state: SaveState) -> io::Result<Game> {
         .into_iter()
         .map(|event| {
             Event::new(
+                event.category,
                 event.text,
                 Duration::from_secs_f64(event.elapsed_secs.max(0.0)),
             )
@@ -195,7 +200,6 @@ fn now_epoch() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::Direction;
 
     fn roundtrip(game: &Game) -> Game {
         let json = serde_json::to_string(&capture(game)).unwrap();
@@ -227,14 +231,14 @@ mod tests {
     #[test]
     fn played_game_state_survives_round_trip() {
         let mut game = Game::default();
-        game.walk(Direction::North);
+        game.player.coordinates = (2, -1);
         game.player.inventory.insert(Material::Vine, 5);
         game.player.inventory.insert(Material::Stick, 1);
         game.player.grant_recipe("Cord");
 
         let restored = roundtrip(&game);
 
-        assert_eq!(restored.player.coordinates, game.player.coordinates);
+        assert_eq!(restored.player.coordinates, (2, -1));
         assert_eq!(restored.player.inventory.get(&Material::Vine), Some(&5));
         assert_eq!(restored.player.inventory.get(&Material::Stick), Some(&1));
         let recipes: Vec<&str> = restored
@@ -244,6 +248,33 @@ mod tests {
             .map(|r| r.name())
             .collect();
         assert_eq!(recipes, ["Cord"]);
+    }
+
+    #[test]
+    fn event_category_survives_round_trip() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Material::Vine, 2);
+        game.experiment(&[(Material::Vine, 2)]);
+
+        let restored = roundtrip(&game);
+        assert_eq!(
+            restored.events().last().unwrap().category(),
+            EventCategory::Experiment
+        );
+    }
+
+    #[test]
+    fn event_without_category_defaults_to_general() {
+        let json = r#"{
+            "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
+            "map": { "terrain": ["V"] },
+            "events": [{ "text": "hi", "elapsed_secs": 0.0 }]
+        }"#;
+        let game = restore(serde_json::from_str(json).unwrap()).unwrap();
+        assert_eq!(
+            game.events().last().unwrap().category(),
+            EventCategory::General
+        );
     }
 
     #[test]
