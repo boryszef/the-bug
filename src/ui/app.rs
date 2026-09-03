@@ -76,9 +76,9 @@ impl App {
             match experiment.handle_key(key_event.code, &inventory) {
                 experiment::Outcome::Stay => {}
                 experiment::Outcome::Cancel => self.experiment = None,
-                experiment::Outcome::Run(materials) => {
+                experiment::Outcome::Run(items) => {
                     self.experiment = None;
-                    self.game.experiment(&materials);
+                    self.game.experiment(&items);
                 }
             }
             return;
@@ -183,7 +183,7 @@ fn render_player(game: &Game, area: Rect, buf: &mut Buffer) {
     } else {
         inventory
             .iter()
-            .map(|(material, quantity)| format!("{material} {quantity}"))
+            .map(|(item, quantity)| format!("{item} {quantity}"))
             .collect::<Vec<_>>()
             .join(", ")
     };

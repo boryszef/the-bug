@@ -22,12 +22,12 @@ with **no in-game switch and no on-screen indicator**.
 
 - New `pub enum EventKind` (`#[derive(Clone, Copy, Debug)]`):
   `Awoke`, `Walked { direction: Direction, terrain: TerrainType }`,
-  `Found { material: Material, terrain: TerrainType }`,
+  `Found { item: Item, terrain: TerrainType }`,
   `UnknownRecipe { recipe: &'static str }`,
-  `CraftShortage { needed: Material, output: Material }`,
-  `Crafted { output: Material }`,
-  `ExperimentShortage { needed: Material }`, `ExperimentFailed`,
-  `RecipeDiscovered { output: Material }`, `Experimented { output: Material }`.
+  `CraftShortage { needed: Item, output: Item }`,
+  `Crafted { output: Item }`,
+  `ExperimentShortage { needed: Item }`, `ExperimentFailed`,
+  `RecipeDiscovered { output: Item }`, `Experimented { output: Item }`.
 - `Event` holds `kind: EventKind` (+ existing `elapsed`); replace `text()` with
   `pub fn kind(&self) -> EventKind`.
 - `Game::log` takes an `EventKind`; the 10 call sites push a variant instead of
@@ -35,8 +35,8 @@ with **no in-game switch and no on-screen indicator**.
 - `Game::craft(&mut self, recipe: &'static str)` (was `&str`) so `UnknownRecipe`
   can keep a `&'static str` and `EventKind` stays `Copy`. Callers already pass
   `&'static str` (`CraftOption` id, test literals).
-- Add `pub fn output(&self) -> Material` to `Recipe`.
-- **Remove** `impl Display for Material`, `impl Display for TerrainType` (name),
+- Add `pub fn output(&self) -> Item` to `Recipe`.
+- **Remove** `impl Display for Item`, `impl Display for TerrainType` (name),
   and `Direction::name()` — there is no single canonical name any more; all
   wording lives in `i18n`. Keep `TerrainType::symbol()`.
 
@@ -45,8 +45,8 @@ with **no in-game switch and no on-screen indicator**.
 | File | Contents |
 |---|---|
 | `src/i18n/mod.rs` | `Language` enum + detection; dispatch fns; `Ui` struct |
-| `src/i18n/en.rs` | English: `event()`, `material()`, `terrain()`, `direction()`, `static UI` |
-| `src/i18n/pl.rs` | Polish: same, with `material_nominative` / `material_genitive`, `terrain_locative` / `terrain_genitive` |
+| `src/i18n/en.rs` | English: `event()`, `item()`, `terrain()`, `direction()`, `static UI` |
+| `src/i18n/pl.rs` | Polish: same, with `item_nominative` / `item_genitive`, `terrain_locative` / `terrain_genitive` |
 
 ```rust
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -57,7 +57,7 @@ pub enum Language { #[default] English, Polish }
 pub fn detect(args: impl Iterator<Item = String>, env: impl Fn(&str) -> Option<String>) -> Language;
 
 pub fn event(kind: EventKind, lang: Language) -> String;   // one log line
-pub fn material(m: Material, lang: Language) -> &'static str; // nominative, for lists/menus
+pub fn item(m: Item, lang: Language) -> &'static str; // nominative, for lists/menus
 pub fn ui(lang: Language) -> &'static Ui;                   // titles, help, hints
 ```
 
@@ -68,10 +68,10 @@ PL: Ui`.
 
 `en::event` / `pl::event` are a `match kind { … }` each. Polish picks the case it
 needs from its own noun tables — e.g. `Found` → `format!("Znajdujesz {} {}.",
-material_nominative(m), terrain_locative(t))` where `terrain_locative` bakes in
+item_nominative(m), terrain_locative(t))` where `terrain_locative` bakes in
 the preposition (`"w lesie"`, `"na łące"`); `CraftShortage` →
-`format!("Brakuje ci {}, aby wykonać {}.", material_genitive(needed),
-material_nominative(output))`.
+`format!("Brakuje ci {}, aby wykonać {}.", item_genitive(needed),
+item_nominative(output))`.
 
 > The Polish strings will be a first draft for a Polish speaker to review and
 > correct.
@@ -80,7 +80,7 @@ material_nominative(output))`.
 
 - `events::recent` yields `RecentEvent { timestamp: String, kind: EventKind }`
   (no more `text`); `compact()` timestamp logic unchanged.
-- `crafting::CraftOption { id: &'static str, output: Material, enabled: bool }`
+- `crafting::CraftOption { id: &'static str, output: Item, enabled: bool }`
   (was `name: &'static str`); `options()` fills `id = r.name()`,
   `output = r.output()`.
 
@@ -91,8 +91,8 @@ material_nominative(output))`.
 - `render_map` / `render_player` / `render_events` / `help::render` gain a
   `Language` arg; `Experiment::render` / `Craft::render` gain one too.
   Titles/labels come from `i18n::ui(lang)`; event lines from
-  `i18n::event(re.kind, lang)`; material names (`render_player`,
-  `experiment::material_list`, `craft` rows) from `i18n::material(m, lang)`.
+  `i18n::event(re.kind, lang)`; item names (`render_player`,
+  `experiment::item_list`, `craft` rows) from `i18n::item(m, lang)`.
 - `Craft::handle_key` returns `Outcome::Craft(option.id)`.
 - No `l` key, no language line anywhere.
 
@@ -108,7 +108,7 @@ fn main() -> io::Result<()> {
 ### 6. Docs
 
 Replace/extend this file with `docs/i18n.md` on implementation — how detection
-works and how to add a language (new `Ui` static + `event`/`material` arms).
+works and how to add a language (new `Ui` static + `event`/`item` arms).
 
 ## Reuse / references
 
@@ -145,7 +145,7 @@ identical to today (pure refactor); (2) add `pl.rs` + locale/CLI detection in
 - `src/game.rs`: the walk / `test_y_axis_inversion` / experiment-shortage
   assertions switch from string matching to
   `matches!(game.events().last().unwrap().kind(), EventKind::Walked { direction: Direction::North, terrain: TerrainType::Forest })`
-  etc. `material_display_names` / terrain-Display tests move to `i18n` (the
+  etc. `item_display_names` / terrain-Display tests move to `i18n` (the
   `TerrainType::symbol` check stays in `game.rs`).
 - `src/viewmodel/events.rs`: assert on `recent[0].kind` variant instead of text;
   `timestamp == "00:00"` unchanged.

@@ -10,7 +10,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
-use crate::game::{Event, EventCategory, Game, Map, Material, Player, TerrainType};
+use crate::game::{Event, EventCategory, Game, Item, Map, Player, TerrainType};
 
 /// The game's semantic version, stamped into every save file.
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -56,7 +56,7 @@ struct PlayerState {
     #[serde(default)]
     crafts_completed: u32,
     coordinates: (i32, i32),
-    inventory: HashMap<Material, u32>,
+    inventory: HashMap<Item, u32>,
     recipes: Vec<String>,
 }
 
@@ -240,15 +240,15 @@ mod tests {
     fn played_game_state_survives_round_trip() {
         let mut game = Game::default();
         game.player.coordinates = (2, -1);
-        game.player.inventory.insert(Material::Vine, 5);
-        game.player.inventory.insert(Material::Stick, 1);
+        game.player.inventory.insert(Item::Vine, 5);
+        game.player.inventory.insert(Item::Stick, 1);
         game.player.grant_recipe("Cord");
 
         let restored = roundtrip(&game);
 
         assert_eq!(restored.player.coordinates, (2, -1));
-        assert_eq!(restored.player.inventory.get(&Material::Vine), Some(&5));
-        assert_eq!(restored.player.inventory.get(&Material::Stick), Some(&1));
+        assert_eq!(restored.player.inventory.get(&Item::Vine), Some(&5));
+        assert_eq!(restored.player.inventory.get(&Item::Stick), Some(&1));
         let recipes: Vec<&str> = restored
             .player
             .known_recipes()
@@ -261,8 +261,8 @@ mod tests {
     #[test]
     fn event_category_survives_round_trip() {
         let mut game = Game::default();
-        game.player.inventory.insert(Material::Vine, 2);
-        game.experiment(&[(Material::Vine, 2)]);
+        game.player.inventory.insert(Item::Vine, 2);
+        game.experiment(&[(Item::Vine, 2)]);
 
         let restored = roundtrip(&game);
         assert_eq!(
@@ -393,7 +393,7 @@ mod tests {
         std::fs::remove_file(&path).ok();
 
         assert_eq!(game.player.level, 3);
-        assert_eq!(game.player.inventory.get(&Material::Vine), Some(&9));
+        assert_eq!(game.player.inventory.get(&Item::Vine), Some(&9));
         assert_eq!(game.map.tiles.len(), 3);
         assert_eq!(game.map.half, 1);
         assert_eq!(game.events().len(), 1);

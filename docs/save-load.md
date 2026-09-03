@@ -66,8 +66,8 @@ hand-made files may omit the field. There is no migration logic yet.
 - **Per-tile search cooldown** (`MapTile.last_search_time`) — a transient ~60 s
   decay timer that needs a wall clock and expires across any real gap. Every
   tile loads as "not recently searched".
-- **Tile material tables** (`MapTile.materials`) — recomputed from the terrain,
-  so editing a tile's terrain code also changes what can be found there.
+- **Tile item tables** (`MapTile.items`) — recomputed from the terrain, so
+  editing a tile's terrain code also changes what can be found there.
 - Unknown recipe names in `recipes` are silently skipped.
 
 ## Editing tips

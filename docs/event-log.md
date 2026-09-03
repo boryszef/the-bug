@@ -35,7 +35,7 @@ Experiment: 1 Stick + 1 Vine → nothing
 Experiment: 5 Stone → not enough Stone (have 1, need 5)
 ```
 
-Inputs are sorted by material and joined with ` + `. Running an experiment with
+Inputs are sorted by item and joined with ` + `. Running an experiment with
 nothing selected does nothing (no log line).
 
 ## Code

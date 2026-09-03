@@ -25,7 +25,7 @@ Read via `Game::recipe_progress() -> (usize, usize)`.
 | Every **10 successful crafts** | +1 |
 
 - `Player.crafts_completed` counts successful crafts (for the 1-per-10 rule);
-  failed crafts (unknown recipe, not enough materials) don't count.
+  failed crafts (unknown recipe, not enough items) don't count.
 - No log line is written for XP — the panel counter is the only feedback.
 - XP does **nothing** yet. `Player.level` is still fixed at 1 (it only affects
   starting map size). A level-up mechanic is a separate future item.
@@ -35,8 +35,8 @@ Both `experience` and `crafts_completed` are in the save file
 
 ## Multi-resource search (confirmed)
 
-`Game::search()` rolls each material a tile offers independently, so one search
-can yield several different materials. This is exercised by
-`search_yields_every_material_a_tile_offers`. In practice each terrain currently
-lists only one material (`TERRAIN_MATERIALS`), so a search yields 0 or 1 until a
-terrain gains a second material.
+`Game::search()` rolls each item a tile offers independently, so one search can
+yield several different items. This is exercised by
+`search_yields_every_item_a_tile_offers`. In practice each terrain currently
+lists only one item (`TERRAIN_ITEMS`), so a search yields 0 or 1 until a terrain
+gains a second item.

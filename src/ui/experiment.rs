@@ -6,15 +6,15 @@ use ratatui::{
     widgets::{Block, List, ListItem, Paragraph, Widget},
 };
 
-use crate::game::Material;
-use crate::viewmodel::selection::MaterialSelection;
+use crate::game::Item;
+use crate::viewmodel::selection::ItemSelection;
 
-/// The "experiment" overlay: pick materials from the inventory and try to
-/// discover a recipe. Owns the cursor/focus; the material bookkeeping lives in
-/// [`MaterialSelection`].
+/// The "experiment" overlay: pick items from the inventory and try to
+/// discover a recipe. Owns the cursor/focus; the item bookkeeping lives in
+/// [`ItemSelection`].
 #[derive(Default)]
 pub(super) struct Experiment {
-    selection: MaterialSelection,
+    selection: ItemSelection,
     cursor: usize,
     focus: Focus,
 }
@@ -33,14 +33,14 @@ pub(super) enum Outcome {
     Stay,
     /// Close the overlay without running anything.
     Cancel,
-    /// Close the overlay and run `game.experiment(&materials)`.
-    Run(Vec<(Material, u32)>),
+    /// Close the overlay and run `game.experiment(&items)`.
+    Run(Vec<(Item, u32)>),
 }
 
 impl Experiment {
     /// Feeds one key to the overlay. `inventory` is the player's inventory in
-    /// display order: `(material, owned quantity)`.
-    pub(super) fn handle_key(&mut self, key: KeyCode, inventory: &[(Material, u32)]) -> Outcome {
+    /// display order: `(item, owned quantity)`.
+    pub(super) fn handle_key(&mut self, key: KeyCode, inventory: &[(Item, u32)]) -> Outcome {
         match key {
             KeyCode::Esc | KeyCode::Char('q') => return Outcome::Cancel,
             KeyCode::Char('e') => return Outcome::Run(self.selection.take()),
@@ -63,21 +63,21 @@ impl Experiment {
     /// Draws the centered popup: an "Available" and a "Selected" column plus a
     /// key hint. The "Available" column shows what can still be added
     /// (owned minus already selected).
-    pub(super) fn render(&self, area: Rect, buf: &mut Buffer, inventory: &[(Material, u32)]) {
+    pub(super) fn render(&self, area: Rect, buf: &mut Buffer, inventory: &[(Item, u32)]) {
         let inner = super::popup_frame(area, 70, 70, " Experiment ", buf);
 
         let rows = Layout::vertical([Constraint::Min(5), Constraint::Length(1)]).split(inner);
         let columns = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
             .split(rows[0]);
 
-        material_list(
+        item_list(
             columns[0],
             buf,
             &self.selection.available(inventory),
             " Available ",
             self.cursor_for(Focus::Available),
         );
-        material_list(
+        item_list(
             columns[1],
             buf,
             self.selection.items(),
@@ -99,7 +99,7 @@ impl Experiment {
     }
 
     /// Length of the list the cursor currently moves through.
-    fn list_len(&self, inventory: &[(Material, u32)]) -> usize {
+    fn list_len(&self, inventory: &[(Item, u32)]) -> usize {
         match self.focus {
             Focus::Available => inventory.len(),
             Focus::Selected => self.selection.items().len(),
@@ -111,17 +111,17 @@ impl Experiment {
         (self.focus == focus).then_some(self.cursor)
     }
 
-    /// Moves one unit of the material under the cursor into the selection.
-    fn add_current(&mut self, inventory: &[(Material, u32)]) {
+    /// Moves one unit of the item under the cursor into the selection.
+    fn add_current(&mut self, inventory: &[(Item, u32)]) {
         if self.focus != Focus::Available {
             return;
         }
-        if let Some(&(material, owned)) = inventory.get(self.cursor) {
-            self.selection.add(material, owned);
+        if let Some(&(item, owned)) = inventory.get(self.cursor) {
+            self.selection.add(item, owned);
         }
     }
 
-    /// Returns one unit of the material under the cursor to the inventory,
+    /// Returns one unit of the item under the cursor to the inventory,
     /// keeping the cursor in range once a row disappears.
     fn remove_current(&mut self) {
         if self.selection.is_empty() {
@@ -136,36 +136,33 @@ impl Experiment {
     }
 }
 
-fn material_list(
+fn item_list(
     area: Rect,
     buf: &mut Buffer,
-    materials: &[(Material, u32)],
+    items: &[(Item, u32)],
     title: &str,
     cursor: Option<usize>,
 ) {
-    let items = materials
-        .iter()
-        .enumerate()
-        .map(|(index, &(material, quantity))| {
-            let style = if cursor == Some(index) {
-                Style::default().add_modifier(Modifier::REVERSED)
-            } else {
-                Style::default()
-            };
-            ListItem::new(format!("{material}  {quantity}")).style(style)
-        });
+    let rows = items.iter().enumerate().map(|(index, &(item, quantity))| {
+        let style = if cursor == Some(index) {
+            Style::default().add_modifier(Modifier::REVERSED)
+        } else {
+            Style::default()
+        };
+        ListItem::new(format!("{item}  {quantity}")).style(style)
+    });
 
-    let list = List::new(items).block(Block::bordered().title(title));
+    let list = List::new(rows).block(Block::bordered().title(title));
     Widget::render(list, area, buf);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::Material::{Stick, Stone, Vine};
+    use crate::game::Item::{Stick, Stone, Vine};
 
     /// Sorted the same way `viewmodel::inventory::sorted` sorts.
-    fn inventory() -> Vec<(Material, u32)> {
+    fn inventory() -> Vec<(Item, u32)> {
         vec![(Stick, 1), (Stone, 3), (Vine, 2)]
     }
 
@@ -216,7 +213,7 @@ mod tests {
     }
 
     #[test]
-    fn right_adds_material_under_cursor() {
+    fn right_adds_item_under_cursor() {
         let mut exp = Experiment::default();
         let inv = inventory();
         exp.handle_key(KeyCode::Down, &inv); // cursor -> Stone

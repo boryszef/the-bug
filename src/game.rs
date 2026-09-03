@@ -15,7 +15,7 @@ pub struct Player {
     /// Successful crafts so far — every tenth grants a point of experience.
     pub crafts_completed: u32,
     pub coordinates: (i32, i32),
-    pub inventory: HashMap<Material, u32>,
+    pub inventory: HashMap<Item, u32>,
     recipes: Vec<Recipe>,
 }
 
@@ -38,14 +38,14 @@ impl Player {
         &self.recipes
     }
 
-    /// Removes `amount` of `material` from the inventory, dropping the entry
+    /// Removes `amount` of `item` from the inventory, dropping the entry
     /// entirely once it hits zero so exhausted items don't linger. Callers must
     /// have already checked the player holds enough.
-    fn spend(&mut self, material: Material, amount: u32) {
-        if let Some(remaining) = self.inventory.get_mut(&material) {
+    fn spend(&mut self, item: Item, amount: u32) {
+        if let Some(remaining) = self.inventory.get_mut(&item) {
             *remaining -= amount;
             if *remaining == 0 {
-                self.inventory.remove(&material);
+                self.inventory.remove(&item);
             }
         }
     }
@@ -141,7 +141,7 @@ fn choose_weighted<T: Copy>(choices: &[(T, u32)], rng: &mut impl rand::Rng) -> T
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
-pub enum Material {
+pub enum Item {
     Stick,
     Stone,
     Vine,
@@ -151,16 +151,16 @@ pub enum Material {
     WoodenBow,
 }
 
-impl fmt::Display for Material {
+impl fmt::Display for Item {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let name = match self {
-            Material::Stick => "Stick",
-            Material::Stone => "Stone",
-            Material::Vine => "Vine",
-            Material::Cord => "Cord",
-            Material::StoneAxe => "Stone Axe",
-            Material::Arrow => "Arrow",
-            Material::WoodenBow => "Wooden Bow",
+            Item::Stick => "Stick",
+            Item::Stone => "Stone",
+            Item::Vine => "Vine",
+            Item::Cord => "Cord",
+            Item::StoneAxe => "Stone Axe",
+            Item::Arrow => "Arrow",
+            Item::WoodenBow => "Wooden Bow",
         };
         write!(f, "{name}")
     }
@@ -169,7 +169,7 @@ impl fmt::Display for Material {
 #[derive(Debug)]
 pub struct MapTile {
     pub terrain_type: TerrainType,
-    materials: HashMap<Material, f64>,
+    items: HashMap<Item, f64>,
     last_search_time: Option<Instant>,
 }
 
@@ -179,17 +179,17 @@ impl fmt::Display for MapTile {
     }
 }
 
-const TERRAIN_MATERIALS: &[(TerrainType, Material, f64)] = &[
-    (TerrainType::Forest, Material::Stick, 0.5),
-    (TerrainType::Cave, Material::Stone, 0.3),
-    (TerrainType::Meadow, Material::Vine, 0.2),
+const TERRAIN_ITEMS: &[(TerrainType, Item, f64)] = &[
+    (TerrainType::Forest, Item::Stick, 0.5),
+    (TerrainType::Cave, Item::Stone, 0.3),
+    (TerrainType::Meadow, Item::Vine, 0.2),
 ];
 
-fn materials_for_terrain(terrain: TerrainType) -> HashMap<Material, f64> {
-    TERRAIN_MATERIALS
+fn items_for_terrain(terrain: TerrainType) -> HashMap<Item, f64> {
+    TERRAIN_ITEMS
         .iter()
         .filter(|&&(t, _, _)| t == terrain)
-        .map(|&(_, material, probability)| (material, probability))
+        .map(|&(_, item, probability)| (item, probability))
         .collect()
 }
 
@@ -197,7 +197,7 @@ impl MapTile {
     fn with_terrain(terrain_type: TerrainType) -> MapTile {
         MapTile {
             terrain_type,
-            materials: materials_for_terrain(terrain_type),
+            items: items_for_terrain(terrain_type),
             last_search_time: None,
         }
     }
@@ -238,7 +238,7 @@ impl Map {
         }
     }
 
-    /// Rebuilds a map from a saved terrain grid. Tile materials are recomputed
+    /// Rebuilds a map from a saved terrain grid. Tile items are recomputed
     /// from the terrain; per-tile search cooldowns start fresh.
     pub(crate) fn from_terrain(grid: Vec<Vec<TerrainType>>) -> Map {
         let half = (grid.len() / 2) as i32;
@@ -279,8 +279,8 @@ impl Map {
 #[derive(Copy, Clone, Debug)]
 pub struct Recipe {
     name: &'static str,
-    inputs: &'static [(Material, u32)],
-    output: Material,
+    inputs: &'static [(Item, u32)],
+    output: Item,
 }
 
 impl Recipe {
@@ -288,7 +288,7 @@ impl Recipe {
         self.name
     }
 
-    pub fn inputs(&self) -> &'static [(Material, u32)] {
+    pub fn inputs(&self) -> &'static [(Item, u32)] {
         self.inputs
     }
 }
@@ -302,27 +302,23 @@ impl PartialEq for Recipe {
 const RECIPES: &[Recipe] = &[
     Recipe {
         name: "Arrow",
-        inputs: &[(Material::Stick, 1)],
-        output: Material::Arrow,
+        inputs: &[(Item::Stick, 1)],
+        output: Item::Arrow,
     },
     Recipe {
         name: "Wooden Bow",
-        inputs: &[(Material::Stick, 1), (Material::Cord, 1)],
-        output: Material::WoodenBow,
+        inputs: &[(Item::Stick, 1), (Item::Cord, 1)],
+        output: Item::WoodenBow,
     },
     Recipe {
         name: "Cord",
-        inputs: &[(Material::Vine, 2)],
-        output: Material::Cord,
+        inputs: &[(Item::Vine, 2)],
+        output: Item::Cord,
     },
     Recipe {
         name: "Stone Axe",
-        inputs: &[
-            (Material::Stick, 1),
-            (Material::Stone, 1),
-            (Material::Cord, 1),
-        ],
-        output: Material::StoneAxe,
+        inputs: &[(Item::Stick, 1), (Item::Stone, 1), (Item::Cord, 1)],
+        output: Item::StoneAxe,
     },
 ];
 
@@ -455,20 +451,20 @@ impl Game {
         let last_search = tile.last_search_time;
 
         let mut rng = rand::rng();
-        let found: Vec<Material> = tile
-            .materials
+        let found: Vec<Item> = tile
+            .items
             .iter()
             .filter(|&(_, &base)| {
                 rng.random_range(0.0..1.0) < adjust_probability(base, last_search)
             })
-            .map(|(&material, _)| material)
+            .map(|(&item, _)| item)
             .collect();
 
-        for material in found {
-            *self.player.inventory.entry(material).or_insert(0) += 1;
+        for item in found {
+            *self.player.inventory.entry(item).or_insert(0) += 1;
             self.log(
                 EventCategory::General,
-                format!("You find a {material} in the {terrain}."),
+                format!("You find a {item} in the {terrain}."),
             );
         }
         self.map.update_tile_last_search_time(coords);
@@ -489,21 +485,18 @@ impl Game {
             return;
         };
 
-        for &(material, amount) in recipe.inputs {
-            if self.player.inventory.get(&material).copied().unwrap_or(0) < amount {
+        for &(item, amount) in recipe.inputs {
+            if self.player.inventory.get(&item).copied().unwrap_or(0) < amount {
                 self.log(
                     EventCategory::Crafting,
-                    format!(
-                        "You don't have enough {material} to craft a {}.",
-                        recipe.name
-                    ),
+                    format!("You don't have enough {item} to craft a {}.", recipe.name),
                 );
                 return;
             }
         }
 
-        for &(material, amount) in recipe.inputs {
-            self.player.spend(material, amount);
+        for &(item, amount) in recipe.inputs {
+            self.player.spend(item, amount);
         }
 
         *self.player.inventory.entry(recipe.output).or_insert(0) += 1;
@@ -518,33 +511,33 @@ impl Game {
         }
     }
 
-    pub fn experiment(&mut self, materials: &[(Material, u32)]) {
-        if materials.is_empty() {
+    pub fn experiment(&mut self, items: &[(Item, u32)]) {
+        if items.is_empty() {
             return;
         }
 
-        let inputs = describe_inputs(materials);
+        let inputs = describe_inputs(items);
 
-        for &(material, amount) in materials {
-            let available = self.player.inventory.get(&material).copied().unwrap_or(0);
+        for &(item, amount) in items {
+            let available = self.player.inventory.get(&item).copied().unwrap_or(0);
             if available < amount {
                 self.log(
                     EventCategory::Experiment,
                     format!(
-                        "Experiment: {inputs} → not enough {material} (have {available}, need {amount})"
+                        "Experiment: {inputs} → not enough {item} (have {available}, need {amount})"
                     ),
                 );
                 return;
             }
         }
 
-        for &(material, amount) in materials {
-            self.player.spend(material, amount);
+        for &(item, amount) in items {
+            self.player.spend(item, amount);
         }
 
         let Some(recipe) = RECIPES.iter().find(|recipe| {
-            recipe.inputs.len() == materials.len()
-                && recipe.inputs.iter().all(|input| materials.contains(input))
+            recipe.inputs.len() == items.len()
+                && recipe.inputs.iter().all(|input| items.contains(input))
         }) else {
             self.log(
                 EventCategory::Experiment,
@@ -569,14 +562,14 @@ impl Game {
     }
 }
 
-/// A stable, human-readable rendering of a set of materials, e.g.
+/// A stable, human-readable rendering of a set of items, e.g.
 /// `"1 Stick + 1 Stone + 1 Cord"`.
-fn describe_inputs(materials: &[(Material, u32)]) -> String {
-    let mut sorted = materials.to_vec();
-    sorted.sort_by_key(|&(material, _)| material);
+fn describe_inputs(items: &[(Item, u32)]) -> String {
+    let mut sorted = items.to_vec();
+    sorted.sort_by_key(|&(item, _)| item);
     sorted
         .iter()
-        .map(|(material, quantity)| format!("{quantity} {material}"))
+        .map(|(item, quantity)| format!("{quantity} {item}"))
         .collect::<Vec<_>>()
         .join(" + ")
 }
@@ -708,9 +701,9 @@ mod tests {
     }
 
     #[test]
-    fn material_display_names() {
-        assert_eq!(Material::Stick.to_string(), "Stick");
-        assert_eq!(Material::StoneAxe.to_string(), "Stone Axe");
+    fn item_display_names() {
+        assert_eq!(Item::Stick.to_string(), "Stick");
+        assert_eq!(Item::StoneAxe.to_string(), "Stone Axe");
     }
 
     #[test]
@@ -737,8 +730,8 @@ mod tests {
     fn experiment_logs_are_precise() {
         // shortage: shows have / need
         let mut game = Game::default();
-        game.player.inventory.insert(Material::Stone, 1);
-        game.experiment(&[(Material::Stone, 5)]);
+        game.player.inventory.insert(Item::Stone, 1);
+        game.experiment(&[(Item::Stone, 5)]);
         assert_eq!(
             last_event(&game).text(),
             "Experiment: 5 Stone → not enough Stone (have 1, need 5)"
@@ -747,9 +740,9 @@ mod tests {
 
         // failure: shows the inputs and "nothing"
         let mut game = Game::default();
-        game.player.inventory.insert(Material::Stick, 1);
-        game.player.inventory.insert(Material::Vine, 1);
-        game.experiment(&[(Material::Vine, 1), (Material::Stick, 1)]);
+        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Vine, 1);
+        game.experiment(&[(Item::Vine, 1), (Item::Stick, 1)]);
         assert_eq!(
             last_event(&game).text(),
             "Experiment: 1 Stick + 1 Vine → nothing"
@@ -757,13 +750,13 @@ mod tests {
 
         // success + discovery, then success without
         let mut game = Game::default();
-        game.player.inventory.insert(Material::Vine, 4);
-        game.experiment(&[(Material::Vine, 2)]);
+        game.player.inventory.insert(Item::Vine, 4);
+        game.experiment(&[(Item::Vine, 2)]);
         assert_eq!(
             last_event(&game).text(),
             "Experiment: 2 Vine → Cord (new recipe!)"
         );
-        game.experiment(&[(Material::Vine, 2)]);
+        game.experiment(&[(Item::Vine, 2)]);
         assert_eq!(last_event(&game).text(), "Experiment: 2 Vine → Cord");
     }
 
@@ -779,12 +772,12 @@ mod tests {
     fn crafting_removes_exhausted_inputs() {
         let mut game = Game::default();
         game.player.grant_recipe("Cord");
-        game.player.inventory.insert(Material::Vine, 2); // exactly one Cord
+        game.player.inventory.insert(Item::Vine, 2); // exactly one Cord
 
         game.craft("Cord");
 
-        assert_eq!(game.player.inventory.get(&Material::Vine), None);
-        assert_eq!(game.player.inventory.get(&Material::Cord), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::Vine), None);
+        assert_eq!(game.player.inventory.get(&Item::Cord), Some(&1));
     }
 
     #[test]
@@ -800,11 +793,11 @@ mod tests {
     #[test]
     fn experiment_removes_exhausted_inputs() {
         let mut game = Game::default();
-        game.player.inventory.insert(Material::Vine, 2);
+        game.player.inventory.insert(Item::Vine, 2);
 
-        game.experiment(&[(Material::Vine, 2)]);
+        game.experiment(&[(Item::Vine, 2)]);
 
-        assert_eq!(game.player.inventory.get(&Material::Vine), None);
+        assert_eq!(game.player.inventory.get(&Item::Vine), None);
     }
 
     #[test]
@@ -814,7 +807,7 @@ mod tests {
         assert_eq!(last_event(&game).category(), EventCategory::Crafting);
 
         game.player.grant_recipe("Cord");
-        game.player.inventory.insert(Material::Vine, 2);
+        game.player.inventory.insert(Item::Vine, 2);
         game.craft("Cord");
         assert_eq!(last_event(&game).text(), "You craft a Cord.");
         assert_eq!(last_event(&game).category(), EventCategory::Crafting);
@@ -825,8 +818,8 @@ mod tests {
         let mut game = Game::default();
         assert!(game.player.known_recipes().is_empty());
 
-        game.player.inventory.insert(Material::Vine, 2);
-        game.experiment(&[(Material::Vine, 2)]);
+        game.player.inventory.insert(Item::Vine, 2);
+        game.experiment(&[(Item::Vine, 2)]);
 
         let known: Vec<&str> = game
             .player
@@ -842,20 +835,20 @@ mod tests {
         let mut game = Game::default();
         assert_eq!(game.recipe_progress(), (0, RECIPES.len()));
 
-        game.player.inventory.insert(Material::Vine, 2);
-        game.experiment(&[(Material::Vine, 2)]);
+        game.player.inventory.insert(Item::Vine, 2);
+        game.experiment(&[(Item::Vine, 2)]);
         assert_eq!(game.recipe_progress().0, 1);
     }
 
     #[test]
     fn experiment_discovery_grants_experience() {
         let mut game = Game::default();
-        game.player.inventory.insert(Material::Vine, 4);
+        game.player.inventory.insert(Item::Vine, 4);
 
-        game.experiment(&[(Material::Vine, 2)]);
+        game.experiment(&[(Item::Vine, 2)]);
         assert_eq!(game.player.experience, 10);
 
-        game.experiment(&[(Material::Vine, 2)]); // already known -> no XP
+        game.experiment(&[(Item::Vine, 2)]); // already known -> no XP
         assert_eq!(game.player.experience, 10);
     }
 
@@ -869,7 +862,7 @@ mod tests {
         assert_eq!(game.player.crafts_completed, 0);
 
         for _ in 0..10 {
-            game.player.inventory.insert(Material::Vine, 2);
+            game.player.inventory.insert(Item::Vine, 2);
             game.craft("Cord");
         }
         assert_eq!(game.player.crafts_completed, 10);
@@ -877,20 +870,20 @@ mod tests {
     }
 
     #[test]
-    fn search_yields_every_material_a_tile_offers() {
+    fn search_yields_every_item_a_tile_offers() {
         let mut game = Game::default();
         let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
         game.map.tiles[ty][tx] = MapTile {
             terrain_type: TerrainType::Forest,
-            materials: HashMap::from([(Material::Stick, 1.0), (Material::Vine, 1.0)]),
+            items: HashMap::from([(Item::Stick, 1.0), (Item::Vine, 1.0)]),
             last_search_time: None,
         };
         let before = game.events().len();
 
         game.search();
 
-        assert_eq!(game.player.inventory.get(&Material::Stick), Some(&1));
-        assert_eq!(game.player.inventory.get(&Material::Vine), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::Stick), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::Vine), Some(&1));
         assert_eq!(game.events().len(), before + 2);
     }
 

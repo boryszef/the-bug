@@ -1,25 +1,25 @@
 //! The player's inventory prepared for display.
 
-use crate::game::{Material, Player};
+use crate::game::{Item, Player};
 
-/// The player's inventory as a list sorted by [`Material`] order, for a stable
+/// The player's inventory as a list sorted by [`Item`] order, for a stable
 /// display order and index-addressable cursor navigation. Exhausted items
 /// (quantity zero) are left out.
-pub fn sorted(player: &Player) -> Vec<(Material, u32)> {
-    let mut materials: Vec<(Material, u32)> = player
+pub fn sorted(player: &Player) -> Vec<(Item, u32)> {
+    let mut items: Vec<(Item, u32)> = player
         .inventory
         .iter()
         .filter(|&(_, &quantity)| quantity > 0)
-        .map(|(&material, &quantity)| (material, quantity))
+        .map(|(&item, &quantity)| (item, quantity))
         .collect();
-    materials.sort_by_key(|&(material, _)| material);
-    materials
+    items.sort_by_key(|&(item, _)| item);
+    items
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::Material::{Cord, Stick, Stone};
+    use crate::game::Item::{Cord, Stick, Stone};
 
     #[test]
     fn empty_inventory_yields_empty_list() {
@@ -27,7 +27,7 @@ mod tests {
     }
 
     #[test]
-    fn entries_are_sorted_by_material_order() {
+    fn entries_are_sorted_by_item_order() {
         let mut player = Player::default();
         player.inventory.insert(Cord, 1);
         player.inventory.insert(Stick, 4);
