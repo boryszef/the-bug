@@ -160,9 +160,15 @@ fn render_map(game: &Game, area: Rect, buf: &mut Buffer) {
 fn render_player(game: &Game, area: Rect, buf: &mut Buffer) {
     let block = Block::bordered().title(" Player ");
 
+    let inventory = sorted_inventory(game)
+        .iter()
+        .map(|(material, quantity)| format!("{material} {quantity}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+
     let text = Text::from(vec![
         Line::from(format!("Level: {}", game.player.level)),
-        Line::from(format!("Inventory: {:?}", game.player.inventory)),
+        Line::from(format!("Inventory: {inventory}")),
     ]);
 
     Paragraph::new(text).block(block).render(area, buf);

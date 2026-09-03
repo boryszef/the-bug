@@ -63,16 +63,29 @@ pub enum TerrainType {
     Deadland,
 }
 
-impl fmt::Display for TerrainType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let symbol = match self {
+impl TerrainType {
+    /// The single-character glyph used to draw this terrain on the map.
+    pub fn symbol(self) -> char {
+        match self {
             TerrainType::Meadow => '𖧧',
             TerrainType::Forest => '𖠰',
             TerrainType::Cave => '🪨',
             TerrainType::Village => '🛖',
             TerrainType::Deadland => ' ',
+        }
+    }
+}
+
+impl fmt::Display for TerrainType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let name = match self {
+            TerrainType::Meadow => "Meadow",
+            TerrainType::Forest => "Forest",
+            TerrainType::Cave => "Cave",
+            TerrainType::Village => "Village",
+            TerrainType::Deadland => "Deadland",
         };
-        write!(f, "{symbol}")
+        write!(f, "{name}")
     }
 }
 
@@ -97,13 +110,26 @@ fn choose_weighted<T: Copy>(choices: &[(T, u32)], rng: &mut impl rand::Rng) -> T
     unreachable!()
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub enum Material {
     Stick,
     Stone,
     Vine,
     Cord,
     StoneAxe,
+}
+
+impl fmt::Display for Material {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let name = match self {
+            Material::Stick => "Stick",
+            Material::Stone => "Stone",
+            Material::Vine => "Vine",
+            Material::Cord => "Cord",
+            Material::StoneAxe => "Stone Axe",
+        };
+        write!(f, "{name}")
+    }
 }
 
 #[derive(Debug)]
@@ -115,7 +141,7 @@ pub struct MapTile {
 
 impl fmt::Display for MapTile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.terrain_type)
+        write!(f, "{}", self.terrain_type.symbol())
     }
 }
 
@@ -261,7 +287,7 @@ impl Game {
         self.player.coordinates = (nx, ny);
         if let Some(tile) = self.map.get_tile((nx, ny)) {
             self.events.push(format!(
-                "You walk {} and visit {:?}.",
+                "You walk {} and visit {}.",
                 dir.name(),
                 tile.terrain_type
             ));
@@ -289,7 +315,7 @@ impl Game {
         for material in found {
             *self.player.inventory.entry(material).or_insert(0) += 1;
             self.events
-                .push(format!("You found a {material:?} in the {terrain:?}."));
+                .push(format!("You found a {material} in the {terrain}."));
         }
         self.map.update_tile_last_search_time(coords);
     }
@@ -304,10 +330,8 @@ impl Game {
         for &(material, amount) in recipe.inputs {
             let entry = self.player.inventory.entry(material).or_insert(0);
             if *entry < amount {
-                self.events.push(format!(
-                    "Not enough {:?} to craft {}.",
-                    material, recipe.name
-                ));
+                self.events
+                    .push(format!("Not enough {material} to craft {}.", recipe.name));
                 return;
             }
         }
@@ -326,7 +350,7 @@ impl Game {
 
             if available < amount {
                 self.events
-                    .push(format!("Not enough {:?} to experiment.", material));
+                    .push(format!("Not enough {material} to experiment."));
                 return;
             }
         }
@@ -529,5 +553,28 @@ mod tests {
         let last_old = Instant::now() - Duration::from_secs(120);
         let p_old = adjust_probability(base, Some(last_old));
         assert!((p_old - base).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn material_display_names() {
+        assert_eq!(Material::Stick.to_string(), "Stick");
+        assert_eq!(Material::StoneAxe.to_string(), "Stone Axe");
+    }
+
+    #[test]
+    fn terrain_type_display_is_name_and_symbol_is_glyph() {
+        assert_eq!(TerrainType::Forest.to_string(), "Forest");
+        assert_eq!(TerrainType::Forest.symbol(), '𖠰');
+        assert_eq!(TerrainType::Deadland.symbol(), ' ');
+    }
+
+    #[test]
+    fn experiment_shortage_message_uses_display_name() {
+        let mut game = Game::default();
+        game.experiment(&[(Material::StoneAxe, 1)]);
+        assert_eq!(
+            game.events.last().unwrap(),
+            "Not enough Stone Axe to experiment."
+        );
     }
 }
