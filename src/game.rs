@@ -130,6 +130,8 @@ pub enum Material {
     Vine,
     Cord,
     StoneAxe,
+    Arrow,
+    WoodenBow,
 }
 
 impl fmt::Display for Material {
@@ -140,6 +142,8 @@ impl fmt::Display for Material {
             Material::Vine => "Vine",
             Material::Cord => "Cord",
             Material::StoneAxe => "Stone Axe",
+            Material::Arrow => "Arrow",
+            Material::WoodenBow => "Wooden Bow",
         };
         write!(f, "{name}")
     }
@@ -279,6 +283,16 @@ impl PartialEq for Recipe {
 }
 
 const RECIPES: &[Recipe] = &[
+    Recipe {
+        name: "Arrow",
+        inputs: &[(Material::Stick, 1)],
+        output: Material::Arrow,
+    },
+    Recipe {
+        name: "Wooden Bow",
+        inputs: &[(Material::Stick, 1), (Material::Cord, 1)],
+        output: Material::WoodenBow,
+    },
     Recipe {
         name: "Cord",
         inputs: &[(Material::Vine, 2)],
