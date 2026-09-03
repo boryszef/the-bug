@@ -2,11 +2,11 @@
 
 ## TODO
 
-* Wrap inventory text (or make a list with a scrollbar)
 * add i18n support
 
 ## DONE
 
+* inventory panel: hide exhausted (zero) items and wrap the text
 * show discovered-recipe ratio (known/total) in the player panel
 * grant XP: +10 per new recipe, +1 per 10 crafts
 * confirm search can yield multiple materials from one tile (test only)

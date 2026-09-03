@@ -5,7 +5,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Style},
     text::{Line, Text},
-    widgets::{Block, Paragraph, Widget, canvas::Canvas},
+    widgets::{Block, Paragraph, Widget, Wrap, canvas::Canvas},
 };
 use std::io;
 
@@ -196,7 +196,10 @@ fn render_player(game: &Game, area: Rect, buf: &mut Buffer) {
         Line::from(format!("Inventory: {inventory}")),
     ]);
 
-    Paragraph::new(text).block(block).render(area, buf);
+    Paragraph::new(text)
+        .block(block)
+        .wrap(Wrap { trim: true })
+        .render(area, buf);
 }
 
 fn render_events(game: &Game, area: Rect, buf: &mut Buffer) {

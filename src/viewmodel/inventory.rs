@@ -3,11 +3,13 @@
 use crate::game::{Material, Player};
 
 /// The player's inventory as a list sorted by [`Material`] order, for a stable
-/// display order and index-addressable cursor navigation.
+/// display order and index-addressable cursor navigation. Exhausted items
+/// (quantity zero) are left out.
 pub fn sorted(player: &Player) -> Vec<(Material, u32)> {
     let mut materials: Vec<(Material, u32)> = player
         .inventory
         .iter()
+        .filter(|&(_, &quantity)| quantity > 0)
         .map(|(&material, &quantity)| (material, quantity))
         .collect();
     materials.sort_by_key(|&(material, _)| material);
@@ -32,5 +34,14 @@ mod tests {
         player.inventory.insert(Stone, 2);
 
         assert_eq!(sorted(&player), vec![(Stick, 4), (Stone, 2), (Cord, 1)]);
+    }
+
+    #[test]
+    fn zero_quantity_entries_are_omitted() {
+        let mut player = Player::default();
+        player.inventory.insert(Stick, 3);
+        player.inventory.insert(Cord, 0);
+
+        assert_eq!(sorted(&player), vec![(Stick, 3)]);
     }
 }

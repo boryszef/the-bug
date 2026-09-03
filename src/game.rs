@@ -38,6 +38,18 @@ impl Player {
         &self.recipes
     }
 
+    /// Removes `amount` of `material` from the inventory, dropping the entry
+    /// entirely once it hits zero so exhausted items don't linger. Callers must
+    /// have already checked the player holds enough.
+    fn spend(&mut self, material: Material, amount: u32) {
+        if let Some(remaining) = self.inventory.get_mut(&material) {
+            *remaining -= amount;
+            if *remaining == 0 {
+                self.inventory.remove(&material);
+            }
+        }
+    }
+
     /// Marks the recipe with the given name as known (used when loading a save).
     /// Returns `false` for an unrecognised name, which the caller can ignore.
     pub(crate) fn grant_recipe(&mut self, name: &str) -> bool {
@@ -478,8 +490,7 @@ impl Game {
         };
 
         for &(material, amount) in recipe.inputs {
-            let entry = self.player.inventory.entry(material).or_insert(0);
-            if *entry < amount {
+            if self.player.inventory.get(&material).copied().unwrap_or(0) < amount {
                 self.log(
                     EventCategory::Crafting,
                     format!(
@@ -492,7 +503,7 @@ impl Game {
         }
 
         for &(material, amount) in recipe.inputs {
-            *self.player.inventory.get_mut(&material).unwrap() -= amount;
+            self.player.spend(material, amount);
         }
 
         *self.player.inventory.entry(recipe.output).or_insert(0) += 1;
@@ -528,7 +539,7 @@ impl Game {
         }
 
         for &(material, amount) in materials {
-            *self.player.inventory.get_mut(&material).unwrap() -= amount;
+            self.player.spend(material, amount);
         }
 
         let Some(recipe) = RECIPES.iter().find(|recipe| {
@@ -762,6 +773,38 @@ mod tests {
         let before = game.events().len();
         game.experiment(&[]);
         assert_eq!(game.events().len(), before);
+    }
+
+    #[test]
+    fn crafting_removes_exhausted_inputs() {
+        let mut game = Game::default();
+        game.player.grant_recipe("Cord");
+        game.player.inventory.insert(Material::Vine, 2); // exactly one Cord
+
+        game.craft("Cord");
+
+        assert_eq!(game.player.inventory.get(&Material::Vine), None);
+        assert_eq!(game.player.inventory.get(&Material::Cord), Some(&1));
+    }
+
+    #[test]
+    fn failed_craft_does_not_insert_zero_entries() {
+        let mut game = Game::default();
+        game.player.grant_recipe("Stone Axe");
+
+        game.craft("Stone Axe"); // empty inventory
+
+        assert!(game.player.inventory.is_empty());
+    }
+
+    #[test]
+    fn experiment_removes_exhausted_inputs() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Material::Vine, 2);
+
+        game.experiment(&[(Material::Vine, 2)]);
+
+        assert_eq!(game.player.inventory.get(&Material::Vine), None);
     }
 
     #[test]
