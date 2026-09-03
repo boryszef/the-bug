@@ -2,10 +2,12 @@
 
 ## TODO
 
+* craft menu should show what items are missing for a recipe
 * add i18n support
 
 ## DONE
 
+* implement item disassembly (e.g. stone axe -> stick + stone + rope, umbrella -> pole + fabric)
 * inventory panel: hide exhausted (zero) items and wrap the text
 * show discovered-recipe ratio (known/total) in the player panel
 * grant XP: +10 per new recipe, +1 per 10 crafts

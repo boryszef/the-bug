@@ -22,6 +22,7 @@ fn terrain_code(terrain: TerrainType) -> char {
         TerrainType::Meadow => 'M',
         TerrainType::Forest => 'F',
         TerrainType::Cave => 'C',
+        TerrainType::Ruins => 'R',
         TerrainType::Village => 'V',
         TerrainType::Deadland => '.',
     }
@@ -32,6 +33,7 @@ fn terrain_from_code(code: char) -> Option<TerrainType> {
         'M' => Some(TerrainType::Meadow),
         'F' => Some(TerrainType::Forest),
         'C' => Some(TerrainType::Cave),
+        'R' => Some(TerrainType::Ruins),
         'V' => Some(TerrainType::Village),
         '.' => Some(TerrainType::Deadland),
         _ => None,
@@ -354,6 +356,7 @@ mod tests {
             TerrainType::Meadow,
             TerrainType::Forest,
             TerrainType::Cave,
+            TerrainType::Ruins,
             TerrainType::Village,
             TerrainType::Deadland,
         ] {

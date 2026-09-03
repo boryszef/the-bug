@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::time::{Duration, Instant};
 
-const MAP_MIN_SIZE: u32 = 15;
+const MAP_MIN_SIZE: u32 = 21;
 const MAP_PER_LEVEL_INCREMENT: u32 = 2;
 const DECAY_WINDOW_SECS: f64 = 60.0;
 
@@ -89,6 +89,7 @@ pub enum TerrainType {
     Meadow,
     Forest,
     Cave,
+    Ruins,
     Village,
     Deadland,
 }
@@ -100,6 +101,7 @@ impl TerrainType {
             TerrainType::Meadow => '𖧧',
             TerrainType::Forest => '𖠰',
             TerrainType::Cave => '🪨',
+            TerrainType::Ruins => '🏙',
             TerrainType::Village => '🛖',
             TerrainType::Deadland => ' ',
         }
@@ -112,6 +114,7 @@ impl fmt::Display for TerrainType {
             TerrainType::Meadow => "Meadow",
             TerrainType::Forest => "Forest",
             TerrainType::Cave => "Cave",
+            TerrainType::Ruins => "Ruins",
             TerrainType::Village => "Village",
             TerrainType::Deadland => "Deadland",
         };
@@ -121,9 +124,10 @@ impl fmt::Display for TerrainType {
 
 const RANDOM_TERRAIN_TYPES: &[(TerrainType, u32)] = &[
     (TerrainType::Meadow, 30),
-    (TerrainType::Forest, 15),
-    (TerrainType::Deadland, 50),
-    (TerrainType::Cave, 5),
+    (TerrainType::Forest, 20),
+    (TerrainType::Deadland, 40),
+    (TerrainType::Cave, 7),
+    (TerrainType::Ruins, 3),
 ];
 
 fn choose_weighted<T: Copy>(choices: &[(T, u32)], rng: &mut impl rand::Rng) -> T {
@@ -149,6 +153,19 @@ pub enum Item {
     StoneAxe,
     Arrow,
     WoodenBow,
+    PlasticBottle,
+    CopperWire,
+    Coil,
+    Pole,
+    Microcontroller,
+    Speaker,
+    MetalDetector,
+    Battery,
+    SolarPanel,
+    SolarCharger,
+    CircuitBoard,
+    Umbrella,
+    Fabric,
 }
 
 impl fmt::Display for Item {
@@ -161,6 +178,19 @@ impl fmt::Display for Item {
             Item::StoneAxe => "Stone Axe",
             Item::Arrow => "Arrow",
             Item::WoodenBow => "Wooden Bow",
+            Item::PlasticBottle => "Plastic Bottle",
+            Item::CopperWire => "Copper Wire",
+            Item::Coil => "Coil",
+            Item::Pole => "Pole",
+            Item::Speaker => "Speaker",
+            Item::Microcontroller => "Microcontroller",
+            Item::MetalDetector => "Metal Detector",
+            Item::Battery => "Battery",
+            Item::SolarPanel => "Solar Panel",
+            Item::SolarCharger => "Solar Charger",
+            Item::CircuitBoard => "Circuit Board",
+            Item::Umbrella => "Umbrella",
+            Item::Fabric => "Fabric",
         };
         write!(f, "{name}")
     }
@@ -182,7 +212,10 @@ impl fmt::Display for MapTile {
 const TERRAIN_ITEMS: &[(TerrainType, Item, f64)] = &[
     (TerrainType::Forest, Item::Stick, 0.5),
     (TerrainType::Cave, Item::Stone, 0.3),
-    (TerrainType::Meadow, Item::Vine, 0.2),
+    (TerrainType::Meadow, Item::Vine, 0.3),
+    (TerrainType::Ruins, Item::CopperWire, 0.2),
+    (TerrainType::Ruins, Item::PlasticBottle, 0.2),
+    (TerrainType::Ruins, Item::Umbrella, 0.2),
 ];
 
 fn items_for_terrain(terrain: TerrainType) -> HashMap<Item, f64> {
@@ -281,6 +314,7 @@ pub struct Recipe {
     name: &'static str,
     inputs: &'static [(Item, u32)],
     output: Item,
+    reversible: bool,
 }
 
 impl Recipe {
@@ -304,23 +338,69 @@ const RECIPES: &[Recipe] = &[
         name: "Arrow",
         inputs: &[(Item::Stick, 1)],
         output: Item::Arrow,
+        reversible: false,
     },
     Recipe {
         name: "Wooden Bow",
         inputs: &[(Item::Stick, 1), (Item::Cord, 1)],
         output: Item::WoodenBow,
+        reversible: true,
     },
     Recipe {
         name: "Cord",
         inputs: &[(Item::Vine, 2)],
         output: Item::Cord,
+        reversible: false,
     },
     Recipe {
         name: "Stone Axe",
         inputs: &[(Item::Stick, 1), (Item::Stone, 1), (Item::Cord, 1)],
         output: Item::StoneAxe,
+        reversible: true,
+    },
+    Recipe {
+        name: "Coil",
+        inputs: &[(Item::CopperWire, 2), (Item::PlasticBottle, 1)],
+        output: Item::Coil,
+        reversible: false,
+    },
+    Recipe {
+        name: "Metal Detector",
+        inputs: &[
+            (Item::Coil, 1),
+            (Item::Pole, 1),
+            (Item::Speaker, 1),
+            (Item::Microcontroller, 1),
+        ],
+        output: Item::MetalDetector,
+        reversible: true,
+    },
+    Recipe {
+        name: "Solar Charger",
+        inputs: &[
+            (Item::CopperWire, 1),
+            (Item::SolarPanel, 1),
+            (Item::CircuitBoard, 1),
+        ],
+        output: Item::SolarCharger,
+        reversible: true,
+    },
+    Recipe {
+        name: "Umbrella",
+        inputs: &[(Item::Fabric, 1), (Item::Pole, 1)],
+        output: Item::Umbrella,
+        reversible: true,
     },
 ];
+
+/// The reversible recipe that produces `output`, if any. Drives disassembly:
+/// the player can take such an item apart to recover the recipe's inputs.
+pub(crate) fn reversible_recipe_for(output: Item) -> Option<Recipe> {
+    RECIPES
+        .iter()
+        .find(|recipe| recipe.reversible && recipe.output == output)
+        .copied()
+}
 
 /// Which part of the game an event belongs to. Used to colour the log.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -558,6 +638,31 @@ impl Game {
         self.log(
             EventCategory::Experiment,
             format!("Experiment: {inputs} → {}{suffix}", recipe.name),
+        );
+    }
+
+    /// Takes one `item` apart, returning the inputs of the reversible recipe
+    /// that makes it. Does nothing if no reversible recipe produces `item` or
+    /// the player is not carrying one.
+    pub fn disassemble(&mut self, item: Item) {
+        let Some(recipe) = reversible_recipe_for(item) else {
+            return;
+        };
+        if self.player.inventory.get(&item).copied().unwrap_or(0) == 0 {
+            return;
+        }
+
+        self.player.spend(item, 1);
+        for &(input, amount) in recipe.inputs {
+            *self.player.inventory.entry(input).or_insert(0) += amount;
+        }
+
+        self.log(
+            EventCategory::Crafting,
+            format!(
+                "You take apart a {item}, recovering {}.",
+                describe_inputs(recipe.inputs)
+            ),
         );
     }
 }
@@ -885,6 +990,68 @@ mod tests {
         assert_eq!(game.player.inventory.get(&Item::Stick), Some(&1));
         assert_eq!(game.player.inventory.get(&Item::Vine), Some(&1));
         assert_eq!(game.events().len(), before + 2);
+    }
+
+    #[test]
+    fn disassemble_returns_components_and_consumes_the_item() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::StoneAxe, 1);
+
+        game.disassemble(Item::StoneAxe);
+
+        assert_eq!(game.player.inventory.get(&Item::StoneAxe), None);
+        assert_eq!(game.player.inventory.get(&Item::Stick), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::Stone), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::Cord), Some(&1));
+    }
+
+    #[test]
+    fn disassemble_logs_a_precise_crafting_line() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::StoneAxe, 1);
+
+        game.disassemble(Item::StoneAxe);
+
+        assert_eq!(
+            last_event(&game).text(),
+            "You take apart a Stone Axe, recovering 1 Stick + 1 Stone + 1 Cord."
+        );
+        assert_eq!(last_event(&game).category(), EventCategory::Crafting);
+    }
+
+    #[test]
+    fn disassemble_ignores_irreversible_recipes() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Arrow, 1); // Arrow recipe is not reversible
+        let before = game.events().len();
+
+        game.disassemble(Item::Arrow);
+
+        assert_eq!(game.player.inventory.get(&Item::Arrow), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::Stick), None);
+        assert_eq!(game.events().len(), before);
+    }
+
+    #[test]
+    fn disassemble_without_the_item_does_nothing() {
+        let mut game = Game::default();
+        let before = game.events().len();
+
+        game.disassemble(Item::StoneAxe);
+
+        assert!(game.player.inventory.is_empty());
+        assert_eq!(game.events().len(), before);
+    }
+
+    #[test]
+    fn disassemble_stacks_components_onto_existing_entries() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::StoneAxe, 1);
+        game.player.inventory.insert(Item::Stick, 2);
+
+        game.disassemble(Item::StoneAxe);
+
+        assert_eq!(game.player.inventory.get(&Item::Stick), Some(&3));
     }
 
     #[test]

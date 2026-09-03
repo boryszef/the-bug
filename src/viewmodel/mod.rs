@@ -7,6 +7,7 @@
 //! key handling.
 
 pub mod crafting;
+pub mod disassembly;
 pub mod events;
 pub mod inventory;
 pub mod map;

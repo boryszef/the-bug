@@ -13,6 +13,7 @@ use crate::game::{Direction, EventCategory, Game};
 use crate::viewmodel;
 
 use super::craft::{self, Craft};
+use super::disassemble::{self, Disassemble};
 use super::experiment::{self, Experiment};
 use super::help;
 
@@ -27,6 +28,7 @@ pub struct App {
     show_help: bool,
     experiment: Option<Experiment>,
     craft: Option<Craft>,
+    disassemble: Option<Disassemble>,
 }
 
 impl App {
@@ -97,6 +99,19 @@ impl App {
             return;
         }
 
+        if let Some(disassemble) = &mut self.disassemble {
+            let options = viewmodel::disassembly::options(&self.game.player);
+            match disassemble.handle_key(key_event.code, &options) {
+                disassemble::Outcome::Stay => {}
+                disassemble::Outcome::Cancel => self.disassemble = None,
+                disassemble::Outcome::Disassemble(item) => {
+                    self.disassemble = None;
+                    self.game.disassemble(item);
+                }
+            }
+            return;
+        }
+
         self.handle_game_key(key_event.code);
     }
 
@@ -106,6 +121,7 @@ impl App {
             KeyCode::Char('?') => self.show_help = true,
             KeyCode::Char('s') => self.game.search(),
             KeyCode::Char('c') => self.craft = Some(Craft::default()),
+            KeyCode::Char('d') => self.disassemble = Some(Disassemble::default()),
             KeyCode::Char('e') => self.experiment = Some(Experiment::default()),
             KeyCode::Left => self.game.walk(Direction::West),
             KeyCode::Right => self.game.walk(Direction::East),
@@ -137,6 +153,12 @@ impl Widget for &App {
             experiment.render(area, buf, &viewmodel::inventory::sorted(&self.game.player));
         } else if let Some(craft) = &self.craft {
             craft.render(area, buf, &viewmodel::crafting::options(&self.game.player));
+        } else if let Some(disassemble) = &self.disassemble {
+            disassemble.render(
+                area,
+                buf,
+                &viewmodel::disassembly::options(&self.game.player),
+            );
         }
     }
 }
