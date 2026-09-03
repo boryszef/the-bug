@@ -12,7 +12,8 @@ use std::io;
 use crate::game::{Direction, Game};
 use crate::viewmodel;
 
-use super::experiment::{Experiment, Outcome};
+use super::craft::{self, Craft};
+use super::experiment::{self, Experiment};
 use super::help;
 
 // Empirical zoom factors so the map roughly fills its pane.
@@ -25,6 +26,7 @@ pub struct App {
     exit: bool,
     show_help: bool,
     experiment: Option<Experiment>,
+    craft: Option<Craft>,
 }
 
 impl App {
@@ -59,11 +61,24 @@ impl App {
         if let Some(experiment) = &mut self.experiment {
             let inventory = viewmodel::inventory::sorted(&self.game.player);
             match experiment.handle_key(key_event.code, &inventory) {
-                Outcome::Stay => {}
-                Outcome::Cancel => self.experiment = None,
-                Outcome::Run(materials) => {
+                experiment::Outcome::Stay => {}
+                experiment::Outcome::Cancel => self.experiment = None,
+                experiment::Outcome::Run(materials) => {
                     self.experiment = None;
                     self.game.experiment(&materials);
+                }
+            }
+            return;
+        }
+
+        if let Some(craft) = &mut self.craft {
+            let options = viewmodel::crafting::options(&self.game.player);
+            match craft.handle_key(key_event.code, &options) {
+                craft::Outcome::Stay => {}
+                craft::Outcome::Cancel => self.craft = None,
+                craft::Outcome::Craft(name) => {
+                    self.craft = None;
+                    self.game.craft(name);
                 }
             }
             return;
@@ -77,7 +92,7 @@ impl App {
             KeyCode::Char('q') => self.exit = true,
             KeyCode::Char('?') => self.show_help = true,
             KeyCode::Char('s') => self.game.search(),
-            KeyCode::Char('c') => self.game.craft("Cord"),
+            KeyCode::Char('c') => self.craft = Some(Craft::default()),
             KeyCode::Char('e') => self.experiment = Some(Experiment::default()),
             KeyCode::Left => self.game.walk(Direction::West),
             KeyCode::Right => self.game.walk(Direction::East),
@@ -107,6 +122,8 @@ impl Widget for &App {
             help::render(area, buf);
         } else if let Some(experiment) = &self.experiment {
             experiment.render(area, buf, &viewmodel::inventory::sorted(&self.game.player));
+        } else if let Some(craft) = &self.craft {
+            craft.render(area, buf, &viewmodel::crafting::options(&self.game.player));
         }
     }
 }

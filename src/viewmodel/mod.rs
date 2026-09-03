@@ -6,6 +6,7 @@
 //! selection — lives here rather than in `ui`, which keeps only rendering and
 //! key handling.
 
+pub mod crafting;
 pub mod events;
 pub mod inventory;
 pub mod map;

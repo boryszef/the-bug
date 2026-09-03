@@ -1,4 +1,5 @@
 mod app;
+mod craft;
 mod experiment;
 mod help;
 

@@ -26,6 +26,13 @@ impl Default for Player {
     }
 }
 
+impl Player {
+    /// The recipes the player has discovered, in discovery order.
+    pub fn known_recipes(&self) -> &[Recipe] {
+        &self.recipes
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum Direction {
     North,
@@ -232,10 +239,20 @@ impl Map {
 }
 
 #[derive(Copy, Clone, Debug)]
-struct Recipe {
+pub struct Recipe {
     name: &'static str,
     inputs: &'static [(Material, u32)],
     output: Material,
+}
+
+impl Recipe {
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+
+    pub fn inputs(&self) -> &'static [(Material, u32)] {
+        self.inputs
+    }
 }
 
 impl PartialEq for Recipe {
@@ -591,5 +608,22 @@ mod tests {
             game.events.last().unwrap(),
             "Not enough Stone Axe to experiment."
         );
+    }
+
+    #[test]
+    fn known_recipes_starts_empty_and_grows_on_discovery() {
+        let mut game = Game::default();
+        assert!(game.player.known_recipes().is_empty());
+
+        game.player.inventory.insert(Material::Vine, 2);
+        game.experiment(&[(Material::Vine, 2)]);
+
+        let known: Vec<&str> = game
+            .player
+            .known_recipes()
+            .iter()
+            .map(Recipe::name)
+            .collect();
+        assert_eq!(known, ["Cord"]);
     }
 }
