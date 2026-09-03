@@ -30,6 +30,19 @@ pub struct App {
 }
 
 impl App {
+    /// Starts the UI on an existing game (e.g. one loaded from a save file).
+    pub fn with_game(game: Game) -> Self {
+        Self {
+            game,
+            ..Default::default()
+        }
+    }
+
+    /// The game being played, for persisting on exit.
+    pub fn game(&self) -> &Game {
+        &self.game
+    }
+
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;

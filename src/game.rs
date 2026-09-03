@@ -1,4 +1,5 @@
 use rand::RngExt;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::time::{Duration, Instant};
@@ -30,6 +31,20 @@ impl Player {
     /// The recipes the player has discovered, in discovery order.
     pub fn known_recipes(&self) -> &[Recipe] {
         &self.recipes
+    }
+
+    /// Marks the recipe with the given name as known (used when loading a save).
+    /// Returns `false` for an unrecognised name, which the caller can ignore.
+    pub(crate) fn grant_recipe(&mut self, name: &str) -> bool {
+        match RECIPES.iter().find(|recipe| recipe.name == name).copied() {
+            Some(recipe) => {
+                if !self.recipes.contains(&recipe) {
+                    self.recipes.push(recipe);
+                }
+                true
+            }
+            None => false,
+        }
     }
 }
 
@@ -117,7 +132,7 @@ fn choose_weighted<T: Copy>(choices: &[(T, u32)], rng: &mut impl rand::Rng) -> T
     unreachable!()
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Material {
     Stick,
     Stone,
@@ -211,6 +226,17 @@ impl Map {
         }
     }
 
+    /// Rebuilds a map from a saved terrain grid. Tile materials are recomputed
+    /// from the terrain; per-tile search cooldowns start fresh.
+    pub(crate) fn from_terrain(grid: Vec<Vec<TerrainType>>) -> Map {
+        let half = (grid.len() / 2) as i32;
+        let tiles = grid
+            .into_iter()
+            .map(|row| row.into_iter().map(MapTile::with_terrain).collect())
+            .collect();
+        Map { tiles, half }
+    }
+
     fn world_to_tile(&self, pos: (i32, i32)) -> (usize, usize) {
         ((pos.0 + self.half) as usize, (pos.1 + self.half) as usize)
     }
@@ -286,7 +312,7 @@ pub struct Event {
 }
 
 impl Event {
-    fn new(text: impl Into<String>, elapsed: Duration) -> Event {
+    pub(crate) fn new(text: impl Into<String>, elapsed: Duration) -> Event {
         Event {
             text: text.into(),
             elapsed,
@@ -328,6 +354,26 @@ impl Default for Game {
 }
 
 impl Game {
+    /// Rebuilds a game from saved parts. `started` is placed in the past so that
+    /// events logged after the load stay ordered after the restored ones.
+    pub(crate) fn from_saved(player: Player, map: Map, events: Vec<Event>) -> Game {
+        let latest = events
+            .iter()
+            .map(Event::elapsed)
+            .max()
+            .unwrap_or(Duration::ZERO);
+        let started = Instant::now()
+            .checked_sub(latest)
+            .unwrap_or_else(Instant::now);
+
+        Game {
+            player,
+            map,
+            events,
+            started,
+        }
+    }
+
     /// The event log, oldest first.
     pub fn events(&self) -> &[Event] {
         &self.events

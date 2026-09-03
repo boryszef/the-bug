@@ -2,14 +2,15 @@
 
 ## TODO
 
-* save game state (map, plaers, resources, recipes, etc.)
 * allow to find more than one resource per tile, when searching
 * Wrap inventory text (or make a list with a scrollbar)
+* add i18n support
 
 ## DONE
 
+* save game state (map, player, resources, recipes) to JSON; load with --load
+* stamp the game's semantic version into the save file
 * add time to event entries
-
 * add Cave terrain type
 * implement terrain probability
 * implement search function
