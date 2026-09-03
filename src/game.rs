@@ -319,7 +319,7 @@ impl Default for Game {
             player,
             map,
             events: vec![Event::new(
-                "You wake up and decide to have a walk.",
+                "You wake up and decide to go for a walk.",
                 Duration::ZERO,
             )],
             started: Instant::now(),
@@ -351,7 +351,7 @@ impl Game {
         self.player.coordinates = (nx, ny);
         if let Some(tile) = self.map.get_tile((nx, ny)) {
             let terrain = tile.terrain_type;
-            self.log(format!("You walk {} and visit {terrain}.", dir.name()));
+            self.log(format!("You walk {} into the {terrain}.", dir.name()));
         }
     }
 
@@ -375,7 +375,7 @@ impl Game {
 
         for material in found {
             *self.player.inventory.entry(material).or_insert(0) += 1;
-            self.log(format!("You found a {material} in the {terrain}."));
+            self.log(format!("You find a {material} in the {terrain}."));
         }
         self.map.update_tile_last_search_time(coords);
     }
@@ -388,14 +388,17 @@ impl Game {
             .find(|r| r.name.eq(recipe_name))
             .copied()
         else {
-            self.log(format!("You don't know how to craft {recipe_name}"));
+            self.log(format!("You don't know how to craft a {recipe_name}."));
             return;
         };
 
         for &(material, amount) in recipe.inputs {
             let entry = self.player.inventory.entry(material).or_insert(0);
             if *entry < amount {
-                self.log(format!("Not enough {material} to craft {}.", recipe.name));
+                self.log(format!(
+                    "You don't have enough {material} to craft a {}.",
+                    recipe.name
+                ));
                 return;
             }
         }
@@ -405,7 +408,7 @@ impl Game {
         }
 
         *self.player.inventory.entry(recipe.output).or_insert(0) += 1;
-        self.log(format!("You crafted a {}.", recipe.name));
+        self.log(format!("You craft a {}.", recipe.name));
     }
 
     pub fn experiment(&mut self, materials: &[(Material, u32)]) {
@@ -413,7 +416,7 @@ impl Game {
             let available = self.player.inventory.get(&material).copied().unwrap_or(0);
 
             if available < amount {
-                self.log(format!("Not enough {material} to experiment."));
+                self.log(format!("You don't have enough {material} to experiment."));
                 return;
             }
         }
@@ -426,18 +429,18 @@ impl Game {
             recipe.inputs.len() == materials.len()
                 && recipe.inputs.iter().all(|input| materials.contains(input))
         }) else {
-            self.log("The experiment failed.");
+            self.log("Nothing comes of the experiment.");
             return;
         };
 
         if !self.player.recipes.contains(recipe) {
             self.player.recipes.push(*recipe);
-            self.log(format!("You discovered how to craft {}!", recipe.name));
+            self.log(format!("You discover how to craft a {}!", recipe.name));
         }
 
         *self.player.inventory.entry(recipe.output).or_insert(0) += 1;
 
-        self.log(format!("You created a {}.", recipe.name));
+        self.log(format!("You put together a {}.", recipe.name));
     }
 }
 
@@ -590,7 +593,7 @@ mod tests {
         );
         assert_eq!(
             game.events().last().unwrap().text(),
-            "You walk north and visit Forest."
+            "You walk north into the Forest."
         );
     }
 
@@ -645,7 +648,7 @@ mod tests {
         game.experiment(&[(Material::StoneAxe, 1)]);
         assert_eq!(
             game.events().last().unwrap().text(),
-            "Not enough Stone Axe to experiment."
+            "You don't have enough Stone Axe to experiment."
         );
     }
 

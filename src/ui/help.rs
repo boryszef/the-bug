@@ -14,9 +14,9 @@ pub(super) fn render(area: Rect, buf: &mut Buffer) {
         Line::from(""),
         Line::from("← → ↑ ↓    Move"),
         Line::from("s          Search"),
-        Line::from("c          Craft menu"),
+        Line::from("c          Craft"),
         Line::from("e          Experiment"),
-        Line::from("?          Show help"),
+        Line::from("?          Toggle this help"),
         Line::from("q          Quit"),
     ];
 

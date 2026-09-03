@@ -164,11 +164,16 @@ fn render_map(game: &Game, area: Rect, buf: &mut Buffer) {
 fn render_player(game: &Game, area: Rect, buf: &mut Buffer) {
     let block = Block::bordered().title(" Player ");
 
-    let inventory = viewmodel::inventory::sorted(&game.player)
-        .iter()
-        .map(|(material, quantity)| format!("{material} {quantity}"))
-        .collect::<Vec<_>>()
-        .join(", ");
+    let inventory = viewmodel::inventory::sorted(&game.player);
+    let inventory = if inventory.is_empty() {
+        "(empty)".to_string()
+    } else {
+        inventory
+            .iter()
+            .map(|(material, quantity)| format!("{material} {quantity}"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
 
     let text = Text::from(vec![
         Line::from(format!("Level: {}", game.player.level)),

@@ -85,7 +85,7 @@ impl Experiment {
             self.cursor_for(Focus::Selected),
         );
 
-        Paragraph::new("↑↓ move   ←→ add/remove   Tab switch   e run   Esc cancel")
+        Paragraph::new("↑↓ move   ←→ add/remove   Tab switch column   e run   Esc cancel")
             .alignment(Alignment::Center)
             .render(rows[1], buf);
     }
