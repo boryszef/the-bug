@@ -9,7 +9,8 @@ use ratatui::{
 };
 use std::io;
 
-use crate::game::{Direction, Game, Material};
+use crate::game::{Direction, Game};
+use crate::viewmodel;
 
 use super::experiment::{Experiment, Outcome};
 use super::help;
@@ -56,7 +57,7 @@ impl App {
         }
 
         if let Some(experiment) = &mut self.experiment {
-            let inventory = sorted_inventory(&self.game);
+            let inventory = viewmodel::inventory::sorted(&self.game.player);
             match experiment.handle_key(key_event.code, &inventory) {
                 Outcome::Stay => {}
                 Outcome::Cancel => self.experiment = None,
@@ -105,28 +106,14 @@ impl Widget for &App {
         if self.show_help {
             help::render(area, buf);
         } else if let Some(experiment) = &self.experiment {
-            experiment.render(area, buf, &sorted_inventory(&self.game));
+            experiment.render(area, buf, &viewmodel::inventory::sorted(&self.game.player));
         }
     }
-}
-
-/// The player's inventory as a list sorted by material name, for stable display
-/// order and cursor indexing.
-fn sorted_inventory(game: &Game) -> Vec<(Material, u32)> {
-    let mut materials = game
-        .player
-        .inventory
-        .iter()
-        .map(|(material, quantity)| (*material, *quantity))
-        .collect::<Vec<_>>();
-    materials.sort_by_key(|(material, _)| format!("{material:?}"));
-    materials
 }
 
 fn render_map(game: &Game, area: Rect, buf: &mut Buffer) {
     let block = Block::bordered().title(" Map ");
     let inner = block.inner(area);
-    let half = game.map.half;
     let player_pos = game.player.coordinates;
 
     let canvas = Canvas::default()
@@ -140,12 +127,12 @@ fn render_map(game: &Game, area: Rect, buf: &mut Buffer) {
             inner.height as f64 / MAP_Y_SCALE,
         ])
         .paint(|ctx| {
-            for (y, row) in game.map.tiles.iter().enumerate() {
-                for (x, tile) in row.iter().enumerate() {
-                    let world_x = (x as i32 - half) as f64;
-                    let world_y = (y as i32 - half) as f64;
-                    ctx.print(world_x, world_y, format!("{tile}"));
-                }
+            for ((world_x, world_y), tile) in viewmodel::map::world_tiles(&game.map) {
+                ctx.print(
+                    world_x as f64,
+                    world_y as f64,
+                    tile.terrain_type.symbol().to_string(),
+                );
             }
             ctx.print(
                 player_pos.0 as f64,
@@ -160,7 +147,7 @@ fn render_map(game: &Game, area: Rect, buf: &mut Buffer) {
 fn render_player(game: &Game, area: Rect, buf: &mut Buffer) {
     let block = Block::bordered().title(" Player ");
 
-    let inventory = sorted_inventory(game)
+    let inventory = viewmodel::inventory::sorted(&game.player)
         .iter()
         .map(|(material, quantity)| format!("{material} {quantity}"))
         .collect::<Vec<_>>()
@@ -177,12 +164,8 @@ fn render_player(game: &Game, area: Rect, buf: &mut Buffer) {
 fn render_events(game: &Game, area: Rect, buf: &mut Buffer) {
     let block = Block::bordered().title(" Events ");
 
-    let lines: Vec<Line> = game
-        .events
-        .iter()
-        .rev()
-        .take(10)
-        .map(|e| Line::from(e.as_str()))
+    let lines: Vec<Line> = viewmodel::events::recent(game, 10)
+        .map(Line::from)
         .collect();
 
     Paragraph::new(Text::from(lines))

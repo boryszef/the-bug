@@ -1,5 +1,6 @@
 mod game;
 mod ui;
+mod viewmodel;
 
 use std::io;
 

@@ -208,6 +208,12 @@ impl Map {
         ((pos.0 + self.half) as usize, (pos.1 + self.half) as usize)
     }
 
+    /// Inverse of [`world_to_tile`](Self::world_to_tile): the world coordinates
+    /// of the tile at row/column indices `(x, y)`.
+    pub fn tile_to_world(&self, x: usize, y: usize) -> (i32, i32) {
+        (x as i32 - self.half, y as i32 - self.half)
+    }
+
     pub fn get_tile(&self, pos: (i32, i32)) -> Option<&MapTile> {
         let (x, y) = self.world_to_tile(pos);
         self.tiles.get(y)?.get(x)
@@ -566,6 +572,15 @@ mod tests {
         assert_eq!(TerrainType::Forest.to_string(), "Forest");
         assert_eq!(TerrainType::Forest.symbol(), '𖠰');
         assert_eq!(TerrainType::Deadland.symbol(), ' ');
+    }
+
+    #[test]
+    fn tile_to_world_round_trips_with_world_to_tile() {
+        let map = Map::new(&Player::default());
+        for pos in [(0, 0), (3, -2), (map.half, -map.half)] {
+            let (x, y) = map.world_to_tile(pos);
+            assert_eq!(map.tile_to_world(x, y), pos);
+        }
     }
 
     #[test]

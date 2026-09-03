@@ -7,12 +7,14 @@ use ratatui::{
 };
 
 use crate::game::Material;
+use crate::viewmodel::selection::MaterialSelection;
 
 /// The "experiment" overlay: pick materials from the inventory and try to
-/// discover a recipe.
+/// discover a recipe. Owns the cursor/focus; the material bookkeeping lives in
+/// [`MaterialSelection`].
 #[derive(Default)]
 pub(super) struct Experiment {
-    selected: Vec<(Material, u32)>,
+    selection: MaterialSelection,
     cursor: usize,
     focus: Focus,
 }
@@ -41,7 +43,7 @@ impl Experiment {
     pub(super) fn handle_key(&mut self, key: KeyCode, inventory: &[(Material, u32)]) -> Outcome {
         match key {
             KeyCode::Esc | KeyCode::Char('q') => return Outcome::Cancel,
-            KeyCode::Char('e') => return Outcome::Run(std::mem::take(&mut self.selected)),
+            KeyCode::Char('e') => return Outcome::Run(self.selection.take()),
             KeyCode::Tab => self.toggle_focus(),
             KeyCode::Up => self.cursor = self.cursor.saturating_sub(1),
             KeyCode::Down => {
@@ -71,14 +73,14 @@ impl Experiment {
         material_list(
             columns[0],
             buf,
-            &self.available(inventory),
+            &self.selection.available(inventory),
             " Available ",
             self.cursor_for(Focus::Available),
         );
         material_list(
             columns[1],
             buf,
-            &self.selected,
+            self.selection.items(),
             " Selected ",
             self.cursor_for(Focus::Selected),
         );
@@ -100,7 +102,7 @@ impl Experiment {
     fn list_len(&self, inventory: &[(Material, u32)]) -> usize {
         match self.focus {
             Focus::Available => inventory.len(),
-            Focus::Selected => self.selected.len(),
+            Focus::Selected => self.selection.items().len(),
         }
     }
 
@@ -109,61 +111,28 @@ impl Experiment {
         (self.focus == focus).then_some(self.cursor)
     }
 
-    fn selected_quantity(&self, material: Material) -> u32 {
-        self.selected
-            .iter()
-            .find(|(m, _)| *m == material)
-            .map_or(0, |(_, quantity)| *quantity)
-    }
-
-    /// Moves one unit of the material under the cursor into the selection,
-    /// capped at the amount the player owns.
+    /// Moves one unit of the material under the cursor into the selection.
     fn add_current(&mut self, inventory: &[(Material, u32)]) {
         if self.focus != Focus::Available {
             return;
         }
-
-        let Some(&(material, owned)) = inventory.get(self.cursor) else {
-            return;
-        };
-        if self.selected_quantity(material) >= owned {
-            return;
-        }
-
-        match self.selected.iter_mut().find(|(m, _)| *m == material) {
-            Some((_, quantity)) => *quantity += 1,
-            None => self.selected.push((material, 1)),
+        if let Some(&(material, owned)) = inventory.get(self.cursor) {
+            self.selection.add(material, owned);
         }
     }
 
     /// Returns one unit of the material under the cursor to the inventory,
-    /// dropping the row once it reaches zero.
+    /// keeping the cursor in range once a row disappears.
     fn remove_current(&mut self) {
-        if self.selected.is_empty() {
+        if self.selection.is_empty() {
             return;
         }
-
-        let index = self.cursor.min(self.selected.len() - 1);
-        let (_, quantity) = &mut self.selected[index];
-        *quantity -= 1;
-
-        if *quantity == 0 {
-            self.selected.remove(index);
-            self.cursor = self.cursor.min(self.selected.len().saturating_sub(1));
+        let index = self.cursor.min(self.selection.items().len() - 1);
+        if self.selection.decrement_at(index) {
+            self.cursor = self
+                .cursor
+                .min(self.selection.items().len().saturating_sub(1));
         }
-    }
-
-    /// Inventory with the already-selected amounts removed (saturating).
-    fn available(&self, inventory: &[(Material, u32)]) -> Vec<(Material, u32)> {
-        inventory
-            .iter()
-            .map(|&(material, owned)| {
-                (
-                    material,
-                    owned.saturating_sub(self.selected_quantity(material)),
-                )
-            })
-            .collect()
     }
 }
 
@@ -183,7 +152,7 @@ fn material_list(
             } else {
                 Style::default()
             };
-            ListItem::new(format!("{material:?}  {quantity}")).style(style)
+            ListItem::new(format!("{material}  {quantity}")).style(style)
         });
 
     let list = List::new(items).block(Block::bordered().title(title));
@@ -195,7 +164,7 @@ mod tests {
     use super::*;
     use crate::game::Material::{Stick, Stone, Vine};
 
-    /// Sorted the same way `sorted_inventory` sorts: by debug name.
+    /// Sorted the same way `viewmodel::inventory::sorted` sorts.
     fn inventory() -> Vec<(Material, u32)> {
         vec![(Stick, 1), (Stone, 3), (Vine, 2)]
     }
@@ -228,7 +197,7 @@ mod tests {
         for _ in 0..10 {
             exp.handle_key(KeyCode::Down, &inv);
         }
-        assert_eq!(exp.cursor, exp.selected.len() - 1);
+        assert_eq!(exp.cursor, exp.selection.items().len() - 1);
     }
 
     #[test]
@@ -307,10 +276,10 @@ mod tests {
         exp.handle_key(KeyCode::Tab, &inv); // focus Selected
 
         exp.handle_key(KeyCode::Left, &inv);
-        assert_eq!(exp.selected, vec![(Stone, 1)]);
+        assert_eq!(exp.selection.items(), &[(Stone, 1)]);
 
         exp.handle_key(KeyCode::Left, &inv);
-        assert!(exp.selected.is_empty());
+        assert!(exp.selection.is_empty());
         assert_eq!(exp.cursor, 0);
     }
 
@@ -348,14 +317,6 @@ mod tests {
             exp.handle_key(KeyCode::Char('e'), &inv),
             Outcome::Run(vec![(Stick, 1)])
         );
-        assert!(exp.selected.is_empty());
-    }
-
-    #[test]
-    fn available_subtracts_selection_saturating() {
-        let mut exp = Experiment::default();
-        let inv = inventory();
-        exp.handle_key(KeyCode::Right, &inv); // Stick 1 -> remaining 0
-        assert_eq!(exp.available(&inv), vec![(Stick, 0), (Stone, 3), (Vine, 2)]);
+        assert!(exp.selection.is_empty());
     }
 }
