@@ -182,7 +182,7 @@ fn render_events(game: &Game, area: Rect, buf: &mut Buffer) {
     let block = Block::bordered().title(" Events ");
 
     let lines: Vec<Line> = viewmodel::events::recent(game, 10)
-        .map(Line::from)
+        .map(|event| Line::from(format!("[{}] {}", event.timestamp, event.text)))
         .collect();
 
     Paragraph::new(Text::from(lines))

@@ -2,8 +2,13 @@
 
 ## TODO
 
+* save game state (map, plaers, resources, recipes, etc.)
+* allow to find more than one resource per tile, when searching
+* Wrap inventory text (or make a list with a scrollbar)
 
 ## DONE
+
+* add time to event entries
 
 * add Cave terrain type
 * implement terrain probability

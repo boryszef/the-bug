@@ -1,7 +1,7 @@
 use rand::RngExt;
 use std::collections::HashMap;
 use std::fmt;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 const MAP_MIN_SIZE: u32 = 15;
 const MAP_PER_LEVEL_INCREMENT: u32 = 2;
@@ -278,11 +278,37 @@ const RECIPES: &[Recipe] = &[
     },
 ];
 
+/// A message in the event log, tagged with how far into the session it happened.
+#[derive(Debug)]
+pub struct Event {
+    text: String,
+    elapsed: Duration,
+}
+
+impl Event {
+    fn new(text: impl Into<String>, elapsed: Duration) -> Event {
+        Event {
+            text: text.into(),
+            elapsed,
+        }
+    }
+
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    /// Time from the start of the session to when this event was logged.
+    pub fn elapsed(&self) -> Duration {
+        self.elapsed
+    }
+}
+
 #[derive(Debug)]
 pub struct Game {
     pub player: Player,
     pub map: Map,
-    pub events: Vec<String>,
+    events: Vec<Event>,
+    started: Instant,
 }
 
 impl Default for Game {
@@ -292,12 +318,27 @@ impl Default for Game {
         Self {
             player,
             map,
-            events: vec!["You wake up and decide to have a walk.".to_string()],
+            events: vec![Event::new(
+                "You wake up and decide to have a walk.",
+                Duration::ZERO,
+            )],
+            started: Instant::now(),
         }
     }
 }
 
 impl Game {
+    /// The event log, oldest first.
+    pub fn events(&self) -> &[Event] {
+        &self.events
+    }
+
+    /// Appends a message to the event log, timestamped with the current session
+    /// elapsed time.
+    fn log(&mut self, text: impl Into<String>) {
+        self.events.push(Event::new(text, self.started.elapsed()));
+    }
+
     pub fn walk(&mut self, dir: Direction) {
         let (dx, dy) = dir.delta();
         let (x, y) = self.player.coordinates;
@@ -309,11 +350,8 @@ impl Game {
 
         self.player.coordinates = (nx, ny);
         if let Some(tile) = self.map.get_tile((nx, ny)) {
-            self.events.push(format!(
-                "You walk {} and visit {}.",
-                dir.name(),
-                tile.terrain_type
-            ));
+            let terrain = tile.terrain_type;
+            self.log(format!("You walk {} and visit {terrain}.", dir.name()));
         }
     }
 
@@ -337,24 +375,27 @@ impl Game {
 
         for material in found {
             *self.player.inventory.entry(material).or_insert(0) += 1;
-            self.events
-                .push(format!("You found a {material} in the {terrain}."));
+            self.log(format!("You found a {material} in the {terrain}."));
         }
         self.map.update_tile_last_search_time(coords);
     }
 
     pub fn craft(&mut self, recipe_name: &str) {
-        let Some(recipe) = self.player.recipes.iter().find(|r| r.name.eq(recipe_name)) else {
-            self.events
-                .push(format!("You don't know how to craft {recipe_name}"));
+        let Some(recipe) = self
+            .player
+            .recipes
+            .iter()
+            .find(|r| r.name.eq(recipe_name))
+            .copied()
+        else {
+            self.log(format!("You don't know how to craft {recipe_name}"));
             return;
         };
 
         for &(material, amount) in recipe.inputs {
             let entry = self.player.inventory.entry(material).or_insert(0);
             if *entry < amount {
-                self.events
-                    .push(format!("Not enough {material} to craft {}.", recipe.name));
+                self.log(format!("Not enough {material} to craft {}.", recipe.name));
                 return;
             }
         }
@@ -364,7 +405,7 @@ impl Game {
         }
 
         *self.player.inventory.entry(recipe.output).or_insert(0) += 1;
-        self.events.push(format!("You crafted a {}.", recipe.name));
+        self.log(format!("You crafted a {}.", recipe.name));
     }
 
     pub fn experiment(&mut self, materials: &[(Material, u32)]) {
@@ -372,8 +413,7 @@ impl Game {
             let available = self.player.inventory.get(&material).copied().unwrap_or(0);
 
             if available < amount {
-                self.events
-                    .push(format!("Not enough {material} to experiment."));
+                self.log(format!("Not enough {material} to experiment."));
                 return;
             }
         }
@@ -386,19 +426,18 @@ impl Game {
             recipe.inputs.len() == materials.len()
                 && recipe.inputs.iter().all(|input| materials.contains(input))
         }) else {
-            self.events.push("The experiment failed.".to_string());
+            self.log("The experiment failed.");
             return;
         };
 
         if !self.player.recipes.contains(recipe) {
             self.player.recipes.push(*recipe);
-            self.events
-                .push(format!("You discovered how to craft {}!", recipe.name));
+            self.log(format!("You discovered how to craft {}!", recipe.name));
         }
 
         *self.player.inventory.entry(recipe.output).or_insert(0) += 1;
 
-        self.events.push(format!("You created a {}.", recipe.name));
+        self.log(format!("You created a {}.", recipe.name));
     }
 }
 
@@ -458,17 +497,17 @@ mod tests {
         let initial = game.player.coordinates;
         game.walk(Direction::West);
         assert_eq!(game.player.coordinates, (initial.0 - 1, initial.1));
-        assert_eq!(game.events.len(), 2);
-        let last = game.events.last().unwrap();
-        assert!(last.starts_with("You walk west"));
+        assert_eq!(game.events().len(), 2);
+        let last = game.events().last().unwrap();
+        assert!(last.text().starts_with("You walk west"));
 
         // set to left boundary and ensure no move
         let h = game.map.half;
         game.player.coordinates = (-h, 0);
-        let before_events = game.events.len();
+        let before_events = game.events().len();
         game.walk(Direction::West);
         assert_eq!(game.player.coordinates.0, -h);
-        assert_eq!(game.events.len(), before_events);
+        assert_eq!(game.events().len(), before_events);
     }
 
     #[test]
@@ -477,17 +516,17 @@ mod tests {
         let initial = game.player.coordinates;
         game.walk(Direction::East);
         assert_eq!(game.player.coordinates, (initial.0 + 1, initial.1));
-        assert_eq!(game.events.len(), 2);
-        let last = game.events.last().unwrap();
-        assert!(last.starts_with("You walk east"));
+        assert_eq!(game.events().len(), 2);
+        let last = game.events().last().unwrap();
+        assert!(last.text().starts_with("You walk east"));
 
         // set to right boundary and ensure no move
         let h = game.map.half;
         game.player.coordinates = (h, 0);
-        let before_events = game.events.len();
+        let before_events = game.events().len();
         game.walk(Direction::East);
         assert_eq!(game.player.coordinates.0, h);
-        assert_eq!(game.events.len(), before_events);
+        assert_eq!(game.events().len(), before_events);
     }
 
     #[test]
@@ -496,17 +535,17 @@ mod tests {
         let initial = game.player.coordinates;
         game.walk(Direction::North);
         assert_eq!(game.player.coordinates, (initial.0, initial.1 + 1));
-        assert_eq!(game.events.len(), 2);
-        let last = game.events.last().unwrap();
-        assert!(last.starts_with("You walk north"));
+        assert_eq!(game.events().len(), 2);
+        let last = game.events().last().unwrap();
+        assert!(last.text().starts_with("You walk north"));
 
         // set to top boundary and ensure no move
         let h = game.map.half;
         game.player.coordinates = (0, h);
-        let before_events = game.events.len();
+        let before_events = game.events().len();
         game.walk(Direction::North);
         assert_eq!(game.player.coordinates.1, h);
-        assert_eq!(game.events.len(), before_events);
+        assert_eq!(game.events().len(), before_events);
     }
 
     #[test]
@@ -515,17 +554,17 @@ mod tests {
         let initial = game.player.coordinates;
         game.walk(Direction::South);
         assert_eq!(game.player.coordinates, (initial.0, initial.1 - 1));
-        assert_eq!(game.events.len(), 2);
-        let last = game.events.last().unwrap();
-        assert!(last.starts_with("You walk south"));
+        assert_eq!(game.events().len(), 2);
+        let last = game.events().last().unwrap();
+        assert!(last.text().starts_with("You walk south"));
 
         // set to bottom boundary and ensure no move
         let h = game.map.half;
         game.player.coordinates = (0, -h);
-        let before_events = game.events.len();
+        let before_events = game.events().len();
         game.walk(Direction::South);
         assert_eq!(game.player.coordinates.1, -h);
-        assert_eq!(game.events.len(), before_events);
+        assert_eq!(game.events().len(), before_events);
     }
 
     #[test]
@@ -550,7 +589,7 @@ mod tests {
             TerrainType::Forest
         );
         assert_eq!(
-            game.events.last().unwrap(),
+            game.events().last().unwrap().text(),
             "You walk north and visit Forest."
         );
     }
@@ -605,7 +644,7 @@ mod tests {
         let mut game = Game::default();
         game.experiment(&[(Material::StoneAxe, 1)]);
         assert_eq!(
-            game.events.last().unwrap(),
+            game.events().last().unwrap().text(),
             "Not enough Stone Axe to experiment."
         );
     }
@@ -625,5 +664,17 @@ mod tests {
             .map(Recipe::name)
             .collect();
         assert_eq!(known, ["Cord"]);
+    }
+
+    #[test]
+    fn events_are_timestamped_in_non_decreasing_order() {
+        let mut game = Game::default();
+        assert!(game.events()[0].elapsed() < Duration::from_secs(1));
+
+        game.walk(Direction::North);
+        game.walk(Direction::South);
+
+        let elapsed: Vec<Duration> = game.events().iter().map(Event::elapsed).collect();
+        assert!(elapsed.windows(2).all(|w| w[0] <= w[1]));
     }
 }
