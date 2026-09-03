@@ -51,6 +51,10 @@ struct SaveState {
 #[derive(Serialize, Deserialize)]
 struct PlayerState {
     level: u32,
+    #[serde(default)]
+    experience: u32,
+    #[serde(default)]
+    crafts_completed: u32,
     coordinates: (i32, i32),
     inventory: HashMap<Material, u32>,
     recipes: Vec<String>,
@@ -100,6 +104,8 @@ fn capture(game: &Game) -> SaveState {
         version: VERSION.to_string(),
         player: PlayerState {
             level: game.player.level,
+            experience: game.player.experience,
+            crafts_completed: game.player.crafts_completed,
             coordinates: game.player.coordinates,
             inventory: game.player.inventory.clone(),
             recipes: game
@@ -138,6 +144,8 @@ fn restore(state: SaveState) -> io::Result<Game> {
 
     let mut player = Player::default();
     player.level = state.player.level;
+    player.experience = state.player.experience;
+    player.crafts_completed = state.player.crafts_completed;
     player.coordinates = state.player.coordinates;
     player.inventory = state.player.inventory;
     for name in &state.player.recipes {
@@ -275,6 +283,29 @@ mod tests {
             game.events().last().unwrap().category(),
             EventCategory::General
         );
+    }
+
+    #[test]
+    fn experience_and_craft_count_survive_round_trip() {
+        let mut game = Game::default();
+        game.player.experience = 37;
+        game.player.crafts_completed = 4;
+
+        let restored = roundtrip(&game);
+        assert_eq!(restored.player.experience, 37);
+        assert_eq!(restored.player.crafts_completed, 4);
+    }
+
+    #[test]
+    fn player_without_experience_fields_defaults_to_zero() {
+        let json = r#"{
+            "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
+            "map": { "terrain": ["V"] },
+            "events": []
+        }"#;
+        let game = restore(serde_json::from_str(json).unwrap()).unwrap();
+        assert_eq!(game.player.experience, 0);
+        assert_eq!(game.player.crafts_completed, 0);
     }
 
     #[test]

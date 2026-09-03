@@ -11,6 +11,9 @@ const DECAY_WINDOW_SECS: f64 = 60.0;
 #[derive(Debug)]
 pub struct Player {
     pub level: u32,
+    pub experience: u32,
+    /// Successful crafts so far — every tenth grants a point of experience.
+    pub crafts_completed: u32,
     pub coordinates: (i32, i32),
     pub inventory: HashMap<Material, u32>,
     recipes: Vec<Recipe>,
@@ -20,6 +23,8 @@ impl Default for Player {
     fn default() -> Self {
         Self {
             level: 1,
+            experience: 0,
+            crafts_completed: 0,
             coordinates: (0, 0),
             inventory: HashMap::new(),
             recipes: Vec::new(),
@@ -405,6 +410,11 @@ impl Game {
         &self.events
     }
 
+    /// `(recipes discovered, recipes that exist)`.
+    pub fn recipe_progress(&self) -> (usize, usize) {
+        (self.player.known_recipes().len(), RECIPES.len())
+    }
+
     /// Appends a message to the event log, timestamped with the current session
     /// elapsed time.
     fn log(&mut self, category: EventCategory, text: impl Into<String>) {
@@ -490,6 +500,11 @@ impl Game {
             EventCategory::Crafting,
             format!("You craft a {}.", recipe.name),
         );
+
+        self.player.crafts_completed += 1;
+        if self.player.crafts_completed.is_multiple_of(10) {
+            self.player.experience += 1;
+        }
     }
 
     pub fn experiment(&mut self, materials: &[(Material, u32)]) {
@@ -530,6 +545,7 @@ impl Game {
         let newly_learned = !self.player.recipes.contains(recipe);
         if newly_learned {
             self.player.recipes.push(*recipe);
+            self.player.experience += 10;
         }
 
         *self.player.inventory.entry(recipe.output).or_insert(0) += 1;
@@ -776,6 +792,63 @@ mod tests {
             .map(Recipe::name)
             .collect();
         assert_eq!(known, ["Cord"]);
+    }
+
+    #[test]
+    fn recipe_progress_reports_known_and_total() {
+        let mut game = Game::default();
+        assert_eq!(game.recipe_progress(), (0, RECIPES.len()));
+
+        game.player.inventory.insert(Material::Vine, 2);
+        game.experiment(&[(Material::Vine, 2)]);
+        assert_eq!(game.recipe_progress().0, 1);
+    }
+
+    #[test]
+    fn experiment_discovery_grants_experience() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Material::Vine, 4);
+
+        game.experiment(&[(Material::Vine, 2)]);
+        assert_eq!(game.player.experience, 10);
+
+        game.experiment(&[(Material::Vine, 2)]); // already known -> no XP
+        assert_eq!(game.player.experience, 10);
+    }
+
+    #[test]
+    fn crafting_grants_one_xp_per_ten_successful_crafts() {
+        let mut game = Game::default();
+        game.player.grant_recipe("Cord");
+
+        game.craft("Unknown"); // does not count
+        game.craft("Cord"); // known but no Vine -> shortage, does not count
+        assert_eq!(game.player.crafts_completed, 0);
+
+        for _ in 0..10 {
+            game.player.inventory.insert(Material::Vine, 2);
+            game.craft("Cord");
+        }
+        assert_eq!(game.player.crafts_completed, 10);
+        assert_eq!(game.player.experience, 1);
+    }
+
+    #[test]
+    fn search_yields_every_material_a_tile_offers() {
+        let mut game = Game::default();
+        let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
+        game.map.tiles[ty][tx] = MapTile {
+            terrain_type: TerrainType::Forest,
+            materials: HashMap::from([(Material::Stick, 1.0), (Material::Vine, 1.0)]),
+            last_search_time: None,
+        };
+        let before = game.events().len();
+
+        game.search();
+
+        assert_eq!(game.player.inventory.get(&Material::Stick), Some(&1));
+        assert_eq!(game.player.inventory.get(&Material::Vine), Some(&1));
+        assert_eq!(game.events().len(), before + 2);
     }
 
     #[test]

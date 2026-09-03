@@ -2,13 +2,14 @@
 
 ## TODO
 
-* experiment and crafting should grant experience points: 1 per 10 crafts and 10 per each successful experiment (new recipe)
-* allow to find more than one resource per tile, when searching (should work - just confirm)
 * Wrap inventory text (or make a list with a scrollbar)
 * add i18n support
 
 ## DONE
 
+* show discovered-recipe ratio (known/total) in the player panel
+* grant XP: +10 per new recipe, +1 per 10 crafts
+* confirm search can yield multiple materials from one tile (test only)
 * logs have categories (general / experiment / crafting), colour-coded
 * stop logging walking; experiment logs now show inputs and result
 * save game state (map, player, resources, recipes) to JSON; load with --load
