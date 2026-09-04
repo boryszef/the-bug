@@ -6,18 +6,21 @@
 use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
-use crate::game::{Event, EventCategory, Game, Item, Map, Player, TerrainType};
+use crate::game::{
+    Event, EventCategory, Game, Item, Map, Player, RestoreState, SaveState, TerrainType,
+};
 
 /// The game's semantic version, stamped into every save file.
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Single-character codes for terrain in the save file, so a whole map row fits
-/// on one line and the layout is easy to see and edit.
-fn terrain_code(terrain: TerrainType) -> char {
+/// on one line and the layout is easy to see and edit. Used by `Map`'s
+/// `SaveState`/`RestoreState` impls in `game.rs`.
+pub(crate) fn terrain_code(terrain: TerrainType) -> char {
     match terrain {
         TerrainType::Meadow => 'M',
         TerrainType::Forest => 'F',
@@ -40,8 +43,11 @@ fn terrain_from_code(code: char) -> Option<TerrainType> {
     }
 }
 
+/// The whole on-disk save shape: version stamp plus each sub-type's own saved
+/// shape (see `Player`/`Map`/`Event`'s `SaveState`/`RestoreState` impls in
+/// `game.rs`).
 #[derive(Serialize, Deserialize)]
-struct SaveState {
+struct SaveFile {
     /// The game version that wrote this file. Absent in hand-made files.
     #[serde(default)]
     version: String,
@@ -51,31 +57,31 @@ struct SaveState {
 }
 
 #[derive(Serialize, Deserialize)]
-struct PlayerState {
-    level: u32,
+pub(crate) struct PlayerState {
+    pub(crate) level: u32,
     #[serde(default)]
-    experience: u32,
+    pub(crate) experience: u32,
     #[serde(default)]
-    crafts_completed: u32,
-    coordinates: (i32, i32),
-    inventory: HashMap<Item, u32>,
-    recipes: Vec<String>,
+    pub(crate) crafts_completed: u32,
+    pub(crate) coordinates: (i32, i32),
+    pub(crate) inventory: HashMap<Item, u32>,
+    pub(crate) recipes: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize)]
-struct MapState {
+pub(crate) struct MapState {
     /// One string per map row, one character per tile (see `terrain_code`).
     /// The grid size is the map size.
-    terrain: Vec<String>,
+    pub(crate) terrain: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize)]
-struct EventState {
+pub(crate) struct EventState {
     /// Absent in older / hand-made files; defaults to `General`.
     #[serde(default)]
-    category: EventCategory,
-    text: String,
-    elapsed_secs: f64,
+    pub(crate) category: EventCategory,
+    pub(crate) text: String,
+    pub(crate) elapsed_secs: f64,
 }
 
 /// Writes the game to `the-bug-save-<unix-seconds>.json` in the current
@@ -90,7 +96,7 @@ pub fn save(game: &Game) -> io::Result<PathBuf> {
 /// Loads a game from a JSON save file.
 pub fn load(path: &Path) -> io::Result<Game> {
     let json = std::fs::read_to_string(path)?;
-    let state: SaveState =
+    let state: SaveFile =
         serde_json::from_str(&json).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
     if !state.version.is_empty() && state.version != VERSION {
         eprintln!(
@@ -101,77 +107,30 @@ pub fn load(path: &Path) -> io::Result<Game> {
     restore(state)
 }
 
-fn capture(game: &Game) -> SaveState {
-    SaveState {
+fn capture(game: &Game) -> SaveFile {
+    SaveFile {
         version: VERSION.to_string(),
-        player: PlayerState {
-            level: game.player.level,
-            experience: game.player.experience,
-            crafts_completed: game.player.crafts_completed,
-            coordinates: game.player.coordinates,
-            inventory: game.player.inventory.clone(),
-            recipes: game
-                .player
-                .known_recipes()
-                .iter()
-                .map(|recipe| recipe.name().to_string())
-                .collect(),
-        },
-        map: MapState {
-            terrain: game
-                .map
-                .tiles
-                .iter()
-                .map(|row| {
-                    row.iter()
-                        .map(|tile| terrain_code(tile.terrain_type))
-                        .collect()
-                })
-                .collect(),
-        },
-        events: game
-            .events()
-            .iter()
-            .map(|event| EventState {
-                category: event.category(),
-                text: event.text().to_string(),
-                elapsed_secs: event.elapsed().as_secs_f64(),
-            })
-            .collect(),
+        player: game.player.save_state(),
+        map: game.map.save_state(),
+        events: game.events().iter().map(Event::save_state).collect(),
     }
 }
 
-fn restore(state: SaveState) -> io::Result<Game> {
-    let map = Map::from_terrain(parse_terrain(&state.map.terrain)?);
-
-    let mut player = Player::default();
-    player.level = state.player.level;
-    player.experience = state.player.experience;
-    player.crafts_completed = state.player.crafts_completed;
-    player.coordinates = state.player.coordinates;
-    player.inventory = state.player.inventory;
-    for name in &state.player.recipes {
-        player.grant_recipe(name);
-    }
-
+fn restore(state: SaveFile) -> io::Result<Game> {
+    let map = Map::restore_state(state.map)?;
+    let player = Player::restore_state(state.player)?;
     let events = state
         .events
         .into_iter()
-        .map(|event| {
-            Event::new(
-                event.category,
-                event.text,
-                Duration::from_secs_f64(event.elapsed_secs.max(0.0)),
-            )
-        })
-        .collect();
+        .map(Event::restore_state)
+        .collect::<io::Result<Vec<_>>>()?;
 
     Ok(Game::from_saved(player, map, events))
 }
 
 /// Parses the terrain rows into a grid, rejecting an empty / ragged grid or an
-/// unknown terrain code.
-fn parse_terrain(rows: &[String]) -> io::Result<Vec<Vec<TerrainType>>> {
+/// unknown terrain code. Used by `Map::restore_state` in `game.rs`.
+pub(crate) fn parse_terrain(rows: &[String]) -> io::Result<Vec<Vec<TerrainType>>> {
     let width = rows.first().map_or(0, |row| row.chars().count());
     if width == 0 || rows.iter().any(|row| row.chars().count() != width) {
         return Err(io::Error::new(

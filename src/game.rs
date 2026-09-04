@@ -2,11 +2,26 @@ use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
+use std::io;
 use std::time::{Duration, Instant};
 
 const MAP_MIN_SIZE: u32 = 21;
 const MAP_PER_LEVEL_INCREMENT: u32 = 2;
 const DECAY_WINDOW_SECS: f64 = 60.0;
+
+/// Maps a live game type to its on-disk save shape (the DTO types live in
+/// `save.rs`, colocating the mapping with the type it applies to keeps each
+/// struct's own fields and its save-shape mapping from drifting apart).
+pub(crate) trait SaveState {
+    type Saved;
+    fn save_state(&self) -> Self::Saved;
+}
+
+/// Rebuilds a live game type from its on-disk save shape.
+pub(crate) trait RestoreState: Sized {
+    type Saved;
+    fn restore_state(saved: Self::Saved) -> io::Result<Self>;
+}
 
 #[derive(Debug)]
 pub struct Player {
@@ -17,6 +32,11 @@ pub struct Player {
     pub coordinates: (i32, i32),
     pub inventory: HashMap<Item, u32>,
     recipes: Vec<Recipe>,
+    // Wired up by the quest system (docs/quest-system.md), still in progress.
+    #[allow(dead_code)]
+    open_quest: Option<QuestID>,
+    #[allow(dead_code)]
+    quests_completed: Vec<QuestID>,
 }
 
 impl Default for Player {
@@ -28,6 +48,8 @@ impl Default for Player {
             coordinates: (0, 0),
             inventory: HashMap::new(),
             recipes: Vec::new(),
+            open_quest: None,
+            quests_completed: Vec::new(),
         }
     }
 }
@@ -62,6 +84,44 @@ impl Player {
             }
             None => false,
         }
+    }
+}
+
+impl SaveState for Player {
+    type Saved = crate::save::PlayerState;
+
+    fn save_state(&self) -> Self::Saved {
+        crate::save::PlayerState {
+            level: self.level,
+            experience: self.experience,
+            crafts_completed: self.crafts_completed,
+            coordinates: self.coordinates,
+            inventory: self.inventory.clone(),
+            recipes: self
+                .known_recipes()
+                .iter()
+                .map(|recipe| recipe.name().to_string())
+                .collect(),
+        }
+    }
+}
+
+impl RestoreState for Player {
+    type Saved = crate::save::PlayerState;
+
+    fn restore_state(saved: Self::Saved) -> io::Result<Player> {
+        let mut player = Player {
+            level: saved.level,
+            experience: saved.experience,
+            crafts_completed: saved.crafts_completed,
+            coordinates: saved.coordinates,
+            inventory: saved.inventory,
+            ..Player::default()
+        };
+        for name in &saved.recipes {
+            player.grant_recipe(name);
+        }
+        Ok(player)
     }
 }
 
@@ -309,6 +369,34 @@ impl Map {
     }
 }
 
+impl SaveState for Map {
+    type Saved = crate::save::MapState;
+
+    fn save_state(&self) -> Self::Saved {
+        crate::save::MapState {
+            terrain: self
+                .tiles
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .map(|tile| crate::save::terrain_code(tile.terrain_type))
+                        .collect()
+                })
+                .collect(),
+        }
+    }
+}
+
+impl RestoreState for Map {
+    type Saved = crate::save::MapState;
+
+    fn restore_state(saved: Self::Saved) -> io::Result<Map> {
+        Ok(Map::from_terrain(crate::save::parse_terrain(
+            &saved.terrain,
+        )?))
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct Recipe {
     name: &'static str,
@@ -446,6 +534,61 @@ impl Event {
         self.elapsed
     }
 }
+
+impl SaveState for Event {
+    type Saved = crate::save::EventState;
+
+    fn save_state(&self) -> Self::Saved {
+        crate::save::EventState {
+            category: self.category(),
+            text: self.text().to_string(),
+            elapsed_secs: self.elapsed().as_secs_f64(),
+        }
+    }
+}
+
+impl RestoreState for Event {
+    type Saved = crate::save::EventState;
+
+    fn restore_state(saved: Self::Saved) -> io::Result<Event> {
+        Ok(Event::new(
+            saved.category,
+            saved.text,
+            Duration::from_secs_f64(saved.elapsed_secs.max(0.0)),
+        ))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+enum QuestID {
+    CraftArrows,
+    ExploreRuins,
+}
+
+// Wired up by the quest system (docs/quest-system.md), still in progress.
+#[allow(dead_code)]
+struct Quest {
+    id: QuestID,
+    name: &'static str,
+    description: &'static str,
+    dependencies: &'static [QuestID],
+}
+
+#[allow(dead_code)]
+const QUESTS: &[Quest] = &[
+    Quest {
+        id: QuestID::CraftArrows,
+        name: "Craft Arrows",
+        description: "Group of local hunters is preparing for a hunt. They asked you to create 5 arrows for them. Visit the forrest to gather sticks and exeriment with them to learn how to craft arrows.",
+        dependencies: &[],
+    },
+    Quest {
+        id: QuestID::ExploreRuins,
+        name: "Explore the Ruins",
+        description: "A passing traveler told you about some ruins nearby. They said that there are some old artifacts there. You should go and explore.",
+        dependencies: &[],
+    },
+];
 
 #[derive(Debug)]
 pub struct Game {
