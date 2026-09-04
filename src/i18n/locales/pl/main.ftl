@@ -6,20 +6,20 @@
 
 ## Event log lines.
 
-event-awoke = Budzisz się i postanawiasz wybrać się na spacer.
+event-awoke = Budzisz się i postanawiasz zbadać okolicę.
 event-found = Znajdujesz { $item } { $terrain }.
 event-quest-accepted = Zadanie przyjęte: { $quest }
 event-quest-completed = Zadanie ukończone: { $quest }!
-event-unknown-recipe = Nie wiesz, jak zrobić { $recipe }.
-event-craft-shortage = Nie masz wystarczająco dużo { $needed }, aby zrobić { $output }.
+event-unknown-recipe = Nie wiesz jak zrobić { $recipe }.
+event-craft-shortage = Masz za mało { $needed }, aby zrobić { $output }.
 event-crafted = Tworzysz { $output }.
 event-experiment-shortage = Eksperyment: { $items } → za mało { $missing } (masz { $available }, potrzeba { $needed })
-event-experiment-failed = Eksperyment: { $items } → nic
+event-experiment-failed = Eksperyment: { $items } → klapa
 event-experimented = Eksperyment: { $items } → { $output }{ $newly_learned ->
     [yes] { " (nowy przepis!)" }
    *[no] {""}
 }
-event-disassembled = Rozkładasz { $item }, odzyskując { $recovered }.
+event-disassembled = Rozbierasz { $item }, odzyskując { $recovered }.
 
 ## Item names (nominative), with a `.genitive` attribute for the "not
 ## enough X" events.
@@ -50,8 +50,8 @@ item-microcontroller = Mikrokontroler
     .genitive = mikrokontrolera
 item-speaker = Głośnik
     .genitive = głośnika
-item-metal-detector = Wykrywacz Metali
-    .genitive = wykrywacza metali
+item-metal-detector = Wykrywacz Metalu
+    .genitive = wykrywacza metalu
 item-battery = Bateria
     .genitive = baterii
 item-solar-panel = Panel Słoneczny
@@ -84,10 +84,10 @@ terrain-deadland = Pustkowie
 
 ## Quest name/description.
 
-quest-craft-arrows-name = Wykuj Strzały
-quest-craft-arrows-description = Coś znów poruszyło się na wschodzie. Przez jakiś czas było spokojnie, ale kłopoty zawsze zdają się nadchodzić z tamtej strony. Cokolwiek to jest, spłoszyło zwierzynę, a grupa miejscowych myśliwych szykuje się na polowanie. Poprosili cię o wykucie 5 strzał. Idź do lasu po patyki, a potem poeksperymentuj z nimi, by nauczyć się, jak robi się strzały.
+quest-craft-arrows-name = Wyprodukuj Strzały
+quest-craft-arrows-description = Coś znów szykuje się na wschodzie. Od jakiegoś czasu było spokojnie, ale doświadczenie pokazuje, że kłopoty zawsze nadchodzą z tamtej strony. Cokolwiek to jest, spłoszyło grubszą zwierzynę, więc grupa miejscowych myśliwych szykuje się na polowanie. Poprosili cię o przygotowanie 5 strzał. Idź do lasu po patyki, a potem poeksperymentuj z nimi, by nauczyć się, jak robi się strzały.
 quest-explore-ruins-name = Zbadaj Ruiny
-quest-explore-ruins-description = Przejezdny podróżny wspomniał o pobliskich ruinach, podobno usianych starymi artefaktami. Podobno na tych równinach stało niegdyś kilka wiosek, pozostałości wielkiej cywilizacji sprzed jakichś 500 lat — "Cywilizacji Cyfrowej", jak nazywają ją odkrywcy. Powinieneś zobaczyć to na własne oczy.
+quest-explore-ruins-description = Przejezdny podróżny wspomniał o pobliskich ruinach, podobno usianych starymi przedmiotami. Podobno na tych równinach znajdowało się niegdyś kilka wiosek - pozostałości wielkiej cywilizacji sprzed 500 lat — "Cywilizacji Cyfrowej", jak nazywają ją odkrywcy. Powinieneś zobaczyć to na własne oczy.
 
 ## Panel titles.
 
@@ -99,7 +99,7 @@ panel-recipes-title = Przepisy
 panel-experiment-title = Eksperyment
 panel-available-title = Dostępne
 panel-selected-title = Wybrane
-panel-disassemble-title = Rozłóż
+panel-disassemble-title = Rozmontuj
 panel-items-title = Przedmioty
 panel-quests-title = Zadania
 panel-active-title = Aktywne
@@ -107,7 +107,7 @@ panel-active-title = Aktywne
 ## Player panel.
 
 player-level = Poziom: { $level }
-player-xp = PD: { $xp }
+player-xp = XP: { $xp }
 player-recipes = Przepisy: { $known }/{ $total }
 player-quests = Zadania: { $completed }/{ $total } — { $active }
 player-quest-none = (brak)
