@@ -76,7 +76,7 @@ pub(super) const QUESTS: &[Quest] = &[
     Quest {
         id: QuestID::CraftArrows,
         name: "Craft Arrows",
-        description: "Group of local hunters is preparing for a hunt. They asked you to create 5 arrows for them. Visit the forrest to gather sticks and exeriment with them to learn how to craft arrows.",
+        description: "Something has been stirring in the east again. Things had been quiet for a while, but trouble always seems to come from that direction. Whatever it is, it's spooked the big game, and a group of local hunters is gearing up for a hunt. They've asked you to craft 5 arrows for them. Head to the forest to gather sticks, then experiment with them to learn how arrows are made.",
         dependencies: &[],
         condition: QuestCondition {
             event: EventTypeID::CraftItem(Item::Arrow),
@@ -88,7 +88,7 @@ pub(super) const QUESTS: &[Quest] = &[
     Quest {
         id: QuestID::ExploreRuins,
         name: "Explore the Ruins",
-        description: "A passing traveler told you about some ruins nearby. They said that there are some old artifacts there. You should go and explore.",
+        description: "A passing traveler mentioned some ruins nearby, said to be scattered with old artifacts. Apparently, a few villages once stood on these flats, remnants of a great civilization from roughly 500 years ago — the \"Digital Civilization,\" as the explorers call it. You should go see it for yourself.",
         dependencies: &[],
         condition: QuestCondition {
             event: EventTypeID::VisitTerrain(TerrainType::Ruins),

@@ -58,9 +58,9 @@ impl Quests {
     pub(super) fn render(&self, area: Rect, buf: &mut Buffer, overview: &Overview) {
         let inner = super::panel_frame(area, " Quests ", buf);
         let rows = Layout::vertical([
-            Constraint::Length(5),
+            Constraint::Length(10),
             Constraint::Min(3),
-            Constraint::Length(1),
+            Constraint::Length(3),
         ])
         .split(inner);
 
