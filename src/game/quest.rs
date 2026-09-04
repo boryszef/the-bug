@@ -56,6 +56,22 @@ pub struct Quest {
     pub(super) reward_items: &'static [(Item, u32)],
 }
 
+impl Quest {
+    /// Occurrences of the condition's event needed to complete this quest —
+    /// the progress goal (e.g. the `5` in "craft 5 arrows").
+    pub fn goal(&self) -> u32 {
+        self.condition.count
+    }
+
+    pub fn reward_xp(&self) -> u32 {
+        self.reward_xp
+    }
+
+    pub fn reward_items(&self) -> &'static [(Item, u32)] {
+        self.reward_items
+    }
+}
+
 pub(super) const QUESTS: &[Quest] = &[
     Quest {
         id: QuestID::CraftArrows,

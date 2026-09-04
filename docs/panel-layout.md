@@ -30,9 +30,11 @@ overlays on top of a fixed Map view.
   changes (filling their panel instead of a centered popup). Their state
   (cursor position, Experiment's in-progress selection) now persists across
   cycling away and back, since panels aren't opened/closed anymore.
-- Quests panel is a static placeholder ("coming soon") — not connected to
-  `Game::available_quests()`/`accept_quest()`. That backend already exists
-  (`docs/quest-system.md`) but wiring a real quest UI is future work.
+- Quests panel shows the active quest's progress (or an "Available" list,
+  navigable with `↑↓`/`Enter` to accept, while none is open) and completed
+  quests — wired to `Game::available_quests()`/`accept_quest()`
+  (`docs/quest-system.md`). `↑↓`/`Enter` are no-ops while a quest is active,
+  since only one can be open at a time.
 
 ## Design
 
@@ -54,14 +56,22 @@ overlays on top of a fixed Map view.
   `handle_key`/`Outcome` and all existing unit tests are untouched.
 - `help.rs` is deleted; its content becomes per-panel strings in `app.rs`'s
   new footer-rendering function.
-- `quests.rs` (new) mirrors `help.rs`'s old shape: a stateless
-  `pub(super) fn render(area, buf)`.
+- `quests.rs` (new) follows the same `State`/`Outcome`/`handle_key`/`render`
+  shape as `craft.rs`/`disassemble.rs`: owns only a cursor over the
+  "available to accept" list; `Outcome::Accept(QuestID)` drives
+  `Game::accept_quest`. Quest data comes from
+  `viewmodel::quests::overview(&Game)` (new — `Overview { active:
+  Option<ActiveQuest>, available, completed }`, all `&'static Quest`).
+  `Quest` gained `goal()`/`reward_xp()`/`reward_items()` accessors and
+  `Game` gained `quest(id) -> &'static Quest` to support this without
+  exposing `QuestCondition`/`EventTypeID`/`QUESTS` outside `game::quest`.
 
 ## What is *not* built here
 
-- No quest UI/viewmodel wiring — the Quests panel is inert.
 - No change to `craft`/`disassemble`/`experiment`'s own state machines,
   key bindings, or tests.
+- No UI for locked quests (unmet dependencies) or quest rewards — see
+  `docs/quest-system.md`.
 
 ## Code
 
@@ -69,5 +79,8 @@ overlays on top of a fixed Map view.
 - `src/ui/mod.rs` — `panel_frame` (replaces `centered_rect`/`popup_frame`).
 - `src/ui/{craft,disassemble,experiment}.rs` — one-line `render()` change
   each.
-- `src/ui/quests.rs` — new, placeholder panel.
+- `src/ui/quests.rs` — new, interactive panel (accept a quest).
+- `src/viewmodel/quests.rs` — new, `Overview`/`ActiveQuest`/`overview()`.
+- `src/game/quest.rs`, `src/game/mod.rs` — `Quest::goal`/`reward_xp`/
+  `reward_items`, `Game::quest(id)`.
 - `src/ui/help.rs` — deleted.

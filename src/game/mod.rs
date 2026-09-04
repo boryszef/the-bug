@@ -116,6 +116,12 @@ impl Game {
             .collect()
     }
 
+    /// Looks up a quest by id, e.g. to show the name/description behind
+    /// `Player::open_quest()`/`completed_quests()`.
+    pub fn quest(&self, id: QuestID) -> &'static Quest {
+        quest_for(id)
+    }
+
     /// Records that `item` was produced through crafting or experimenting,
     /// and reports it toward the open quest's condition. `search()` (found in
     /// the wild) and `disassemble()` (recovered) do not go through this.

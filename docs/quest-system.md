@@ -100,10 +100,14 @@ The pre-existing `SaveState` DTO struct (the whole-file shape) is renamed to
 
 ## What is *not* built here
 
-- No UI/viewmodel (quest panel, accept-quest input, etc.) — future work.
 - No multi-condition quests — `Quest` has exactly one `QuestCondition`.
 - Reward amounts and any dependency chain between `CraftArrows`/`ExploreRuins`
   are game content, filled in with placeholder values; not decided here.
+- No UI for locked quests (dependencies unmet) — there's nothing to show one
+  with yet, since neither placeholder quest has a dependency.
+
+The quests panel (`src/ui/quests.rs`, `src/viewmodel/quests.rs`) is wired up
+— see `docs/panel-layout.md`.
 
 ## Code
 

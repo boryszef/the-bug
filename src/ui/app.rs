@@ -15,7 +15,7 @@ use crate::viewmodel;
 use super::craft::{self, Craft};
 use super::disassemble::{self, Disassemble};
 use super::experiment::{self, Experiment};
-use super::quests;
+use super::quests::{self, Quests};
 
 // Empirical zoom factors so the map roughly fills its pane.
 const MAP_X_SCALE: f64 = 6.2;
@@ -62,6 +62,7 @@ pub struct App {
     experiment: Experiment,
     craft: Craft,
     disassemble: Disassemble,
+    quests: Quests,
 }
 
 impl App {
@@ -137,7 +138,16 @@ impl App {
                     self.game.disassemble(item);
                 }
             }
-            Panel::Quests => {}
+            Panel::Quests => {
+                let overview = viewmodel::quests::overview(&self.game);
+                if let quests::Outcome::Accept(id) =
+                    self.quests.handle_key(key_event.code, &overview)
+                {
+                    // Always Ok: `id` came from `overview.available`, built
+                    // from `Game::available_quests()` moments ago.
+                    let _ = self.game.accept_quest(id);
+                }
+            }
         }
     }
 
@@ -188,7 +198,10 @@ impl Widget for &App {
                 buf,
                 &viewmodel::disassembly::options(&self.game.player),
             ),
-            Panel::Quests => quests::render(columns[1], buf),
+            Panel::Quests => {
+                self.quests
+                    .render(columns[1], buf, &viewmodel::quests::overview(&self.game))
+            }
         }
 
         render_footer(self.panel, footer, buf);
@@ -292,7 +305,7 @@ fn render_footer(panel: Panel, area: Rect, buf: &mut Buffer) {
         }
         Panel::Craft => "↑↓ move   Enter craft   [ ] panel   q quit",
         Panel::Disassemble => "↑↓ move   Enter take apart   [ ] panel   q quit",
-        Panel::Quests => "[ ] panel   q quit",
+        Panel::Quests => "↑↓ move   Enter accept   [ ] panel   q quit",
     };
 
     Paragraph::new(hint)
