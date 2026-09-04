@@ -131,6 +131,19 @@ impl MapTile {
     fn new() -> MapTile {
         Self::with_terrain(choose_weighted(RANDOM_TERRAIN_TYPES, &mut rand::rng()))
     }
+
+    /// Rolls each of this tile's items against its search probability
+    /// (decayed by how recently the tile was searched), returning what's
+    /// found.
+    pub(super) fn roll_found_items(&self, rng: &mut impl rand::Rng) -> Vec<Item> {
+        self.items
+            .iter()
+            .filter(|&(_, &base)| {
+                rng.random_range(0.0..1.0) < adjust_probability(base, self.last_search_time)
+            })
+            .map(|(&item, _)| item)
+            .collect()
+    }
 }
 
 #[derive(Debug)]
@@ -233,7 +246,7 @@ impl super::RestoreState for Map {
 /// Scales `base_probability` down while the tile was searched recently
 /// (within [`DECAY_WINDOW_SECS`]), so re-searching the same spot right away
 /// rarely pays off.
-pub(super) fn adjust_probability(base_probability: f64, last_search_time: Option<Instant>) -> f64 {
+fn adjust_probability(base_probability: f64, last_search_time: Option<Instant>) -> f64 {
     let time_elapsed = last_search_time.map_or(f64::INFINITY, |t| t.elapsed().as_secs_f64());
 
     if time_elapsed < DECAY_WINDOW_SECS {

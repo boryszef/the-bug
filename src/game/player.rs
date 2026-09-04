@@ -104,6 +104,38 @@ impl Player {
         }
     }
 
+    /// Adds `amount` of `item` to the inventory.
+    pub(super) fn add_to_inventory(&mut self, item: Item, amount: u32) {
+        *self.inventory.entry(item).or_insert(0) += amount;
+    }
+
+    /// How many of `item` the player currently holds.
+    pub(super) fn inventory_count(&self, item: Item) -> u32 {
+        self.inventory.get(&item).copied().unwrap_or(0)
+    }
+
+    /// Adds `amount` to the player's experience.
+    pub(super) fn add_experience(&mut self, amount: u32) {
+        self.experience += amount;
+    }
+
+    /// Records a successful craft, granting a point of experience every
+    /// tenth one.
+    pub(super) fn record_successful_craft(&mut self) {
+        self.crafts_completed += 1;
+        if self.crafts_completed.is_multiple_of(10) {
+            self.add_experience(1);
+        }
+    }
+
+    /// Grants `xp` experience and each of `items` to the inventory.
+    pub(super) fn grant_reward(&mut self, xp: u32, items: &[(Item, u32)]) {
+        self.add_experience(xp);
+        for &(item, amount) in items {
+            self.add_to_inventory(item, amount);
+        }
+    }
+
     /// Marks the recipe with the given name as known (used when loading a save).
     /// Returns `false` for an unrecognised name, which the caller can ignore.
     pub(crate) fn grant_recipe(&mut self, name: &str) -> bool {

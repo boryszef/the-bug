@@ -12,9 +12,7 @@ pub use player::Player;
 pub use quest::{Quest, QuestError, QuestID};
 pub(crate) use recipe::reversible_recipe_for;
 
-use map::adjust_probability;
 use quest::{EventTypeID, QUESTS, dependencies_met, quest_for};
-use rand::RngExt;
 use recipe::{RECIPES, describe_inputs};
 use std::io;
 use std::time::{Duration, Instant};
@@ -127,7 +125,7 @@ impl Game {
     /// and reports it toward the open quest's condition. `search()` (found in
     /// the wild) and `disassemble()` (recovered) do not go through this.
     fn grant_item(&mut self, item: Item, amount: u32) {
-        *self.player.inventory.entry(item).or_insert(0) += amount;
+        self.player.add_to_inventory(item, amount);
         self.note_quest_event(EventTypeID::CraftItem(item));
     }
 
@@ -138,11 +136,12 @@ impl Game {
             return;
         };
         let quest = quest_for(quest_id);
-        if quest.condition.event != event {
+        if !quest.condition.matches(event) {
             return;
         }
 
-        if self.player.advance_quest_progress() >= quest.condition.count {
+        let progress = self.player.advance_quest_progress();
+        if quest.condition.is_satisfied_by(progress) {
             self.complete_open_quest(quest);
         }
     }
@@ -151,10 +150,8 @@ impl Game {
     /// `Player::completed_quests()`, and clears `open_quest`/`quest_progress`.
     fn complete_open_quest(&mut self, quest: &'static Quest) {
         self.player.complete_quest(quest.id);
-        self.player.experience += quest.reward_xp;
-        for &(item, amount) in quest.reward_items {
-            *self.player.inventory.entry(item).or_insert(0) += amount;
-        }
+        self.player
+            .grant_reward(quest.reward_xp, quest.reward_items);
         self.log(
             EventCategory::General,
             format!("Quest complete: {}!", quest.name),
@@ -189,20 +186,10 @@ impl Game {
             return;
         };
         let terrain = tile.terrain_type;
-        let last_search = tile.last_search_time;
-
-        let mut rng = rand::rng();
-        let found: Vec<Item> = tile
-            .items
-            .iter()
-            .filter(|&(_, &base)| {
-                rng.random_range(0.0..1.0) < adjust_probability(base, last_search)
-            })
-            .map(|(&item, _)| item)
-            .collect();
+        let found = tile.roll_found_items(&mut rand::rng());
 
         for item in found {
-            *self.player.inventory.entry(item).or_insert(0) += 1;
+            self.player.add_to_inventory(item, 1);
             self.log(
                 EventCategory::General,
                 format!("You find a {item} in the {terrain}."),
@@ -227,7 +214,7 @@ impl Game {
         };
 
         for &(item, amount) in recipe.inputs() {
-            if self.player.inventory.get(&item).copied().unwrap_or(0) < amount {
+            if self.player.inventory_count(item) < amount {
                 self.log(
                     EventCategory::Crafting,
                     format!("You don't have enough {item} to craft a {}.", recipe.name()),
@@ -246,10 +233,7 @@ impl Game {
             format!("You craft a {}.", recipe.name()),
         );
 
-        self.player.crafts_completed += 1;
-        if self.player.crafts_completed.is_multiple_of(10) {
-            self.player.experience += 1;
-        }
+        self.player.record_successful_craft();
     }
 
     pub fn experiment(&mut self, items: &[(Item, u32)]) {
@@ -260,7 +244,7 @@ impl Game {
         let inputs = describe_inputs(items);
 
         for &(item, amount) in items {
-            let available = self.player.inventory.get(&item).copied().unwrap_or(0);
+            let available = self.player.inventory_count(item);
             if available < amount {
                 self.log(
                     EventCategory::Experiment,
@@ -289,7 +273,7 @@ impl Game {
 
         let newly_learned = self.player.learn_recipe(*recipe);
         if newly_learned {
-            self.player.experience += 10;
+            self.player.add_experience(10);
         }
 
         self.grant_item(recipe.output(), 1);
@@ -308,13 +292,13 @@ impl Game {
         let Some(recipe) = reversible_recipe_for(item) else {
             return;
         };
-        if self.player.inventory.get(&item).copied().unwrap_or(0) == 0 {
+        if self.player.inventory_count(item) == 0 {
             return;
         }
 
         self.player.spend(item, 1);
         for &(input, amount) in recipe.inputs() {
-            *self.player.inventory.entry(input).or_insert(0) += amount;
+            self.player.add_to_inventory(input, amount);
         }
 
         self.log(

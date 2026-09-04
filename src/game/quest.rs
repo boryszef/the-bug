@@ -34,6 +34,18 @@ pub(super) struct QuestCondition {
     pub(super) count: u32,
 }
 
+impl QuestCondition {
+    /// Whether `event` is the kind of occurrence this condition counts.
+    pub(super) fn matches(&self, event: EventTypeID) -> bool {
+        self.event == event
+    }
+
+    /// Whether `progress` occurrences are enough to satisfy this condition.
+    pub(super) fn is_satisfied_by(&self, progress: u32) -> bool {
+        progress >= self.count
+    }
+}
+
 pub struct Quest {
     pub id: QuestID,
     pub name: &'static str,
