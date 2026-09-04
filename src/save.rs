@@ -11,7 +11,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 
 use crate::game::{
-    Event, EventCategory, Game, Item, Map, Player, RestoreState, SaveState, TerrainType,
+    Event, EventCategory, Game, Item, Map, Player, QuestID, RestoreState, SaveState, TerrainType,
 };
 
 /// The game's semantic version, stamped into every save file.
@@ -66,6 +66,12 @@ pub(crate) struct PlayerState {
     pub(crate) coordinates: (i32, i32),
     pub(crate) inventory: HashMap<Item, u32>,
     pub(crate) recipes: Vec<String>,
+    #[serde(default)]
+    pub(crate) open_quest: Option<QuestID>,
+    #[serde(default)]
+    pub(crate) quest_progress: u32,
+    #[serde(default)]
+    pub(crate) quests_completed: Vec<QuestID>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -285,6 +291,45 @@ mod tests {
             .map(|r| r.name())
             .collect();
         assert_eq!(recipes, ["Cord"]);
+    }
+
+    #[test]
+    fn open_quest_and_progress_survive_round_trip() {
+        let mut game = Game::default();
+        game.player
+            .restore_quest_state(Some(QuestID::CraftArrows), 3, vec![]);
+
+        let restored = roundtrip(&game);
+
+        assert_eq!(restored.player.open_quest(), Some(QuestID::CraftArrows));
+        assert_eq!(restored.player.quest_progress(), 3);
+    }
+
+    #[test]
+    fn completed_quests_survive_round_trip() {
+        let mut game = Game::default();
+        game.player
+            .restore_quest_state(None, 0, vec![QuestID::CraftArrows, QuestID::ExploreRuins]);
+
+        let restored = roundtrip(&game);
+
+        assert_eq!(
+            restored.player.completed_quests(),
+            [QuestID::CraftArrows, QuestID::ExploreRuins]
+        );
+    }
+
+    #[test]
+    fn player_without_quest_fields_defaults_to_no_quests() {
+        let json = r#"{
+            "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
+            "map": { "terrain": ["V"] },
+            "events": []
+        }"#;
+        let game = restore(serde_json::from_str(json).unwrap()).unwrap();
+        assert_eq!(game.player.open_quest(), None);
+        assert_eq!(game.player.quest_progress(), 0);
+        assert!(game.player.completed_quests().is_empty());
     }
 
     #[test]

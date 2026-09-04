@@ -2,6 +2,7 @@
 
 ## TODO
 
+* implement the quest system: one quest unlocks other quests, completing a quest awards XP and items, quests also tell the story of the game world
 * craft menu should show what items are missing for a recipe
 * add i18n support
 

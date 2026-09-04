@@ -32,10 +32,10 @@ pub struct Player {
     pub coordinates: (i32, i32),
     pub inventory: HashMap<Item, u32>,
     recipes: Vec<Recipe>,
-    // Wired up by the quest system (docs/quest-system.md), still in progress.
-    #[allow(dead_code)]
     open_quest: Option<QuestID>,
-    #[allow(dead_code)]
+    /// Occurrences of the open quest's condition seen since it was accepted.
+    /// Meaningless while `open_quest` is `None`.
+    quest_progress: u32,
     quests_completed: Vec<QuestID>,
 }
 
@@ -49,6 +49,7 @@ impl Default for Player {
             inventory: HashMap::new(),
             recipes: Vec::new(),
             open_quest: None,
+            quest_progress: 0,
             quests_completed: Vec::new(),
         }
     }
@@ -58,6 +59,34 @@ impl Player {
     /// The recipes the player has discovered, in discovery order.
     pub fn known_recipes(&self) -> &[Recipe] {
         &self.recipes
+    }
+
+    /// The currently active quest, if any.
+    pub fn open_quest(&self) -> Option<QuestID> {
+        self.open_quest
+    }
+
+    /// Occurrences of the open quest's condition seen so far. `0` when no
+    /// quest is open.
+    pub fn quest_progress(&self) -> u32 {
+        self.quest_progress
+    }
+
+    /// Quests completed so far, in completion order.
+    pub fn completed_quests(&self) -> &[QuestID] {
+        &self.quests_completed
+    }
+
+    /// Sets quest state directly (used when loading a save).
+    pub(crate) fn restore_quest_state(
+        &mut self,
+        open_quest: Option<QuestID>,
+        quest_progress: u32,
+        quests_completed: Vec<QuestID>,
+    ) {
+        self.open_quest = open_quest;
+        self.quest_progress = quest_progress;
+        self.quests_completed = quests_completed;
     }
 
     /// Removes `amount` of `item` from the inventory, dropping the entry
@@ -102,6 +131,9 @@ impl SaveState for Player {
                 .iter()
                 .map(|recipe| recipe.name().to_string())
                 .collect(),
+            open_quest: self.open_quest,
+            quest_progress: self.quest_progress,
+            quests_completed: self.quests_completed.clone(),
         }
     }
 }
@@ -121,6 +153,11 @@ impl RestoreState for Player {
         for name in &saved.recipes {
             player.grant_recipe(name);
         }
+        player.restore_quest_state(
+            saved.open_quest,
+            saved.quest_progress,
+            saved.quests_completed,
+        );
         Ok(player)
     }
 }
@@ -144,7 +181,7 @@ impl Direction {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TerrainType {
     Meadow,
     Forest,
@@ -560,35 +597,87 @@ impl RestoreState for Event {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-enum QuestID {
+pub enum QuestID {
     CraftArrows,
     ExploreRuins,
 }
 
-// Wired up by the quest system (docs/quest-system.md), still in progress.
-#[allow(dead_code)]
-struct Quest {
-    id: QuestID,
-    name: &'static str,
-    description: &'static str,
-    dependencies: &'static [QuestID],
+/// Failure reasons for [`Game::accept_quest`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuestError {
+    /// Another quest is already open; only one can be active at a time.
+    AnotherQuestActive,
+    /// This quest is already in `Player::completed_quests()`.
+    AlreadyCompleted,
+    /// Not every quest in `Quest::dependencies` has been completed yet.
+    DependenciesNotMet,
 }
 
-#[allow(dead_code)]
+/// A game action that can count toward an open quest's [`QuestCondition`].
+/// Fired at the moment the action happens (see `Game::grant_item`/`walk`) —
+/// not stored or replayed, see docs/quest-system.md for why.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum EventTypeID {
+    CraftItem(Item),
+    VisitTerrain(TerrainType),
+}
+
+/// What it takes to complete a quest: `count` occurrences of `event`.
+struct QuestCondition {
+    event: EventTypeID,
+    count: u32,
+}
+
+pub struct Quest {
+    pub id: QuestID,
+    pub name: &'static str,
+    pub description: &'static str,
+    pub dependencies: &'static [QuestID],
+    condition: QuestCondition,
+    reward_xp: u32,
+    reward_items: &'static [(Item, u32)],
+}
+
 const QUESTS: &[Quest] = &[
     Quest {
         id: QuestID::CraftArrows,
         name: "Craft Arrows",
         description: "Group of local hunters is preparing for a hunt. They asked you to create 5 arrows for them. Visit the forrest to gather sticks and exeriment with them to learn how to craft arrows.",
         dependencies: &[],
+        condition: QuestCondition {
+            event: EventTypeID::CraftItem(Item::Arrow),
+            count: 5,
+        },
+        reward_xp: 20,
+        reward_items: &[],
     },
     Quest {
         id: QuestID::ExploreRuins,
         name: "Explore the Ruins",
         description: "A passing traveler told you about some ruins nearby. They said that there are some old artifacts there. You should go and explore.",
         dependencies: &[],
+        condition: QuestCondition {
+            event: EventTypeID::VisitTerrain(TerrainType::Ruins),
+            count: 1,
+        },
+        reward_xp: 10,
+        reward_items: &[],
     },
 ];
+
+/// Looks up a quest by id. Panics if `QUESTS` is missing a variant — a bug in
+/// the static table, not a runtime condition.
+fn quest_for(id: QuestID) -> &'static Quest {
+    QUESTS
+        .iter()
+        .find(|quest| quest.id == id)
+        .expect("QUESTS must contain every QuestID")
+}
+
+/// Whether every quest in `quest.dependencies` is in `completed`.
+fn dependencies_met(quest: &Quest, completed: &[QuestID]) -> bool {
+    quest.dependencies.iter().all(|dep| completed.contains(dep))
+}
 
 #[derive(Debug)]
 pub struct Game {
@@ -646,6 +735,82 @@ impl Game {
         (self.player.known_recipes().len(), RECIPES.len())
     }
 
+    /// Accepts `id` as the player's open quest. Fails if another quest is
+    /// already open, `id` was already completed, or its dependencies aren't
+    /// all in `Player::completed_quests()` yet.
+    pub fn accept_quest(&mut self, id: QuestID) -> Result<(), QuestError> {
+        if self.player.open_quest.is_some() {
+            return Err(QuestError::AnotherQuestActive);
+        }
+        if self.player.quests_completed.contains(&id) {
+            return Err(QuestError::AlreadyCompleted);
+        }
+        let quest = quest_for(id);
+        if !dependencies_met(quest, &self.player.quests_completed) {
+            return Err(QuestError::DependenciesNotMet);
+        }
+
+        self.player.open_quest = Some(id);
+        self.player.quest_progress = 0;
+        self.log(
+            EventCategory::General,
+            format!("Quest accepted: {}", quest.name),
+        );
+        Ok(())
+    }
+
+    /// Quests not currently open, not yet completed, whose dependencies are
+    /// all satisfied.
+    pub fn available_quests(&self) -> Vec<&'static Quest> {
+        QUESTS
+            .iter()
+            .filter(|quest| self.player.open_quest != Some(quest.id))
+            .filter(|quest| !self.player.quests_completed.contains(&quest.id))
+            .filter(|quest| dependencies_met(quest, &self.player.quests_completed))
+            .collect()
+    }
+
+    /// Records that `item` was produced through crafting or experimenting,
+    /// and reports it toward the open quest's condition. `search()` (found in
+    /// the wild) and `disassemble()` (recovered) do not go through this.
+    fn grant_item(&mut self, item: Item, amount: u32) {
+        *self.player.inventory.entry(item).or_insert(0) += amount;
+        self.note_quest_event(EventTypeID::CraftItem(item));
+    }
+
+    /// Routes a game action to the open quest's condition, advancing
+    /// `Player::quest_progress` and completing the quest once it's met.
+    fn note_quest_event(&mut self, event: EventTypeID) {
+        let Some(quest_id) = self.player.open_quest else {
+            return;
+        };
+        let quest = quest_for(quest_id);
+        if quest.condition.event != event {
+            return;
+        }
+
+        self.player.quest_progress += 1;
+        if self.player.quest_progress >= quest.condition.count {
+            self.complete_open_quest(quest);
+        }
+    }
+
+    /// Completes `quest`: grants its reward, moves it into
+    /// `Player::completed_quests()`, and clears `open_quest`/`quest_progress`.
+    fn complete_open_quest(&mut self, quest: &'static Quest) {
+        self.player.open_quest = None;
+        self.player.quest_progress = 0;
+        self.player.quests_completed.push(quest.id);
+        self.player.experience += quest.reward_xp;
+        for &(item, amount) in quest.reward_items {
+            *self.player.inventory.entry(item).or_insert(0) += amount;
+        }
+        self.log(
+            EventCategory::General,
+            format!("Quest complete: {}!", quest.name),
+        );
+    }
+
     /// Appends a message to the event log, timestamped with the current session
     /// elapsed time.
     fn log(&mut self, category: EventCategory, text: impl Into<String>) {
@@ -663,6 +828,9 @@ impl Game {
         }
 
         self.player.coordinates = (nx, ny);
+        if let Some(tile) = self.map.get_tile((nx, ny)) {
+            self.note_quest_event(EventTypeID::VisitTerrain(tile.terrain_type));
+        }
     }
 
     pub fn search(&mut self) {
@@ -722,7 +890,7 @@ impl Game {
             self.player.spend(item, amount);
         }
 
-        *self.player.inventory.entry(recipe.output).or_insert(0) += 1;
+        self.grant_item(recipe.output, 1);
         self.log(
             EventCategory::Crafting,
             format!("You craft a {}.", recipe.name),
@@ -775,7 +943,7 @@ impl Game {
             self.player.experience += 10;
         }
 
-        *self.player.inventory.entry(recipe.output).or_insert(0) += 1;
+        self.grant_item(recipe.output, 1);
 
         let suffix = if newly_learned { " (new recipe!)" } else { "" };
         self.log(
@@ -1208,5 +1376,172 @@ mod tests {
         let elapsed: Vec<Duration> = game.events().iter().map(Event::elapsed).collect();
         assert!(elapsed.len() >= 3);
         assert!(elapsed.windows(2).all(|w| w[0] <= w[1]));
+    }
+
+    // --- Quest system -----------------------------------------------------
+    //
+    // Failing tests written ahead of the implementation (see
+    // docs/quest-system.md). `CraftArrows`/`ExploreRuins` in `QUESTS` are
+    // used directly for the integration-style tests below; `dependencies_met`
+    // and `complete_open_quest` also get isolated tests against a local
+    // fixture `Quest`, since the real `QUESTS` table currently has no
+    // dependency chain or non-empty rewards (placeholder game content).
+
+    const FIXTURE_QUEST: Quest = Quest {
+        id: QuestID::CraftArrows,
+        name: "Fixture",
+        description: "",
+        dependencies: &[QuestID::ExploreRuins],
+        condition: QuestCondition {
+            event: EventTypeID::CraftItem(Item::Arrow),
+            count: 1,
+        },
+        reward_xp: 7,
+        reward_items: &[(Item::Cord, 2)],
+    };
+
+    #[test]
+    fn dependencies_met_is_false_when_a_dependency_is_missing() {
+        assert!(!dependencies_met(&FIXTURE_QUEST, &[]));
+    }
+
+    #[test]
+    fn dependencies_met_is_true_once_every_dependency_is_completed() {
+        assert!(dependencies_met(&FIXTURE_QUEST, &[QuestID::ExploreRuins]));
+    }
+
+    #[test]
+    fn complete_open_quest_grants_reward_and_resets_quest_state() {
+        let mut game = Game::default();
+        game.player.open_quest = Some(FIXTURE_QUEST.id);
+        game.player.quest_progress = 1;
+        let xp_before = game.player.experience;
+
+        game.complete_open_quest(&FIXTURE_QUEST);
+
+        assert_eq!(game.player.open_quest, None);
+        assert_eq!(game.player.quest_progress, 0);
+        assert_eq!(game.player.quests_completed, [FIXTURE_QUEST.id]);
+        assert_eq!(game.player.experience, xp_before + FIXTURE_QUEST.reward_xp);
+        assert_eq!(game.player.inventory.get(&Item::Cord), Some(&2));
+        assert_eq!(last_event(&game).text(), "Quest complete: Fixture!");
+    }
+
+    #[test]
+    fn accept_quest_succeeds_for_an_available_quest() {
+        let mut game = Game::default();
+        assert_eq!(game.accept_quest(QuestID::CraftArrows), Ok(()));
+        assert_eq!(game.player.open_quest(), Some(QuestID::CraftArrows));
+        assert_eq!(game.player.quest_progress(), 0);
+    }
+
+    #[test]
+    fn accept_quest_rejects_a_second_concurrent_quest() {
+        let mut game = Game::default();
+        game.accept_quest(QuestID::CraftArrows).unwrap();
+        assert_eq!(
+            game.accept_quest(QuestID::ExploreRuins),
+            Err(QuestError::AnotherQuestActive)
+        );
+    }
+
+    #[test]
+    fn accept_quest_rejects_an_already_completed_quest() {
+        let mut game = Game::default();
+        game.player
+            .restore_quest_state(None, 0, vec![QuestID::CraftArrows]);
+        assert_eq!(
+            game.accept_quest(QuestID::CraftArrows),
+            Err(QuestError::AlreadyCompleted)
+        );
+    }
+
+    #[test]
+    fn available_quests_excludes_the_open_and_completed_quests() {
+        let mut game = Game::default();
+        assert_eq!(game.available_quests().len(), QUESTS.len());
+
+        game.accept_quest(QuestID::CraftArrows).unwrap();
+        let available: Vec<QuestID> = game.available_quests().iter().map(|q| q.id).collect();
+        assert!(!available.contains(&QuestID::CraftArrows));
+    }
+
+    #[test]
+    fn crafting_the_target_item_enough_times_completes_the_quest() {
+        let mut game = Game::default();
+        game.player.grant_recipe("Arrow");
+        game.player.inventory.insert(Item::Stick, 5);
+        game.accept_quest(QuestID::CraftArrows).unwrap();
+
+        for _ in 0..5 {
+            game.craft("Arrow");
+        }
+
+        assert_eq!(game.player.open_quest(), None);
+        assert_eq!(game.player.completed_quests(), [QuestID::CraftArrows]);
+        assert_eq!(game.player.experience, 20);
+    }
+
+    #[test]
+    fn crafting_a_different_item_does_not_advance_quest_progress() {
+        let mut game = Game::default();
+        game.player.grant_recipe("Cord");
+        game.player.inventory.insert(Item::Vine, 2);
+        game.accept_quest(QuestID::CraftArrows).unwrap();
+
+        game.craft("Cord");
+
+        assert_eq!(game.player.quest_progress(), 0);
+        assert_eq!(game.player.open_quest(), Some(QuestID::CraftArrows));
+    }
+
+    #[test]
+    fn experimenting_the_target_item_also_advances_quest_progress() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Stick, 1);
+        game.accept_quest(QuestID::CraftArrows).unwrap();
+
+        game.experiment(&[(Item::Stick, 1)]);
+
+        assert_eq!(game.player.quest_progress(), 1);
+    }
+
+    #[test]
+    fn walking_onto_the_target_terrain_completes_the_quest() {
+        let mut game = Game::default();
+        game.player.coordinates = (0, 0);
+        let (tx, ty) = game.map.world_to_tile((0, 1));
+        game.map.tiles[ty][tx] = MapTile::with_terrain(TerrainType::Ruins);
+        game.accept_quest(QuestID::ExploreRuins).unwrap();
+        let events_before = game.events().len();
+
+        game.walk(Direction::North);
+
+        assert_eq!(game.player.open_quest(), None);
+        assert_eq!(game.player.completed_quests(), [QuestID::ExploreRuins]);
+        // walking itself still logs nothing; only the completion line is new.
+        assert_eq!(game.events().len(), events_before + 1);
+    }
+
+    #[test]
+    fn walking_onto_non_matching_terrain_does_not_advance_progress() {
+        let mut game = Game::default();
+        game.player.coordinates = (0, 0);
+        let (tx, ty) = game.map.world_to_tile((0, 1));
+        game.map.tiles[ty][tx] = MapTile::with_terrain(TerrainType::Meadow);
+        game.accept_quest(QuestID::ExploreRuins).unwrap();
+
+        game.walk(Direction::North);
+
+        assert_eq!(game.player.quest_progress(), 0);
+        assert_eq!(game.player.open_quest(), Some(QuestID::ExploreRuins));
+    }
+
+    #[test]
+    fn walking_without_an_open_quest_does_nothing() {
+        let mut game = Game::default();
+        assert_eq!(game.player.open_quest(), None);
+        game.walk(Direction::North);
+        assert_eq!(game.player.quest_progress(), 0);
     }
 }
