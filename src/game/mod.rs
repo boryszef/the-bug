@@ -13,7 +13,7 @@ pub use quest::{Quest, QuestError, QuestID};
 pub(crate) use recipe::reversible_recipe_for;
 
 use quest::{EventTypeID, QUESTS, dependencies_met, quest_for};
-use recipe::{RECIPES, describe_inputs};
+use recipe::{describe_inputs, find_matching};
 use std::io;
 use std::time::{Duration, Instant};
 
@@ -80,11 +80,6 @@ impl Game {
     /// The event log, oldest first.
     pub fn events(&self) -> &[Event] {
         &self.events
-    }
-
-    /// `(recipes discovered, recipes that exist)`.
-    pub fn recipe_progress(&self) -> (usize, usize) {
-        (self.player.known_recipes().len(), RECIPES.len())
     }
 
     /// Accepts `id` as the player's open quest. Fails if another quest is
@@ -166,16 +161,13 @@ impl Game {
     }
 
     pub fn walk(&mut self, dir: Direction) {
-        let (dx, dy) = dir.delta();
-        let (x, y) = self.player.coordinates;
-        let (nx, ny) = (x + dx, y + dy);
-
-        if nx.abs() > self.map.half || ny.abs() > self.map.half {
+        let next = self.player.coordinates_after(dir);
+        if !self.map.contains(next) {
             return;
         }
 
-        self.player.coordinates = (nx, ny);
-        if let Some(tile) = self.map.get_tile((nx, ny)) {
+        self.player.coordinates = next;
+        if let Some(tile) = self.map.get_tile(next) {
             self.note_quest_event(EventTypeID::VisitTerrain(tile.terrain_type));
         }
     }
@@ -199,13 +191,7 @@ impl Game {
     }
 
     pub fn craft(&mut self, recipe_name: &str) {
-        let Some(recipe) = self
-            .player
-            .known_recipes()
-            .iter()
-            .find(|r| r.name() == recipe_name)
-            .copied()
-        else {
+        let Some(recipe) = self.player.find_known_recipe(recipe_name) else {
             self.log(
                 EventCategory::Crafting,
                 format!("You don't know how to craft a {recipe_name}."),
@@ -213,19 +199,15 @@ impl Game {
             return;
         };
 
-        for &(item, amount) in recipe.inputs() {
-            if self.player.inventory_count(item) < amount {
-                self.log(
-                    EventCategory::Crafting,
-                    format!("You don't have enough {item} to craft a {}.", recipe.name()),
-                );
-                return;
-            }
+        if let Some((item, ..)) = self.player.first_shortage(recipe.inputs()) {
+            self.log(
+                EventCategory::Crafting,
+                format!("You don't have enough {item} to craft a {}.", recipe.name()),
+            );
+            return;
         }
 
-        for &(item, amount) in recipe.inputs() {
-            self.player.spend(item, amount);
-        }
+        self.player.spend_all(recipe.inputs());
 
         self.grant_item(recipe.output(), 1);
         self.log(
@@ -243,27 +225,19 @@ impl Game {
 
         let inputs = describe_inputs(items);
 
-        for &(item, amount) in items {
-            let available = self.player.inventory_count(item);
-            if available < amount {
-                self.log(
-                    EventCategory::Experiment,
-                    format!(
-                        "Experiment: {inputs} → not enough {item} (have {available}, need {amount})"
-                    ),
-                );
-                return;
-            }
+        if let Some((item, available, amount)) = self.player.first_shortage(items) {
+            self.log(
+                EventCategory::Experiment,
+                format!(
+                    "Experiment: {inputs} → not enough {item} (have {available}, need {amount})"
+                ),
+            );
+            return;
         }
 
-        for &(item, amount) in items {
-            self.player.spend(item, amount);
-        }
+        self.player.spend_all(items);
 
-        let Some(recipe) = RECIPES.iter().find(|recipe| {
-            recipe.inputs().len() == items.len()
-                && recipe.inputs().iter().all(|input| items.contains(input))
-        }) else {
+        let Some(recipe) = find_matching(items) else {
             self.log(
                 EventCategory::Experiment,
                 format!("Experiment: {inputs} → nothing"),
@@ -272,9 +246,6 @@ impl Game {
         };
 
         let newly_learned = self.player.learn_recipe(*recipe);
-        if newly_learned {
-            self.player.add_experience(10);
-        }
 
         self.grant_item(recipe.output(), 1);
 
@@ -292,14 +263,12 @@ impl Game {
         let Some(recipe) = reversible_recipe_for(item) else {
             return;
         };
-        if self.player.inventory_count(item) == 0 {
+        if !self.player.has_item(item) {
             return;
         }
 
         self.player.spend(item, 1);
-        for &(input, amount) in recipe.inputs() {
-            self.player.add_to_inventory(input, amount);
-        }
+        self.player.add_all_to_inventory(recipe.inputs());
 
         self.log(
             EventCategory::Crafting,
@@ -315,7 +284,7 @@ impl Game {
 mod tests {
     use super::*;
     use quest::QuestCondition;
-    use recipe::Recipe;
+    use recipe::{RECIPES, Recipe};
     use std::collections::HashMap;
 
     #[test]
@@ -480,11 +449,11 @@ mod tests {
     #[test]
     fn recipe_progress_reports_known_and_total() {
         let mut game = Game::default();
-        assert_eq!(game.recipe_progress(), (0, RECIPES.len()));
+        assert_eq!(game.player.recipe_progress(), (0, RECIPES.len()));
 
         game.player.inventory.insert(Item::Vine, 2);
         game.experiment(&[(Item::Vine, 2)]);
-        assert_eq!(game.recipe_progress().0, 1);
+        assert_eq!(game.player.recipe_progress().0, 1);
     }
 
     #[test]

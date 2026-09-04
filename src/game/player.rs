@@ -1,4 +1,5 @@
 use super::item::Item;
+use super::map::Direction;
 use super::quest::QuestID;
 use super::recipe::{RECIPES, Recipe};
 use std::collections::HashMap;
@@ -40,6 +41,24 @@ impl Player {
     /// The recipes the player has discovered, in discovery order.
     pub fn known_recipes(&self) -> &[Recipe] {
         &self.recipes
+    }
+
+    /// `(recipes discovered, recipes that exist)`.
+    pub fn recipe_progress(&self) -> (usize, usize) {
+        (self.known_recipes().len(), RECIPES.len())
+    }
+
+    /// The known recipe named `name`, if any.
+    pub(super) fn find_known_recipe(&self, name: &str) -> Option<Recipe> {
+        self.recipes.iter().find(|r| r.name() == name).copied()
+    }
+
+    /// Where `dir` takes the player, ignoring map boundaries — the caller
+    /// checks those separately.
+    pub(super) fn coordinates_after(&self, dir: Direction) -> (i32, i32) {
+        let (dx, dy) = dir.delta();
+        let (x, y) = self.coordinates;
+        (x + dx, y + dy)
     }
 
     /// The currently active quest, if any.
@@ -104,14 +123,43 @@ impl Player {
         }
     }
 
+    /// Removes each of `items` from the inventory. Callers must have already
+    /// checked the player holds enough of every one.
+    pub(super) fn spend_all(&mut self, items: &[(Item, u32)]) {
+        for &(item, amount) in items {
+            self.spend(item, amount);
+        }
+    }
+
     /// Adds `amount` of `item` to the inventory.
     pub(super) fn add_to_inventory(&mut self, item: Item, amount: u32) {
         *self.inventory.entry(item).or_insert(0) += amount;
     }
 
+    /// Adds each of `items` to the inventory.
+    pub(super) fn add_all_to_inventory(&mut self, items: &[(Item, u32)]) {
+        for &(item, amount) in items {
+            self.add_to_inventory(item, amount);
+        }
+    }
+
     /// How many of `item` the player currently holds.
     pub(super) fn inventory_count(&self, item: Item) -> u32 {
         self.inventory.get(&item).copied().unwrap_or(0)
+    }
+
+    /// Whether the player holds at least one of `item`.
+    pub(super) fn has_item(&self, item: Item) -> bool {
+        self.inventory_count(item) > 0
+    }
+
+    /// The first input in `items` the player doesn't have enough of, as
+    /// `(item, available, needed)`. `None` if every input is satisfied.
+    pub(super) fn first_shortage(&self, items: &[(Item, u32)]) -> Option<(Item, u32, u32)> {
+        items.iter().find_map(|&(item, needed)| {
+            let available = self.inventory_count(item);
+            (available < needed).then_some((item, available, needed))
+        })
     }
 
     /// Adds `amount` to the player's experience.
@@ -131,9 +179,7 @@ impl Player {
     /// Grants `xp` experience and each of `items` to the inventory.
     pub(super) fn grant_reward(&mut self, xp: u32, items: &[(Item, u32)]) {
         self.add_experience(xp);
-        for &(item, amount) in items {
-            self.add_to_inventory(item, amount);
-        }
+        self.add_all_to_inventory(items);
     }
 
     /// Marks the recipe with the given name as known (used when loading a save).
@@ -150,12 +196,13 @@ impl Player {
         }
     }
 
-    /// Marks `recipe` as known if it wasn't already. Returns whether it was
-    /// newly learned (vs. already known).
+    /// Marks `recipe` as known if it wasn't already, granting the discovery
+    /// bonus. Returns whether it was newly learned (vs. already known).
     pub(super) fn learn_recipe(&mut self, recipe: Recipe) -> bool {
         let newly_learned = !self.recipes.contains(&recipe);
         if newly_learned {
             self.recipes.push(recipe);
+            self.add_experience(10);
         }
         newly_learned
     }

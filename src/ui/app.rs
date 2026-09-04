@@ -210,7 +210,7 @@ fn render_player(game: &Game, area: Rect, buf: &mut Buffer) {
             .join(", ")
     };
 
-    let (known_recipes, total_recipes) = game.recipe_progress();
+    let (known_recipes, total_recipes) = game.player.recipe_progress();
     let text = Text::from(vec![
         Line::from(format!("Level: {}", game.player.level)),
         Line::from(format!("XP: {}", game.player.experience)),

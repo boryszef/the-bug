@@ -97,6 +97,16 @@ pub(crate) fn reversible_recipe_for(output: Item) -> Option<Recipe> {
         .copied()
 }
 
+/// The recipe whose inputs are exactly `items` (any order), if any. Drives
+/// experimenting: combining items that happen to match a known recipe's
+/// inputs discovers (or reuses) it.
+pub(super) fn find_matching(items: &[(Item, u32)]) -> Option<&'static Recipe> {
+    RECIPES.iter().find(|recipe| {
+        recipe.inputs.len() == items.len()
+            && recipe.inputs.iter().all(|input| items.contains(input))
+    })
+}
+
 /// A stable, human-readable rendering of a set of items, e.g.
 /// `"1 Stick + 1 Stone + 1 Cord"`.
 pub(super) fn describe_inputs(items: &[(Item, u32)]) -> String {

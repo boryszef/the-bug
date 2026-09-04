@@ -203,6 +203,11 @@ impl Map {
         self.tiles.get(y)?.get(x)
     }
 
+    /// Whether `pos` is within the map's boundary.
+    pub(super) fn contains(&self, pos: (i32, i32)) -> bool {
+        pos.0.abs() <= self.half && pos.1.abs() <= self.half
+    }
+
     fn get_tile_mut(&mut self, pos: (i32, i32)) -> Option<&mut MapTile> {
         let (x, y) = self.world_to_tile(pos);
         self.tiles.get_mut(y)?.get_mut(x)
