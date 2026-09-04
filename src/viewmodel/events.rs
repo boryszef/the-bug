@@ -2,14 +2,13 @@
 
 use std::time::Duration;
 
-use crate::game::{EventCategory, Game};
+use crate::game::{EventKind, Game};
 
-/// One event-log line ready to show: a compact session timestamp, the category
-/// (for colouring) and the text.
+/// One event-log line ready to show: a compact session timestamp plus what
+/// happened. Rendering `kind` into words is `i18n`'s job, not this layer's.
 pub struct RecentEvent<'a> {
     pub timestamp: String,
-    pub category: EventCategory,
-    pub text: &'a str,
+    pub kind: &'a EventKind,
 }
 
 /// The `count` most recent events, newest first.
@@ -20,8 +19,7 @@ pub fn recent(game: &Game, count: usize) -> impl Iterator<Item = RecentEvent<'_>
         .take(count)
         .map(|event| RecentEvent {
             timestamp: compact(event.elapsed()),
-            category: event.category(),
-            text: event.text(),
+            kind: event.kind(),
         })
 }
 
@@ -48,8 +46,18 @@ mod tests {
 
         let recent: Vec<RecentEvent> = recent(&game, 2).collect();
         assert_eq!(recent.len(), 2);
-        assert!(recent[0].text.contains("bbb"));
-        assert!(recent[1].text.contains("aaa"));
+        assert_eq!(
+            recent[0].kind,
+            &EventKind::UnknownRecipe {
+                recipe: "bbb".to_string()
+            }
+        );
+        assert_eq!(
+            recent[1].kind,
+            &EventKind::UnknownRecipe {
+                recipe: "aaa".to_string()
+            }
+        );
     }
 
     #[test]
@@ -65,12 +73,14 @@ mod tests {
     }
 
     #[test]
-    fn recent_exposes_the_event_category() {
+    fn recent_exposes_the_event_kind() {
         let mut game = Game::default();
         game.craft("whatever");
         assert_eq!(
-            recent(&game, 1).next().unwrap().category,
-            EventCategory::Crafting
+            recent(&game, 1).next().unwrap().kind,
+            &EventKind::UnknownRecipe {
+                recipe: "whatever".to_string()
+            }
         );
     }
 

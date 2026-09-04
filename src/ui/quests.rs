@@ -8,6 +8,7 @@ use ratatui::{
 };
 
 use crate::game::QuestID;
+use crate::i18n::{self, Language};
 use crate::viewmodel::quests::Overview;
 
 /// The quests panel: a scrollable list of quests available to accept, plus
@@ -55,8 +56,8 @@ impl Quests {
 
     /// Draws the panel: the active quest's progress (if any) or the
     /// available-to-accept list, plus completed quests.
-    pub(super) fn render(&self, area: Rect, buf: &mut Buffer, overview: &Overview) {
-        let inner = super::panel_frame(area, " Quests ", buf);
+    pub(super) fn render(&self, area: Rect, buf: &mut Buffer, overview: &Overview, lang: Language) {
+        let inner = super::panel_frame(area, &i18n::ui("panel-quests-title", lang), buf);
         let rows = Layout::vertical([
             Constraint::Length(10),
             Constraint::Min(3),
@@ -64,35 +65,37 @@ impl Quests {
         ])
         .split(inner);
 
+        let active_title = i18n::ui("panel-active-title", lang);
         match &overview.active {
             Some(active) => {
                 let text = format!(
                     "{}\n{}/{} — {}",
-                    active.quest.name,
+                    i18n::quest_name(active.quest.id, lang),
                     active.progress,
                     active.quest.goal(),
-                    active.quest.description
+                    i18n::quest_description(active.quest.id, lang),
                 );
                 Paragraph::new(text)
-                    .block(Block::bordered().title(" Active "))
+                    .block(Block::bordered().title(active_title))
                     .wrap(Wrap { trim: true })
                     .render(rows[0], buf);
             }
             None => {
-                Paragraph::new("No quest accepted.")
-                    .block(Block::bordered().title(" Active "))
+                Paragraph::new(i18n::ui("quests-active-none", lang))
+                    .block(Block::bordered().title(active_title))
                     .render(rows[0], buf);
             }
         }
 
+        let available_title = i18n::ui("panel-available-title", lang);
         if overview.active.is_some() {
-            Paragraph::new("Complete your active quest to accept another.")
-                .block(Block::bordered().title(" Available "))
+            Paragraph::new(i18n::ui("quests-active-blocked", lang))
+                .block(Block::bordered().title(available_title))
                 .wrap(Wrap { trim: true })
                 .render(rows[1], buf);
         } else if overview.available.is_empty() {
-            Paragraph::new("No quests available right now.")
-                .block(Block::bordered().title(" Available "))
+            Paragraph::new(i18n::ui("quests-available-empty", lang))
+                .block(Block::bordered().title(available_title))
                 .render(rows[1], buf);
         } else {
             let items = overview.available.iter().enumerate().map(|(index, quest)| {
@@ -101,17 +104,25 @@ impl Quests {
                 } else {
                     Style::default()
                 };
-                ListItem::new(quest.name).style(style)
+                ListItem::new(i18n::quest_name(quest.id, lang)).style(style)
             });
-            let list = List::new(items).block(Block::bordered().title(" Available "));
+            let list = List::new(items).block(Block::bordered().title(available_title));
             Widget::render(list, rows[1], buf);
         }
 
         let completed = if overview.completed.is_empty() {
-            "Completed: (none yet)".to_string()
+            i18n::ui("quests-completed-none", lang)
         } else {
-            let names: Vec<&str> = overview.completed.iter().map(|q| q.name).collect();
-            format!("Completed: {}", names.join(", "))
+            let names: Vec<String> = overview
+                .completed
+                .iter()
+                .map(|q| i18n::quest_name(q.id, lang))
+                .collect();
+            i18n::ui_args(
+                "quests-completed",
+                lang,
+                std::collections::HashMap::from([("names", names.join(", ").into())]),
+            )
         };
         Paragraph::new(Line::from(completed)).render(rows[2], buf);
     }

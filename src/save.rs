@@ -11,7 +11,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 
 use crate::game::{
-    Event, EventCategory, Game, Item, Map, Player, QuestID, RestoreState, SaveState, TerrainType,
+    Event, EventKind, Game, Item, Map, Player, QuestID, RestoreState, SaveState, TerrainType,
 };
 
 /// The game's semantic version, stamped into every save file.
@@ -81,12 +81,13 @@ pub(crate) struct MapState {
     pub(crate) terrain: Vec<String>,
 }
 
+/// The on-disk shape of one event-log entry. Old save files' `events` array
+/// (which stored pre-rendered `{ category, text }`) is not compatible with
+/// this shape by design — see docs/i18n-plan.md — so an old save fails to
+/// load with `io::ErrorKind::InvalidData` rather than being migrated.
 #[derive(Serialize, Deserialize)]
 pub(crate) struct EventState {
-    /// Absent in older / hand-made files; defaults to `General`.
-    #[serde(default)]
-    pub(crate) category: EventCategory,
-    pub(crate) text: String,
+    pub(crate) kind: EventKind,
     pub(crate) elapsed_secs: f64,
 }
 
@@ -226,30 +227,44 @@ mod tests {
     }
 
     #[test]
-    fn event_category_survives_round_trip() {
+    fn event_kind_survives_round_trip() {
         let mut game = Game::default();
         game.player.inventory.insert(Item::Vine, 2);
         game.experiment(&[(Item::Vine, 2)]);
 
         let restored = roundtrip(&game);
+        let kind = restored.events().last().unwrap().kind();
+        assert_eq!(
+            kind,
+            &EventKind::Experimented {
+                items: vec![(Item::Vine, 2)],
+                output: Item::Cord,
+                newly_learned: true,
+            }
+        );
         assert_eq!(
             restored.events().last().unwrap().category(),
-            EventCategory::Experiment
+            crate::game::EventCategory::Experiment
         );
     }
 
     #[test]
-    fn event_without_category_defaults_to_general() {
+    fn old_format_save_fails_to_load() {
+        // Pre-`EventKind` save files stored pre-rendered `{ category, text }`
+        // events; that shape is deliberately not migrated (docs/i18n-plan.md).
         let json = r#"{
             "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
             "map": { "terrain": ["V"] },
-            "events": [{ "text": "hi", "elapsed_secs": 0.0 }]
+            "events": [{ "category": "General", "text": "hi", "elapsed_secs": 0.0 }]
         }"#;
-        let game = restore(serde_json::from_str(json).unwrap()).unwrap();
-        assert_eq!(
-            game.events().last().unwrap().category(),
-            EventCategory::General
-        );
+        let mut path = std::env::temp_dir();
+        path.push(format!("the-bug-test-old-format-{}.json", now_epoch()));
+        std::fs::write(&path, json).unwrap();
+
+        let err = load(&path).unwrap_err();
+        std::fs::remove_file(&path).ok();
+
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
     }
 
     #[test]
@@ -390,7 +405,7 @@ mod tests {
                 "recipes": ["Cord"]
             },
             "map": { "terrain": ["FMC", "M.M", "CMV"] },
-            "events": [{ "text": "loaded", "elapsed_secs": 4.5 }]
+            "events": [{ "kind": "Awoke", "elapsed_secs": 4.5 }]
         }"#;
         let mut path = std::env::temp_dir();
         path.push(format!("the-bug-test-edit-{}.json", now_epoch()));
@@ -404,6 +419,6 @@ mod tests {
         assert_eq!(game.map.tiles.len(), 3);
         assert_eq!(game.map.half, 1);
         assert_eq!(game.events().len(), 1);
-        assert_eq!(game.events()[0].text(), "loaded");
+        assert_eq!(game.events()[0].kind(), &EventKind::Awoke);
     }
 }

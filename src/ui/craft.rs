@@ -6,6 +6,7 @@ use ratatui::{
     widgets::{Block, List, ListItem, Paragraph, Widget},
 };
 
+use crate::i18n::{self, Language};
 use crate::viewmodel::crafting::CraftOption;
 
 /// The "craft" overlay: a scrollable list of the player's known recipes. Owns
@@ -23,7 +24,7 @@ pub(super) enum Outcome {
     Stay,
     /// Close the overlay without crafting.
     Cancel,
-    /// Close the overlay and run `game.craft(name)`.
+    /// Close the overlay and run `game.craft(id)`.
     Craft(&'static str),
 }
 
@@ -44,7 +45,7 @@ impl Craft {
                 Outcome::Stay
             }
             KeyCode::Enter | KeyCode::Char('c') => match options.get(self.cursor) {
-                Some(option) if option.enabled => Outcome::Craft(option.name),
+                Some(option) if option.enabled => Outcome::Craft(option.id),
                 _ => Outcome::Stay,
             },
             _ => Outcome::Stay,
@@ -53,12 +54,18 @@ impl Craft {
 
     /// Draws the panel: the recipe list plus a key hint. Recipes the player
     /// cannot currently afford are dimmed.
-    pub(super) fn render(&self, area: Rect, buf: &mut Buffer, options: &[CraftOption]) {
-        let inner = super::panel_frame(area, " Craft ", buf);
+    pub(super) fn render(
+        &self,
+        area: Rect,
+        buf: &mut Buffer,
+        options: &[CraftOption],
+        lang: Language,
+    ) {
+        let inner = super::panel_frame(area, &i18n::ui("panel-craft-title", lang), buf);
         let rows = Layout::vertical([Constraint::Min(3), Constraint::Length(1)]).split(inner);
 
         if options.is_empty() {
-            Paragraph::new("You haven't discovered any recipes yet.").render(rows[0], buf);
+            Paragraph::new(i18n::ui("craft-empty", lang)).render(rows[0], buf);
         } else {
             let items = options.iter().enumerate().map(|(index, option)| {
                 let mut style = Style::default();
@@ -68,14 +75,15 @@ impl Craft {
                 if index == self.cursor {
                     style = style.add_modifier(Modifier::REVERSED);
                 }
-                ListItem::new(option.name).style(style)
+                ListItem::new(i18n::item(option.output, lang)).style(style)
             });
 
-            let list = List::new(items).block(Block::bordered().title(" Recipes "));
+            let list = List::new(items)
+                .block(Block::bordered().title(i18n::ui("panel-recipes-title", lang)));
             Widget::render(list, rows[0], buf);
         }
 
-        Paragraph::new("↑↓ move   Enter craft   Esc cancel")
+        Paragraph::new(i18n::ui("craft-hint", lang))
             .alignment(Alignment::Center)
             .render(rows[1], buf);
     }
@@ -84,15 +92,18 @@ impl Craft {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::game::Item;
 
     fn options() -> Vec<CraftOption> {
         vec![
             CraftOption {
-                name: "Cord",
+                id: "Cord",
+                output: Item::Cord,
                 enabled: true,
             },
             CraftOption {
-                name: "Stone Axe",
+                id: "Stone Axe",
+                output: Item::StoneAxe,
                 enabled: false,
             },
         ]

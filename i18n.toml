@@ -1,0 +1,8 @@
+# Configuration for i18n-embed-fl's `fluent_language_loader!()` and `fl!()`
+# macros (compile-time message-id checking against the fallback locale).
+# See docs/i18n-plan.md.
+fallback_language = "en"
+
+[fluent]
+assets_dir = "src/i18n/locales"
+domain = "main"

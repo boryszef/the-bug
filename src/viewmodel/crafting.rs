@@ -1,10 +1,13 @@
 //! The craft menu: the player's known recipes prepared for display.
 
-use crate::game::Player;
+use crate::game::{Item, Player};
 
 /// One row of the craft menu.
 pub struct CraftOption {
-    pub name: &'static str,
+    /// The recipe name, passed to [`crate::game::Game::craft`] — a lookup
+    /// key, not display text.
+    pub id: &'static str,
+    pub output: Item,
     /// The player currently holds every input in the required amount.
     pub enabled: bool,
 }
@@ -15,7 +18,8 @@ pub fn options(player: &Player) -> Vec<CraftOption> {
         .known_recipes()
         .iter()
         .map(|recipe| CraftOption {
-            name: recipe.name(),
+            id: recipe.name(),
+            output: recipe.output(),
             enabled: recipe
                 .inputs()
                 .iter()
@@ -42,7 +46,8 @@ mod tests {
 
         let opts = options(&game.player);
         assert_eq!(opts.len(), 1);
-        assert_eq!(opts[0].name, "Cord");
+        assert_eq!(opts[0].id, "Cord");
+        assert_eq!(opts[0].output, Item::Cord);
         assert!(!opts[0].enabled);
 
         game.player.inventory.insert(Item::Vine, 2);

@@ -7,6 +7,7 @@ use ratatui::{
 };
 
 use crate::game::Item;
+use crate::i18n::{self, Language};
 
 /// The "disassemble" overlay: a scrollable list of the inventory items that can
 /// be taken apart. Owns only the cursor; which items qualify comes from
@@ -52,27 +53,28 @@ impl Disassemble {
     }
 
     /// Draws the panel: the item list plus a key hint.
-    pub(super) fn render(&self, area: Rect, buf: &mut Buffer, options: &[Item]) {
-        let inner = super::panel_frame(area, " Disassemble ", buf);
+    pub(super) fn render(&self, area: Rect, buf: &mut Buffer, options: &[Item], lang: Language) {
+        let inner = super::panel_frame(area, &i18n::ui("panel-disassemble-title", lang), buf);
         let rows = Layout::vertical([Constraint::Min(3), Constraint::Length(1)]).split(inner);
 
         if options.is_empty() {
-            Paragraph::new("Nothing you're carrying can be taken apart.").render(rows[0], buf);
+            Paragraph::new(i18n::ui("disassemble-empty", lang)).render(rows[0], buf);
         } else {
-            let items = options.iter().enumerate().map(|(index, item)| {
+            let items = options.iter().enumerate().map(|(index, &item)| {
                 let style = if index == self.cursor {
                     Style::default().add_modifier(Modifier::REVERSED)
                 } else {
                     Style::default()
                 };
-                ListItem::new(item.to_string()).style(style)
+                ListItem::new(i18n::item(item, lang)).style(style)
             });
 
-            let list = List::new(items).block(Block::bordered().title(" Items "));
+            let list = List::new(items)
+                .block(Block::bordered().title(i18n::ui("panel-items-title", lang)));
             Widget::render(list, rows[0], buf);
         }
 
-        Paragraph::new("↑↓ move   Enter take apart   Esc cancel")
+        Paragraph::new(i18n::ui("disassemble-hint", lang))
             .alignment(Alignment::Center)
             .render(rows[1], buf);
     }

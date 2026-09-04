@@ -1,6 +1,7 @@
 use super::item::Item;
 use super::player::Player;
 use rand::RngExt;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::io;
@@ -10,7 +11,7 @@ const MAP_MIN_SIZE: u32 = 21;
 const MAP_PER_LEVEL_INCREMENT: u32 = 2;
 const DECAY_WINDOW_SECS: f64 = 60.0;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum Direction {
     North,
     South,
@@ -29,7 +30,7 @@ impl Direction {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TerrainType {
     Meadow,
     Forest,
@@ -50,20 +51,6 @@ impl TerrainType {
             TerrainType::Village => '🛖',
             TerrainType::Deadland => ' ',
         }
-    }
-}
-
-impl fmt::Display for TerrainType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let name = match self {
-            TerrainType::Meadow => "Meadow",
-            TerrainType::Forest => "Forest",
-            TerrainType::Cave => "Cave",
-            TerrainType::Ruins => "Ruins",
-            TerrainType::Village => "Village",
-            TerrainType::Deadland => "Deadland",
-        };
-        write!(f, "{name}")
     }
 }
 
@@ -311,8 +298,7 @@ mod tests {
     }
 
     #[test]
-    fn terrain_type_display_is_name_and_symbol_is_glyph() {
-        assert_eq!(TerrainType::Forest.to_string(), "Forest");
+    fn symbol_is_the_map_glyph() {
         assert_eq!(TerrainType::Forest.symbol(), '𖠰');
         assert_eq!(TerrainType::Deadland.symbol(), ' ');
     }

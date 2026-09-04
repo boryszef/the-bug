@@ -106,15 +106,3 @@ pub(super) fn find_matching(items: &[(Item, u32)]) -> Option<&'static Recipe> {
             && recipe.inputs.iter().all(|input| items.contains(input))
     })
 }
-
-/// A stable, human-readable rendering of a set of items, e.g.
-/// `"1 Stick + 1 Stone + 1 Cord"`.
-pub(super) fn describe_inputs(items: &[(Item, u32)]) -> String {
-    let mut sorted = items.to_vec();
-    sorted.sort_by_key(|&(item, _)| item);
-    sorted
-        .iter()
-        .map(|(item, quantity)| format!("{quantity} {item}"))
-        .collect::<Vec<_>>()
-        .join(" + ")
-}

@@ -4,10 +4,10 @@
 
 * implement the quest system: one quest unlocks other quests, completing a quest awards XP and items, quests also tell the story of the game world
 * craft menu should show what items are missing for a recipe
-* add i18n support
 
 ## DONE
 
+* add i18n support (English + Polish, via Project Fluent)
 * implement item disassembly (e.g. stone axe -> stick + stone + rope, umbrella -> pole + fabric)
 * inventory panel: hide exhausted (zero) items and wrap the text
 * show discovered-recipe ratio (known/total) in the player panel

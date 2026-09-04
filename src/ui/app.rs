@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
     DefaultTerminal, Frame,
@@ -10,6 +12,7 @@ use ratatui::{
 use std::io;
 
 use crate::game::{Direction, EventCategory, Game};
+use crate::i18n::{self, Language};
 use crate::viewmodel;
 
 use super::craft::{self, Craft};
@@ -57,6 +60,7 @@ impl Panel {
 #[derive(Default)]
 pub struct App {
     game: Game,
+    language: Language,
     exit: bool,
     panel: Panel,
     experiment: Experiment,
@@ -66,10 +70,12 @@ pub struct App {
 }
 
 impl App {
-    /// Starts the UI on an existing game (e.g. one loaded from a save file).
-    pub fn with_game(game: Game) -> Self {
+    /// Starts the UI on an existing game (e.g. one loaded from a save file),
+    /// rendering in `language`.
+    pub fn with_game(game: Game, language: Language) -> Self {
         Self {
             game,
+            language,
             ..Default::default()
         }
     }
@@ -178,38 +184,43 @@ impl Widget for &App {
         let menu = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
             .split(columns[0]);
 
-        render_player(&self.game, menu[0], buf);
-        render_events(&self.game, menu[1], buf);
+        render_player(&self.game, menu[0], buf, self.language);
+        render_events(&self.game, menu[1], buf, self.language);
 
         match self.panel {
-            Panel::Map => render_map(&self.game, columns[1], buf),
+            Panel::Map => render_map(&self.game, columns[1], buf, self.language),
             Panel::Experiment => self.experiment.render(
                 columns[1],
                 buf,
                 &viewmodel::inventory::sorted(&self.game.player),
+                self.language,
             ),
             Panel::Craft => self.craft.render(
                 columns[1],
                 buf,
                 &viewmodel::crafting::options(&self.game.player),
+                self.language,
             ),
             Panel::Disassemble => self.disassemble.render(
                 columns[1],
                 buf,
                 &viewmodel::disassembly::options(&self.game.player),
+                self.language,
             ),
-            Panel::Quests => {
-                self.quests
-                    .render(columns[1], buf, &viewmodel::quests::overview(&self.game))
-            }
+            Panel::Quests => self.quests.render(
+                columns[1],
+                buf,
+                &viewmodel::quests::overview(&self.game),
+                self.language,
+            ),
         }
 
-        render_footer(self.panel, footer, buf);
+        render_footer(self.panel, footer, buf, self.language);
     }
 }
 
-fn render_map(game: &Game, area: Rect, buf: &mut Buffer) {
-    let inner = super::panel_frame(area, " Map ", buf);
+fn render_map(game: &Game, area: Rect, buf: &mut Buffer, lang: Language) {
+    let inner = super::panel_frame(area, &i18n::ui("panel-map-title", lang), buf);
     let player_pos = game.player.coordinates;
 
     let canvas = Canvas::default()
@@ -239,16 +250,16 @@ fn render_map(game: &Game, area: Rect, buf: &mut Buffer) {
     canvas.render(inner, buf);
 }
 
-fn render_player(game: &Game, area: Rect, buf: &mut Buffer) {
-    let block = Block::bordered().title(" Player ");
+fn render_player(game: &Game, area: Rect, buf: &mut Buffer, lang: Language) {
+    let block = Block::bordered().title(i18n::ui("panel-player-title", lang));
 
     let inventory = viewmodel::inventory::sorted(&game.player);
     let inventory = if inventory.is_empty() {
-        "(empty)".to_string()
+        i18n::ui("player-inventory-empty", lang)
     } else {
         inventory
             .iter()
-            .map(|(item, quantity)| format!("{item} {quantity}"))
+            .map(|&(item, quantity)| i18n::item_with_quantity(item, quantity, lang))
             .collect::<Vec<_>>()
             .join(", ")
     };
@@ -256,17 +267,42 @@ fn render_player(game: &Game, area: Rect, buf: &mut Buffer) {
     let (known_recipes, total_recipes) = game.player.recipe_progress();
     let (completed_quests, total_quests) = game.quest_progress();
     let active_quest = match game.player.open_quest() {
-        Some(id) => game.quest(id).name,
-        None => "(none)",
+        Some(id) => i18n::quest_name(id, lang),
+        None => i18n::ui("player-quest-none", lang),
     };
     let text = Text::from(vec![
-        Line::from(format!("Level: {}", game.player.level)),
-        Line::from(format!("XP: {}", game.player.experience)),
-        Line::from(format!("Recipes: {known_recipes}/{total_recipes}")),
-        Line::from(format!(
-            "Quests: {completed_quests}/{total_quests} — {active_quest}"
+        Line::from(i18n::ui_args(
+            "player-level",
+            lang,
+            HashMap::from([("level", game.player.level.into())]),
         )),
-        Line::from(format!("Inventory: {inventory}")),
+        Line::from(i18n::ui_args(
+            "player-xp",
+            lang,
+            HashMap::from([("xp", game.player.experience.into())]),
+        )),
+        Line::from(i18n::ui_args(
+            "player-recipes",
+            lang,
+            HashMap::from([
+                ("known", (known_recipes as u32).into()),
+                ("total", (total_recipes as u32).into()),
+            ]),
+        )),
+        Line::from(i18n::ui_args(
+            "player-quests",
+            lang,
+            HashMap::from([
+                ("completed", (completed_quests as u32).into()),
+                ("total", (total_quests as u32).into()),
+                ("active", active_quest.into()),
+            ]),
+        )),
+        Line::from(i18n::ui_args(
+            "player-inventory",
+            lang,
+            HashMap::from([("items", inventory.into())]),
+        )),
     ]);
 
     Paragraph::new(text)
@@ -275,13 +311,17 @@ fn render_player(game: &Game, area: Rect, buf: &mut Buffer) {
         .render(area, buf);
 }
 
-fn render_events(game: &Game, area: Rect, buf: &mut Buffer) {
-    let block = Block::bordered().title(" Events ");
+fn render_events(game: &Game, area: Rect, buf: &mut Buffer, lang: Language) {
+    let block = Block::bordered().title(i18n::ui("panel-events-title", lang));
 
     let lines: Vec<Line> = viewmodel::events::recent(game, 10)
         .map(|event| {
-            let line = Line::from(format!("[{}] {}", event.timestamp, event.text));
-            match category_color(event.category) {
+            let line = Line::from(format!(
+                "[{}] {}",
+                event.timestamp,
+                i18n::event(event.kind, lang)
+            ));
+            match category_color(event.kind.category()) {
                 Some(color) => line.style(Style::default().fg(color)),
                 None => line,
             }
@@ -305,18 +345,16 @@ fn category_color(category: EventCategory) -> Option<Color> {
 
 /// The key hints for whichever panel is active — this is the only "help"
 /// there is now that popups are gone.
-fn render_footer(panel: Panel, area: Rect, buf: &mut Buffer) {
-    let hint = match panel {
-        Panel::Map => "←↑↓→ move   s search   [ ] panel   q quit",
-        Panel::Experiment => {
-            "↑↓ move   ←→ add/remove   Tab switch column   e run   [ ] panel   q quit"
-        }
-        Panel::Craft => "↑↓ move   Enter craft   [ ] panel   q quit",
-        Panel::Disassemble => "↑↓ move   Enter take apart   [ ] panel   q quit",
-        Panel::Quests => "↑↓ move   Enter accept   [ ] panel   q quit",
+fn render_footer(panel: Panel, area: Rect, buf: &mut Buffer, lang: Language) {
+    let id = match panel {
+        Panel::Map => "footer-map",
+        Panel::Experiment => "footer-experiment",
+        Panel::Craft => "footer-craft",
+        Panel::Disassemble => "footer-disassemble",
+        Panel::Quests => "footer-quests",
     };
 
-    Paragraph::new(hint)
+    Paragraph::new(i18n::ui(id, lang))
         .alignment(Alignment::Center)
         .render(area, buf);
 }

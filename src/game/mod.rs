@@ -5,7 +5,7 @@ mod player;
 mod quest;
 mod recipe;
 
-pub use event::{Event, EventCategory};
+pub use event::{Event, EventCategory, EventKind};
 pub use item::Item;
 pub use map::{Direction, Map, MapTile, TerrainType};
 pub use player::Player;
@@ -13,7 +13,7 @@ pub use quest::{Quest, QuestError, QuestID};
 pub(crate) use recipe::reversible_recipe_for;
 
 use quest::{EventTypeID, QUESTS, dependencies_met, quest_for};
-use recipe::{describe_inputs, find_matching};
+use recipe::find_matching;
 use std::io;
 use std::time::{Duration, Instant};
 
@@ -46,11 +46,7 @@ impl Default for Game {
         Self {
             player,
             map,
-            events: vec![Event::new(
-                EventCategory::General,
-                "You wake up and decide to go for a walk.",
-                Duration::ZERO,
-            )],
+            events: vec![Event::new(EventKind::Awoke, Duration::ZERO)],
             started: Instant::now(),
         }
     }
@@ -98,10 +94,7 @@ impl Game {
         }
 
         self.player.open_quest_as(id);
-        self.log(
-            EventCategory::General,
-            format!("Quest accepted: {}", quest.name),
-        );
+        self.log(EventKind::QuestAccepted { quest: id });
         Ok(())
     }
 
@@ -158,17 +151,13 @@ impl Game {
         self.player.complete_quest(quest.id);
         self.player
             .grant_reward(quest.reward_xp, quest.reward_items);
-        self.log(
-            EventCategory::General,
-            format!("Quest complete: {}!", quest.name),
-        );
+        self.log(EventKind::QuestCompleted { quest: quest.id });
     }
 
-    /// Appends a message to the event log, timestamped with the current session
+    /// Appends an event to the log, timestamped with the current session
     /// elapsed time.
-    fn log(&mut self, category: EventCategory, text: impl Into<String>) {
-        self.events
-            .push(Event::new(category, text, self.started.elapsed()));
+    fn log(&mut self, kind: EventKind) {
+        self.events.push(Event::new(kind, self.started.elapsed()));
     }
 
     pub fn walk(&mut self, dir: Direction) {
@@ -193,38 +182,33 @@ impl Game {
 
         for item in found {
             self.player.add_to_inventory(item, 1);
-            self.log(
-                EventCategory::General,
-                format!("You find a {item} in the {terrain}."),
-            );
+            self.log(EventKind::Found { item, terrain });
         }
         self.map.update_tile_last_search_time(coords);
     }
 
     pub fn craft(&mut self, recipe_name: &str) {
         let Some(recipe) = self.player.find_known_recipe(recipe_name) else {
-            self.log(
-                EventCategory::Crafting,
-                format!("You don't know how to craft a {recipe_name}."),
-            );
+            self.log(EventKind::UnknownRecipe {
+                recipe: recipe_name.to_string(),
+            });
             return;
         };
 
         if let Some((item, ..)) = self.player.first_shortage(recipe.inputs()) {
-            self.log(
-                EventCategory::Crafting,
-                format!("You don't have enough {item} to craft a {}.", recipe.name()),
-            );
+            self.log(EventKind::CraftShortage {
+                needed: item,
+                output: recipe.output(),
+            });
             return;
         }
 
         self.player.spend_all(recipe.inputs());
 
         self.grant_item(recipe.output(), 1);
-        self.log(
-            EventCategory::Crafting,
-            format!("You craft a {}.", recipe.name()),
-        );
+        self.log(EventKind::Crafted {
+            output: recipe.output(),
+        });
 
         self.player.record_successful_craft();
     }
@@ -234,25 +218,22 @@ impl Game {
             return;
         }
 
-        let inputs = describe_inputs(items);
-
-        if let Some((item, available, amount)) = self.player.first_shortage(items) {
-            self.log(
-                EventCategory::Experiment,
-                format!(
-                    "Experiment: {inputs} → not enough {item} (have {available}, need {amount})"
-                ),
-            );
+        if let Some((item, available, needed)) = self.player.first_shortage(items) {
+            self.log(EventKind::ExperimentShortage {
+                items: items.to_vec(),
+                missing: item,
+                available,
+                needed,
+            });
             return;
         }
 
         self.player.spend_all(items);
 
         let Some(recipe) = find_matching(items) else {
-            self.log(
-                EventCategory::Experiment,
-                format!("Experiment: {inputs} → nothing"),
-            );
+            self.log(EventKind::ExperimentFailed {
+                items: items.to_vec(),
+            });
             return;
         };
 
@@ -260,11 +241,11 @@ impl Game {
 
         self.grant_item(recipe.output(), 1);
 
-        let suffix = if newly_learned { " (new recipe!)" } else { "" };
-        self.log(
-            EventCategory::Experiment,
-            format!("Experiment: {inputs} → {}{suffix}", recipe.name()),
-        );
+        self.log(EventKind::Experimented {
+            items: items.to_vec(),
+            output: recipe.output(),
+            newly_learned,
+        });
     }
 
     /// Takes one `item` apart, returning the inputs of the reversible recipe
@@ -281,13 +262,7 @@ impl Game {
         self.player.spend(item, 1);
         self.player.add_all_to_inventory(recipe.inputs());
 
-        self.log(
-            EventCategory::Crafting,
-            format!(
-                "You take apart a {item}, recovering {}.",
-                describe_inputs(recipe.inputs())
-            ),
-        );
+        self.log(EventKind::Disassembled { item });
     }
 }
 
@@ -360,19 +335,26 @@ mod tests {
         game.player.inventory.insert(Item::Stone, 1);
         game.experiment(&[(Item::Stone, 5)]);
         assert_eq!(
-            last_event(&game).text(),
-            "Experiment: 5 Stone → not enough Stone (have 1, need 5)"
+            last_event(&game).kind(),
+            &EventKind::ExperimentShortage {
+                items: vec![(Item::Stone, 5)],
+                missing: Item::Stone,
+                available: 1,
+                needed: 5,
+            }
         );
         assert_eq!(last_event(&game).category(), EventCategory::Experiment);
 
-        // failure: shows the inputs and "nothing"
+        // failure: shows the inputs
         let mut game = Game::default();
         game.player.inventory.insert(Item::Stick, 1);
         game.player.inventory.insert(Item::Vine, 1);
         game.experiment(&[(Item::Vine, 1), (Item::Stick, 1)]);
         assert_eq!(
-            last_event(&game).text(),
-            "Experiment: 1 Stick + 1 Vine → nothing"
+            last_event(&game).kind(),
+            &EventKind::ExperimentFailed {
+                items: vec![(Item::Vine, 1), (Item::Stick, 1)],
+            }
         );
 
         // success + discovery, then success without
@@ -380,11 +362,22 @@ mod tests {
         game.player.inventory.insert(Item::Vine, 4);
         game.experiment(&[(Item::Vine, 2)]);
         assert_eq!(
-            last_event(&game).text(),
-            "Experiment: 2 Vine → Cord (new recipe!)"
+            last_event(&game).kind(),
+            &EventKind::Experimented {
+                items: vec![(Item::Vine, 2)],
+                output: Item::Cord,
+                newly_learned: true,
+            }
         );
         game.experiment(&[(Item::Vine, 2)]);
-        assert_eq!(last_event(&game).text(), "Experiment: 2 Vine → Cord");
+        assert_eq!(
+            last_event(&game).kind(),
+            &EventKind::Experimented {
+                items: vec![(Item::Vine, 2)],
+                output: Item::Cord,
+                newly_learned: false,
+            }
+        );
     }
 
     #[test]
@@ -436,7 +429,10 @@ mod tests {
         game.player.grant_recipe("Cord");
         game.player.inventory.insert(Item::Vine, 2);
         game.craft("Cord");
-        assert_eq!(last_event(&game).text(), "You craft a Cord.");
+        assert_eq!(
+            last_event(&game).kind(),
+            &EventKind::Crafted { output: Item::Cord }
+        );
         assert_eq!(last_event(&game).category(), EventCategory::Crafting);
     }
 
@@ -538,15 +534,17 @@ mod tests {
     }
 
     #[test]
-    fn disassemble_logs_a_precise_crafting_line() {
+    fn disassemble_logs_the_item_taken_apart() {
         let mut game = Game::default();
         game.player.inventory.insert(Item::StoneAxe, 1);
 
         game.disassemble(Item::StoneAxe);
 
         assert_eq!(
-            last_event(&game).text(),
-            "You take apart a Stone Axe, recovering 1 Stick + 1 Stone + 1 Cord."
+            last_event(&game).kind(),
+            &EventKind::Disassembled {
+                item: Item::StoneAxe
+            }
         );
         assert_eq!(last_event(&game).category(), EventCategory::Crafting);
     }
@@ -628,7 +626,12 @@ mod tests {
         assert_eq!(game.player.completed_quests(), [FIXTURE_QUEST.id]);
         assert_eq!(game.player.experience, xp_before + FIXTURE_QUEST.reward_xp);
         assert_eq!(game.player.inventory.get(&Item::Cord), Some(&2));
-        assert_eq!(last_event(&game).text(), "Quest complete: Fixture!");
+        assert_eq!(
+            last_event(&game).kind(),
+            &EventKind::QuestCompleted {
+                quest: FIXTURE_QUEST.id
+            }
+        );
     }
 
     #[test]

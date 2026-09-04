@@ -7,6 +7,7 @@ use ratatui::{
 };
 
 use crate::game::Item;
+use crate::i18n::{self, Language};
 use crate::viewmodel::selection::ItemSelection;
 
 /// The "experiment" overlay: pick items from the inventory and try to
@@ -63,8 +64,14 @@ impl Experiment {
     /// Draws the panel: an "Available" and a "Selected" column plus a key
     /// hint. The "Available" column shows what can still be added (owned
     /// minus already selected).
-    pub(super) fn render(&self, area: Rect, buf: &mut Buffer, inventory: &[(Item, u32)]) {
-        let inner = super::panel_frame(area, " Experiment ", buf);
+    pub(super) fn render(
+        &self,
+        area: Rect,
+        buf: &mut Buffer,
+        inventory: &[(Item, u32)],
+        lang: Language,
+    ) {
+        let inner = super::panel_frame(area, &i18n::ui("panel-experiment-title", lang), buf);
 
         let rows = Layout::vertical([Constraint::Min(5), Constraint::Length(1)]).split(inner);
         let columns = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
@@ -74,18 +81,20 @@ impl Experiment {
             columns[0],
             buf,
             &self.selection.available(inventory),
-            " Available ",
+            &i18n::ui("panel-available-title", lang),
             self.cursor_for(Focus::Available),
+            lang,
         );
         item_list(
             columns[1],
             buf,
             self.selection.items(),
-            " Selected ",
+            &i18n::ui("panel-selected-title", lang),
             self.cursor_for(Focus::Selected),
+            lang,
         );
 
-        Paragraph::new("↑↓ move   ←→ add/remove   Tab switch column   e run   Esc cancel")
+        Paragraph::new(i18n::ui("experiment-hint", lang))
             .alignment(Alignment::Center)
             .render(rows[1], buf);
     }
@@ -142,6 +151,7 @@ fn item_list(
     items: &[(Item, u32)],
     title: &str,
     cursor: Option<usize>,
+    lang: Language,
 ) {
     let rows = items.iter().enumerate().map(|(index, &(item, quantity))| {
         let style = if cursor == Some(index) {
@@ -149,7 +159,7 @@ fn item_list(
         } else {
             Style::default()
         };
-        ListItem::new(format!("{item}  {quantity}")).style(style)
+        ListItem::new(i18n::item_with_quantity(item, quantity, lang)).style(style)
     });
 
     let list = List::new(rows).block(Block::bordered().title(title));
