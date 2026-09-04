@@ -1,0 +1,114 @@
+use super::item::Item;
+use super::map::TerrainType;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum QuestID {
+    CraftArrows,
+    ExploreRuins,
+}
+
+/// Failure reasons for [`super::Game::accept_quest`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuestError {
+    /// Another quest is already open; only one can be active at a time.
+    AnotherQuestActive,
+    /// This quest is already in `Player::completed_quests()`.
+    AlreadyCompleted,
+    /// Not every quest in `Quest::dependencies` has been completed yet.
+    DependenciesNotMet,
+}
+
+/// A game action that can count toward an open quest's [`QuestCondition`].
+/// Fired at the moment the action happens (see `Game::grant_item`/`walk`) —
+/// not stored or replayed, see docs/quest-system.md for why.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum EventTypeID {
+    CraftItem(Item),
+    VisitTerrain(TerrainType),
+}
+
+/// What it takes to complete a quest: `count` occurrences of `event`.
+pub(super) struct QuestCondition {
+    pub(super) event: EventTypeID,
+    pub(super) count: u32,
+}
+
+pub struct Quest {
+    pub id: QuestID,
+    pub name: &'static str,
+    pub description: &'static str,
+    pub dependencies: &'static [QuestID],
+    pub(super) condition: QuestCondition,
+    pub(super) reward_xp: u32,
+    pub(super) reward_items: &'static [(Item, u32)],
+}
+
+pub(super) const QUESTS: &[Quest] = &[
+    Quest {
+        id: QuestID::CraftArrows,
+        name: "Craft Arrows",
+        description: "Group of local hunters is preparing for a hunt. They asked you to create 5 arrows for them. Visit the forrest to gather sticks and exeriment with them to learn how to craft arrows.",
+        dependencies: &[],
+        condition: QuestCondition {
+            event: EventTypeID::CraftItem(Item::Arrow),
+            count: 5,
+        },
+        reward_xp: 20,
+        reward_items: &[],
+    },
+    Quest {
+        id: QuestID::ExploreRuins,
+        name: "Explore the Ruins",
+        description: "A passing traveler told you about some ruins nearby. They said that there are some old artifacts there. You should go and explore.",
+        dependencies: &[],
+        condition: QuestCondition {
+            event: EventTypeID::VisitTerrain(TerrainType::Ruins),
+            count: 1,
+        },
+        reward_xp: 10,
+        reward_items: &[],
+    },
+];
+
+/// Looks up a quest by id. Panics if `QUESTS` is missing a variant — a bug in
+/// the static table, not a runtime condition.
+pub(super) fn quest_for(id: QuestID) -> &'static Quest {
+    QUESTS
+        .iter()
+        .find(|quest| quest.id == id)
+        .expect("QUESTS must contain every QuestID")
+}
+
+/// Whether every quest in `quest.dependencies` is in `completed`.
+pub(super) fn dependencies_met(quest: &Quest, completed: &[QuestID]) -> bool {
+    quest.dependencies.iter().all(|dep| completed.contains(dep))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const FIXTURE_QUEST: Quest = Quest {
+        id: QuestID::CraftArrows,
+        name: "Fixture",
+        description: "",
+        dependencies: &[QuestID::ExploreRuins],
+        condition: QuestCondition {
+            event: EventTypeID::CraftItem(Item::Arrow),
+            count: 1,
+        },
+        reward_xp: 7,
+        reward_items: &[(Item::Cord, 2)],
+    };
+
+    #[test]
+    fn dependencies_met_is_false_when_a_dependency_is_missing() {
+        assert!(!dependencies_met(&FIXTURE_QUEST, &[]));
+    }
+
+    #[test]
+    fn dependencies_met_is_true_once_every_dependency_is_completed() {
+        assert!(dependencies_met(&FIXTURE_QUEST, &[QuestID::ExploreRuins]));
+    }
+}
