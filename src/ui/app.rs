@@ -254,10 +254,18 @@ fn render_player(game: &Game, area: Rect, buf: &mut Buffer) {
     };
 
     let (known_recipes, total_recipes) = game.player.recipe_progress();
+    let (completed_quests, total_quests) = game.quest_progress();
+    let active_quest = match game.player.open_quest() {
+        Some(id) => game.quest(id).name,
+        None => "(none)",
+    };
     let text = Text::from(vec![
         Line::from(format!("Level: {}", game.player.level)),
         Line::from(format!("XP: {}", game.player.experience)),
         Line::from(format!("Recipes: {known_recipes}/{total_recipes}")),
+        Line::from(format!(
+            "Quests: {completed_quests}/{total_quests} — {active_quest}"
+        )),
         Line::from(format!("Inventory: {inventory}")),
     ]);
 

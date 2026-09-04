@@ -122,6 +122,11 @@ impl Game {
         quest_for(id)
     }
 
+    /// `(quests completed, quests that exist)`.
+    pub fn quest_progress(&self) -> (usize, usize) {
+        (self.player.completed_quests().len(), QUESTS.len())
+    }
+
     /// Records that `item` was produced through crafting or experimenting,
     /// and reports it toward the open quest's condition. `search()` (found in
     /// the wild) and `disassemble()` (recovered) do not go through this.
@@ -460,6 +465,16 @@ mod tests {
         game.player.inventory.insert(Item::Vine, 2);
         game.experiment(&[(Item::Vine, 2)]);
         assert_eq!(game.player.recipe_progress().0, 1);
+    }
+
+    #[test]
+    fn quest_progress_reports_completed_and_total() {
+        let mut game = Game::default();
+        assert_eq!(game.quest_progress(), (0, QUESTS.len()));
+
+        game.player
+            .restore_quest_state(None, 0, vec![QuestID::CraftArrows]);
+        assert_eq!(game.quest_progress(), (1, QUESTS.len()));
     }
 
     #[test]
