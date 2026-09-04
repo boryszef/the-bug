@@ -51,10 +51,10 @@ impl Craft {
         }
     }
 
-    /// Draws the centered popup: the recipe list plus a key hint. Recipes the
-    /// player cannot currently afford are dimmed.
+    /// Draws the panel: the recipe list plus a key hint. Recipes the player
+    /// cannot currently afford are dimmed.
     pub(super) fn render(&self, area: Rect, buf: &mut Buffer, options: &[CraftOption]) {
-        let inner = super::popup_frame(area, 40, 50, " Craft ", buf);
+        let inner = super::panel_frame(area, " Craft ", buf);
         let rows = Layout::vertical([Constraint::Min(3), Constraint::Length(1)]).split(inner);
 
         if options.is_empty() {

@@ -51,9 +51,9 @@ impl Disassemble {
         }
     }
 
-    /// Draws the centered popup: the item list plus a key hint.
+    /// Draws the panel: the item list plus a key hint.
     pub(super) fn render(&self, area: Rect, buf: &mut Buffer, options: &[Item]) {
-        let inner = super::popup_frame(area, 40, 50, " Disassemble ", buf);
+        let inner = super::panel_frame(area, " Disassemble ", buf);
         let rows = Layout::vertical([Constraint::Min(3), Constraint::Length(1)]).split(inner);
 
         if options.is_empty() {

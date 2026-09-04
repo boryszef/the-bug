@@ -2,7 +2,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
     DefaultTerminal, Frame,
     buffer::Buffer,
-    layout::{Constraint, Layout, Rect},
+    layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Style},
     text::{Line, Text},
     widgets::{Block, Paragraph, Widget, Wrap, canvas::Canvas},
@@ -15,20 +15,53 @@ use crate::viewmodel;
 use super::craft::{self, Craft};
 use super::disassemble::{self, Disassemble};
 use super::experiment::{self, Experiment};
-use super::help;
+use super::quests;
 
 // Empirical zoom factors so the map roughly fills its pane.
 const MAP_X_SCALE: f64 = 6.2;
 const MAP_Y_SCALE: f64 = 4.08;
 
+/// Which panel occupies the right side of the screen.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum Panel {
+    #[default]
+    Map,
+    Experiment,
+    Craft,
+    Disassemble,
+    Quests,
+}
+
+impl Panel {
+    fn next(self) -> Panel {
+        match self {
+            Panel::Map => Panel::Experiment,
+            Panel::Experiment => Panel::Craft,
+            Panel::Craft => Panel::Disassemble,
+            Panel::Disassemble => Panel::Quests,
+            Panel::Quests => Panel::Map,
+        }
+    }
+
+    fn prev(self) -> Panel {
+        match self {
+            Panel::Map => Panel::Quests,
+            Panel::Experiment => Panel::Map,
+            Panel::Craft => Panel::Experiment,
+            Panel::Disassemble => Panel::Craft,
+            Panel::Quests => Panel::Disassemble,
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct App {
     game: Game,
     exit: bool,
-    show_help: bool,
-    experiment: Option<Experiment>,
-    craft: Option<Craft>,
-    disassemble: Option<Disassemble>,
+    panel: Panel,
+    experiment: Experiment,
+    craft: Craft,
+    disassemble: Disassemble,
 }
 
 impl App {
@@ -63,66 +96,54 @@ impl App {
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
-        if self.show_help {
-            if matches!(
-                key_event.code,
-                KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('?')
-            ) {
-                self.show_help = false;
+        match key_event.code {
+            KeyCode::Char('q') => {
+                self.exit = true;
+                return;
             }
-            return;
+            KeyCode::Char('[') => {
+                self.panel = self.panel.prev();
+                return;
+            }
+            KeyCode::Char(']') => {
+                self.panel = self.panel.next();
+                return;
+            }
+            _ => {}
         }
 
-        if let Some(experiment) = &mut self.experiment {
-            let inventory = viewmodel::inventory::sorted(&self.game.player);
-            match experiment.handle_key(key_event.code, &inventory) {
-                experiment::Outcome::Stay => {}
-                experiment::Outcome::Cancel => self.experiment = None,
-                experiment::Outcome::Run(items) => {
-                    self.experiment = None;
+        match self.panel {
+            Panel::Map => self.handle_map_key(key_event.code),
+            Panel::Experiment => {
+                let inventory = viewmodel::inventory::sorted(&self.game.player);
+                if let experiment::Outcome::Run(items) =
+                    self.experiment.handle_key(key_event.code, &inventory)
+                {
                     self.game.experiment(&items);
                 }
             }
-            return;
-        }
-
-        if let Some(craft) = &mut self.craft {
-            let options = viewmodel::crafting::options(&self.game.player);
-            match craft.handle_key(key_event.code, &options) {
-                craft::Outcome::Stay => {}
-                craft::Outcome::Cancel => self.craft = None,
-                craft::Outcome::Craft(name) => {
-                    self.craft = None;
+            Panel::Craft => {
+                let options = viewmodel::crafting::options(&self.game.player);
+                if let craft::Outcome::Craft(name) = self.craft.handle_key(key_event.code, &options)
+                {
                     self.game.craft(name);
                 }
             }
-            return;
-        }
-
-        if let Some(disassemble) = &mut self.disassemble {
-            let options = viewmodel::disassembly::options(&self.game.player);
-            match disassemble.handle_key(key_event.code, &options) {
-                disassemble::Outcome::Stay => {}
-                disassemble::Outcome::Cancel => self.disassemble = None,
-                disassemble::Outcome::Disassemble(item) => {
-                    self.disassemble = None;
+            Panel::Disassemble => {
+                let options = viewmodel::disassembly::options(&self.game.player);
+                if let disassemble::Outcome::Disassemble(item) =
+                    self.disassemble.handle_key(key_event.code, &options)
+                {
                     self.game.disassemble(item);
                 }
             }
-            return;
+            Panel::Quests => {}
         }
-
-        self.handle_game_key(key_event.code);
     }
 
-    fn handle_game_key(&mut self, code: KeyCode) {
+    fn handle_map_key(&mut self, code: KeyCode) {
         match code {
-            KeyCode::Char('q') => self.exit = true,
-            KeyCode::Char('?') => self.show_help = true,
             KeyCode::Char('s') => self.game.search(),
-            KeyCode::Char('c') => self.craft = Some(Craft::default()),
-            KeyCode::Char('d') => self.disassemble = Some(Disassemble::default()),
-            KeyCode::Char('e') => self.experiment = Some(Experiment::default()),
             KeyCode::Left => self.game.walk(Direction::West),
             KeyCode::Right => self.game.walk(Direction::East),
             KeyCode::Up => self.game.walk(Direction::North),
@@ -138,38 +159,47 @@ impl App {
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        let rows = Layout::vertical([Constraint::Min(0), Constraint::Length(1)]).split(area);
+        let main = rows[0];
+        let footer = rows[1];
+
         let columns =
-            Layout::horizontal([Constraint::Min(70), Constraint::Percentage(100)]).split(area);
+            Layout::horizontal([Constraint::Min(70), Constraint::Percentage(100)]).split(main);
         let menu = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
             .split(columns[0]);
 
-        render_map(&self.game, columns[1], buf);
         render_player(&self.game, menu[0], buf);
         render_events(&self.game, menu[1], buf);
 
-        if self.show_help {
-            help::render(area, buf);
-        } else if let Some(experiment) = &self.experiment {
-            experiment.render(area, buf, &viewmodel::inventory::sorted(&self.game.player));
-        } else if let Some(craft) = &self.craft {
-            craft.render(area, buf, &viewmodel::crafting::options(&self.game.player));
-        } else if let Some(disassemble) = &self.disassemble {
-            disassemble.render(
-                area,
+        match self.panel {
+            Panel::Map => render_map(&self.game, columns[1], buf),
+            Panel::Experiment => self.experiment.render(
+                columns[1],
+                buf,
+                &viewmodel::inventory::sorted(&self.game.player),
+            ),
+            Panel::Craft => self.craft.render(
+                columns[1],
+                buf,
+                &viewmodel::crafting::options(&self.game.player),
+            ),
+            Panel::Disassemble => self.disassemble.render(
+                columns[1],
                 buf,
                 &viewmodel::disassembly::options(&self.game.player),
-            );
+            ),
+            Panel::Quests => quests::render(columns[1], buf),
         }
+
+        render_footer(self.panel, footer, buf);
     }
 }
 
 fn render_map(game: &Game, area: Rect, buf: &mut Buffer) {
-    let block = Block::bordered().title(" Map ");
-    let inner = block.inner(area);
+    let inner = super::panel_frame(area, " Map ", buf);
     let player_pos = game.player.coordinates;
 
     let canvas = Canvas::default()
-        .block(block)
         .x_bounds([
             inner.width as f64 / -MAP_X_SCALE,
             inner.width as f64 / MAP_X_SCALE,
@@ -193,7 +223,7 @@ fn render_map(game: &Game, area: Rect, buf: &mut Buffer) {
             );
         });
 
-    canvas.render(area, buf);
+    canvas.render(inner, buf);
 }
 
 fn render_player(game: &Game, area: Rect, buf: &mut Buffer) {
@@ -249,5 +279,62 @@ fn category_color(category: EventCategory) -> Option<Color> {
         EventCategory::General => None,
         EventCategory::Crafting => Some(Color::Yellow),
         EventCategory::Experiment => Some(Color::Cyan),
+    }
+}
+
+/// The key hints for whichever panel is active — this is the only "help"
+/// there is now that popups are gone.
+fn render_footer(panel: Panel, area: Rect, buf: &mut Buffer) {
+    let hint = match panel {
+        Panel::Map => "←↑↓→ move   s search   [ ] panel   q quit",
+        Panel::Experiment => {
+            "↑↓ move   ←→ add/remove   Tab switch column   e run   [ ] panel   q quit"
+        }
+        Panel::Craft => "↑↓ move   Enter craft   [ ] panel   q quit",
+        Panel::Disassemble => "↑↓ move   Enter take apart   [ ] panel   q quit",
+        Panel::Quests => "[ ] panel   q quit",
+    };
+
+    Paragraph::new(hint)
+        .alignment(Alignment::Center)
+        .render(area, buf);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const ALL: [Panel; 5] = [
+        Panel::Map,
+        Panel::Experiment,
+        Panel::Craft,
+        Panel::Disassemble,
+        Panel::Quests,
+    ];
+
+    #[test]
+    fn next_cycles_through_every_panel_in_order_and_wraps() {
+        assert_eq!(Panel::Map.next(), Panel::Experiment);
+        assert_eq!(Panel::Experiment.next(), Panel::Craft);
+        assert_eq!(Panel::Craft.next(), Panel::Disassemble);
+        assert_eq!(Panel::Disassemble.next(), Panel::Quests);
+        assert_eq!(Panel::Quests.next(), Panel::Map);
+    }
+
+    #[test]
+    fn prev_cycles_through_every_panel_in_reverse_and_wraps() {
+        assert_eq!(Panel::Map.prev(), Panel::Quests);
+        assert_eq!(Panel::Quests.prev(), Panel::Disassemble);
+        assert_eq!(Panel::Disassemble.prev(), Panel::Craft);
+        assert_eq!(Panel::Craft.prev(), Panel::Experiment);
+        assert_eq!(Panel::Experiment.prev(), Panel::Map);
+    }
+
+    #[test]
+    fn next_and_prev_are_inverses_for_every_panel() {
+        for panel in ALL {
+            assert_eq!(panel.next().prev(), panel);
+            assert_eq!(panel.prev().next(), panel);
+        }
     }
 }

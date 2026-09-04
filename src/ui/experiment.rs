@@ -60,11 +60,11 @@ impl Experiment {
         Outcome::Stay
     }
 
-    /// Draws the centered popup: an "Available" and a "Selected" column plus a
-    /// key hint. The "Available" column shows what can still be added
-    /// (owned minus already selected).
+    /// Draws the panel: an "Available" and a "Selected" column plus a key
+    /// hint. The "Available" column shows what can still be added (owned
+    /// minus already selected).
     pub(super) fn render(&self, area: Rect, buf: &mut Buffer, inventory: &[(Item, u32)]) {
-        let inner = super::popup_frame(area, 70, 70, " Experiment ", buf);
+        let inner = super::panel_frame(area, " Experiment ", buf);
 
         let rows = Layout::vertical([Constraint::Min(5), Constraint::Length(1)]).split(inner);
         let columns = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
