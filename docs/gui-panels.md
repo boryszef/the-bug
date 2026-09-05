@@ -24,7 +24,7 @@ Only **Experiment** carries state (an `ItemSelection`, exactly as
 `tui::experiment` does), held as a field on `App`. The other three are
 stateless. The **Map** tab follows the same return-an-action split —
 `MapView::ui` returns `Option<MapCommand>` (`Walk`/`Search`) from its
-on-screen N/S/W/E + Search buttons or the arrow/`s` accelerators.
+on-screen `←↑↓→` + Search buttons or the arrow/`s` accelerators.
 
 The panel bodies are egui rendering, which — like `render_player` /
 `render_events` / the Map tab — is not unit-tested here (`ARCHITECTURE.md`,

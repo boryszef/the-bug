@@ -6,7 +6,7 @@
 
 use std::ops::RangeInclusive;
 
-use eframe::egui::{Color32, Key, Pos2, Rect, Sense, Ui, Vec2};
+use eframe::egui::{Color32, Key, Pos2, Rect, RichText, Sense, Ui, Vec2};
 
 use crate::game::Direction;
 use crate::i18n::{self, Language};
@@ -65,16 +65,16 @@ impl MapView {
     ) -> Option<MapCommand> {
         let mut command = None;
         ui.horizontal(|ui| {
-            // Compass letters rather than arrow glyphs: egui's default
-            // proportional font has no arrow coverage, but the hint bar and
-            // arrow-key accelerators cover discoverability.
-            for (label, dir) in [
-                ("N", Direction::North),
-                ("S", Direction::South),
-                ("W", Direction::West),
-                ("E", Direction::East),
+            // Arrow glyphs via the monospace font: egui's default
+            // proportional font has no arrow coverage, but bundled Hack
+            // (the Monospace family) does.
+            for (glyph, dir) in [
+                ("←", Direction::West),
+                ("↑", Direction::North),
+                ("↓", Direction::South),
+                ("→", Direction::East),
             ] {
-                if ui.button(label).clicked() {
+                if ui.button(RichText::new(glyph).monospace()).clicked() {
                     command = Some(MapCommand::Walk(dir));
                 }
             }

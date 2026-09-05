@@ -53,13 +53,14 @@ through `viewmodel`/`game`.
   `feature`/`connections` field and a sprite backend. Still the random map;
   no predefined maps or road/river tiles yet — see `docs/gui-map.md`. The
   other four tabs keep the placeholder heading.
-- Map tab controls (`MapView::ui` → `Option<MapCommand>`): a row of `N`/`S`/
-  `W`/`E` buttons and a **Search** button above the grid, plus the arrow
-  keys and `s` as accelerators (read in `map.rs`, not `App`). All produce a
-  `MapCommand::{Walk, Search}` that `App::ui` applies via `Game::walk` /
-  `Game::search`. Compass letters, not arrow glyphs — egui's default
-  proportional font has no arrow coverage. The view stays where the user
-  panned it — it does not recentre on the player.
+- Map tab controls (`MapView::ui` → `Option<MapCommand>`): a row of
+  `←`/`↑`/`↓`/`→` buttons and a **Search** button above the grid, plus the
+  arrow keys and `s` as accelerators (read in `map.rs`, not `App`). All
+  produce a `MapCommand::{Walk, Search}` that `App::ui` applies via
+  `Game::walk` / `Game::search`. The arrows are drawn in the Monospace font
+  (`RichText::monospace`) — egui's default proportional font has no arrow
+  coverage, but bundled Hack does. The view stays where the user panned it —
+  it does not recentre on the player.
 - Hint bar (`egui::Panel::bottom`, `hint_text`): one persistent line —
   `gui-hint` (`[ ] switch tabs   q quit`) always, plus `gui-hint-map`
   (`drag to pan   scroll to zoom`) on the Map tab. The gui's counterpart of
