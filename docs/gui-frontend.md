@@ -35,25 +35,33 @@ through `viewmodel`/`game`.
   `src/gui/mod.rs`): same `viewmodel::inventory`/`viewmodel::events` calls
   and `i18n::*` strings as `tui::app`'s equivalents, laid out in an
   `egui::Panel::left` instead of a ratatui `Paragraph`. Event lines get the
-  same category colour-coding (`Color32` instead of ratatui's `Color`).
-- The rest of the window is an empty `CentralPanel` — a placeholder for the
-  map/craft/disassemble/experiment/quests panels, not yet built.
+  same per-`EventKind` colour-coding (`Color32` instead of ratatui's
+  `Color`).
+- Tab/quit toolbar: a `Panel` enum (`Map`/`Experiment`/`Craft`/
+  `Disassemble`/`Quests`) mirroring `tui::app::Panel`, shown as a row of
+  `egui::Panel::top` buttons (click any tab to jump to it) plus a Quit
+  button. `[`/`]` cycle `prev`/`next` and `q` quits, matching `tui`'s key
+  bindings, checked via `egui::Context::input` each frame. Quitting sends
+  `ViewportCommand::Close`, which triggers the same `on_exit` save path as
+  closing the window normally. The central area still has no per-panel
+  content — it just shows the active tab's title as a placeholder heading.
 
 Update this list as each subsequent piece lands (map via `egui::Painter`,
-craft/disassemble/experiment/quests panels — see `TODO.md`).
+craft/disassemble/experiment/quests panel content — see `TODO.md`).
 
 ## What is *not* built here
 
-- No map, or any of the craft/disassemble/experiment/quests panels — the
-  central area is a bare `CentralPanel` with no content or panel-switching
-  yet.
+- No map, or any of the craft/disassemble/experiment/quests panels' actual
+  content — tab switching works, but every tab shows the same placeholder
+  heading.
 - Not yet decided whether `tui` is retired once `gui` reaches parity, or
   kept as a permanent alternate front end (ADR 0001 leaves this open).
 
 ## Code
 
 - `Cargo.toml` — `eframe` dependency.
-- `src/gui/mod.rs` — the `eframe::App` scaffold; `render_player`/
-  `render_events`.
+- `src/gui/mod.rs` — the `eframe::App`; `Panel`; `render_player`/
+  `render_events`; the tab/quit toolbar and keyboard shortcuts in `App::ui`.
 - `src/main.rs` — `mod gui;`, `Cli::gui` flag, shared `game`/`language`
   setup, dispatch in `main()`.
+- `src/i18n/locales/{en,pl}/main.ftl` — `action-quit`.

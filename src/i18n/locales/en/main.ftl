@@ -105,10 +105,14 @@ quests-available-empty = No quests available right now.
 quests-completed-none = Completed: (none yet)
 quests-completed = Completed: { $names }
 
-## Footer key hints, one per panel (src/ui/app.rs's render_footer).
+## Footer key hints, one per panel (src/tui/app.rs's render_footer).
 
 footer-map = ←↑↓→ move   s search   [ ] panel   q quit
 footer-experiment = ↑↓ move   ←→ add/remove   Tab switch column   e run   [ ] panel   q quit
 footer-craft = ↑↓ move   Enter craft   [ ] panel   q quit
 footer-disassemble = ↑↓ move   Enter take apart   [ ] panel   q quit
 footer-quests = ↑↓ move   Enter accept   [ ] panel   q quit
+
+## gui-only controls (src/gui/mod.rs's toolbar).
+
+action-quit = Quit (q)
