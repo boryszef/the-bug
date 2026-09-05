@@ -58,15 +58,19 @@ through `viewmodel`/`game`.
   current tile (`Game::search`), mirroring `tui::app::App::handle_map_key`.
   The view stays camera-centred where the user panned it — it does not
   recentre on the player.
+- Panel content, one mouse-driven `render` per tab (`src/gui/*.rs`), each
+  taking the same `viewmodel` data as its `tui` counterpart and returning an
+  action `App::ui` applies to `game` — see `docs/gui-panels.md`:
+  - **Experiment** (`experiment.rs`): two columns (Available / Selected) of
+    click-to-move item buttons plus a run button; holds an `ItemSelection`.
+  - Craft / Disassemble / Quests: still the placeholder heading.
 
-Update this list as each subsequent piece lands
-(craft/disassemble/experiment/quests panel content — see `TODO.md`).
+Update this list as each subsequent piece lands (see `TODO.md`).
 
 ## What is *not* built here
 
-- None of the craft/disassemble/experiment/quests panels' actual content —
-  tab switching works, but those four tabs show the same placeholder
-  heading.
+- Craft / Disassemble / Quests panel content — those three tabs still show
+  the placeholder heading.
 - Not yet decided whether `tui` is retired once `gui` reaches parity, or
   kept as a permanent alternate front end (ADR 0001 leaves this open).
 

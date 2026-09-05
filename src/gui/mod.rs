@@ -1,3 +1,4 @@
+mod experiment;
 mod map;
 
 use std::collections::HashMap;
@@ -9,6 +10,7 @@ use crate::i18n::{self, Language};
 use crate::save;
 use crate::viewmodel;
 
+use experiment::Experiment;
 use map::MapView;
 
 /// Launches the egui/eframe front end on `game`, blocking until the window
@@ -29,6 +31,7 @@ pub fn run(game: Game, language: Language) -> eframe::Result<()> {
                 language,
                 panel: Panel::default(),
                 map_view: MapView::default(),
+                experiment: Experiment::default(),
             }))
         }),
     )
@@ -93,6 +96,7 @@ struct App {
     language: Language,
     panel: Panel,
     map_view: MapView,
+    experiment: Experiment,
 }
 
 impl eframe::App for App {
@@ -140,8 +144,16 @@ impl eframe::App for App {
                 viewmodel::map::tile_views(&self.game.map),
                 self.game.player.coordinates,
             ),
-            // Placeholder for the craft/disassemble/experiment/quests
-            // panels' own content — see docs/gui-frontend.md.
+            Panel::Experiment => {
+                let inventory = viewmodel::inventory::sorted(&self.game.player);
+                if let experiment::Outcome::Run(items) =
+                    self.experiment.render(ui, &inventory, self.language)
+                {
+                    self.game.experiment(&items);
+                }
+            }
+            // Placeholder for the craft/disassemble/quests panels' own
+            // content — see docs/gui-frontend.md.
             _ => {
                 ui.heading(i18n::ui(self.panel.title_id(), self.language));
             }

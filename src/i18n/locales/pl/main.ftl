@@ -191,6 +191,7 @@ footer-craft = ↑↓ ruch   Enter wytwórz   [ ] panel   q wyjście
 footer-disassemble = ↑↓ ruch   Enter rozłóż   [ ] panel   q wyjście
 footer-quests = ↑↓ ruch   Enter przyjmij   [ ] panel   q wyjście
 
-## Sterowanie tylko w gui (pasek narzędzi w src/gui/mod.rs).
+## Sterowanie tylko w gui (pasek narzędzi i przyciski paneli w src/gui/mod.rs).
 
 action-quit = Wyjście (q)
+action-experiment = Eksperymentuj
