@@ -8,13 +8,13 @@ use std::collections::HashMap;
 
 use eframe::egui::{self, Color32, Key, RichText, Ui};
 
-use crate::game::{Direction, EventKind, Game};
+use crate::game::{EventKind, Game};
 use crate::i18n::{self, Language};
 use crate::save;
 use crate::viewmodel;
 
 use experiment::Experiment;
-use map::MapView;
+use map::{MapCommand, MapView};
 
 /// Launches the egui/eframe front end on `game`, blocking until the window
 /// closes. Saves `game` to disk on close, mirroring `tui::App`'s
@@ -114,9 +114,6 @@ impl eframe::App for App {
         if ctx.input(|i| i.key_pressed(Key::Q)) {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         }
-        if self.panel == Panel::Map {
-            self.handle_map_keys(&ctx);
-        }
 
         egui::Panel::top("tabs_and_quit").show(ui, |ui| {
             ui.horizontal(|ui| {
@@ -141,12 +138,24 @@ impl eframe::App for App {
                 render_events(&self.game, self.language, ui);
             });
 
+        egui::Panel::bottom("hint_bar").show(ui, |ui| {
+            ui.label(hint_text(self.panel, self.language));
+        });
+
         egui::CentralPanel::default().show(ui, |ui| match self.panel {
-            Panel::Map => self.map_view.ui(
-                ui,
-                viewmodel::map::tile_views(&self.game.map),
-                self.game.player.coordinates,
-            ),
+            Panel::Map => {
+                let command = self.map_view.ui(
+                    ui,
+                    viewmodel::map::tile_views(&self.game.map),
+                    self.game.player.coordinates,
+                    self.language,
+                );
+                match command {
+                    Some(MapCommand::Walk(dir)) => self.game.walk(dir),
+                    Some(MapCommand::Search) => self.game.search(),
+                    None => {}
+                }
+            }
             Panel::Experiment => {
                 let inventory = viewmodel::inventory::sorted(&self.game.player);
                 if let experiment::Outcome::Run(items) =
@@ -186,24 +195,17 @@ impl eframe::App for App {
     }
 }
 
-impl App {
-    /// Arrow keys walk the player, `s` searches the current tile — only
-    /// while the Map tab is active. Mirrors `tui::app::App::handle_map_key`.
-    fn handle_map_keys(&mut self, ctx: &egui::Context) {
-        for (key, dir) in [
-            (Key::ArrowUp, Direction::North),
-            (Key::ArrowDown, Direction::South),
-            (Key::ArrowLeft, Direction::West),
-            (Key::ArrowRight, Direction::East),
-        ] {
-            if ctx.input(|i| i.key_pressed(key)) {
-                self.game.walk(dir);
-            }
-        }
-        if ctx.input(|i| i.key_pressed(Key::S)) {
-            self.game.search();
-        }
+/// The bottom hint bar's text: universal controls always, plus the Map
+/// tab's pan/zoom hint when it's active. The gui's counterpart of `tui`'s
+/// per-panel footer (`docs/panel-layout.md`), collapsed to one line since
+/// every other panel is self-evident buttons.
+fn hint_text(panel: Panel, lang: Language) -> String {
+    let mut hint = i18n::ui("gui-hint", lang);
+    if panel == Panel::Map {
+        hint.push_str("   ");
+        hint.push_str(&i18n::ui("gui-hint-map", lang));
     }
+    hint
 }
 
 fn render_player(game: &Game, lang: Language, ui: &mut Ui) {

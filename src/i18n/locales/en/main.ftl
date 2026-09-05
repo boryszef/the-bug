@@ -113,8 +113,11 @@ footer-craft = ↑↓ move   Enter craft   [ ] panel   q quit
 footer-disassemble = ↑↓ move   Enter take apart   [ ] panel   q quit
 footer-quests = ↑↓ move   Enter accept   [ ] panel   q quit
 
-## gui-only controls (src/gui/mod.rs's toolbar and panel buttons).
+## gui-only controls (src/gui/mod.rs's toolbar, panel buttons, hint bar).
 
 action-quit = Quit (q)
 action-experiment = Run experiment
 action-accept = Accept
+action-search = Search
+gui-hint = [ ] switch tabs   q quit
+gui-hint-map = drag to pan   scroll to zoom

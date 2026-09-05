@@ -6,8 +6,10 @@
 
 use std::ops::RangeInclusive;
 
-use eframe::egui::{Color32, Pos2, Rect, Sense, Ui, Vec2};
+use eframe::egui::{Color32, Key, Pos2, Rect, Sense, Ui, Vec2};
 
+use crate::game::Direction;
+use crate::i18n::{self, Language};
 use crate::viewmodel::map::{TileView, terrain_rgb};
 
 /// Pixel size of one tile at the default zoom.
@@ -21,6 +23,15 @@ const SCROLL_ZOOM_RATE: f32 = 0.002;
 /// Player marker radius, as a fraction of the tile size.
 const PLAYER_MARKER_RATIO: f32 = 0.3;
 const PLAYER_MARKER_COLOR: Color32 = Color32::from_rgb(0xff, 0xd0, 0x2f);
+
+/// What the Map tab wants `App` to do to `game` after one frame — from an
+/// on-screen button or its keyboard accelerator. Mirrors how the other gui
+/// panels return their action.
+#[derive(Clone, Copy, Debug)]
+pub(super) enum MapCommand {
+    Walk(Direction),
+    Search,
+}
 
 /// Transient pan/zoom state for the map tab.
 pub struct MapView {
@@ -40,10 +51,39 @@ impl Default for MapView {
 }
 
 impl MapView {
-    /// Draws the map into the remaining space of `ui`: a filled square per
-    /// visible tile, then the player marker. Consumes drag (pan) and scroll
-    /// or pinch (zoom) over that area.
-    pub fn ui(&mut self, ui: &mut Ui, tiles: impl Iterator<Item = TileView>, player: (i32, i32)) {
+    /// Draws the movement/search controls and, below them, the tile grid:
+    /// a filled square per visible tile, then the player marker. Consumes
+    /// drag (pan) and scroll or pinch (zoom) over the grid. Returns the
+    /// player's requested action, from a button or its keyboard accelerator
+    /// (arrow keys / `s`).
+    pub fn ui(
+        &mut self,
+        ui: &mut Ui,
+        tiles: impl Iterator<Item = TileView>,
+        player: (i32, i32),
+        lang: Language,
+    ) -> Option<MapCommand> {
+        let mut command = None;
+        ui.horizontal(|ui| {
+            // Compass letters rather than arrow glyphs: egui's default
+            // proportional font has no arrow coverage, but the hint bar and
+            // arrow-key accelerators cover discoverability.
+            for (label, dir) in [
+                ("N", Direction::North),
+                ("S", Direction::South),
+                ("W", Direction::West),
+                ("E", Direction::East),
+            ] {
+                if ui.button(label).clicked() {
+                    command = Some(MapCommand::Walk(dir));
+                }
+            }
+            ui.separator();
+            if ui.button(i18n::ui("action-search", lang)).clicked() {
+                command = Some(MapCommand::Search);
+            }
+        });
+
         let (response, painter) = ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
         let viewport = response.rect;
 
@@ -88,7 +128,28 @@ impl MapView {
             self.tile_px * PLAYER_MARKER_RATIO,
             PLAYER_MARKER_COLOR,
         );
+
+        command.or_else(|| read_map_keys(ui))
     }
+}
+
+/// Arrow keys walk, `s` searches — the keyboard accelerators for the Map
+/// tab's on-screen buttons. Only read while the Map tab is drawn (the only
+/// caller).
+fn read_map_keys(ui: &Ui) -> Option<MapCommand> {
+    ui.input(|i| {
+        for (key, dir) in [
+            (Key::ArrowUp, Direction::North),
+            (Key::ArrowDown, Direction::South),
+            (Key::ArrowLeft, Direction::West),
+            (Key::ArrowRight, Direction::East),
+        ] {
+            if i.key_pressed(key) {
+                return Some(MapCommand::Walk(dir));
+            }
+        }
+        i.key_pressed(Key::S).then_some(MapCommand::Search)
+    })
 }
 
 /// World point → screen pixel. World Y increases northward

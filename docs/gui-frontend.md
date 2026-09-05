@@ -53,11 +53,18 @@ through `viewmodel`/`game`.
   `feature`/`connections` field and a sprite backend. Still the random map;
   no predefined maps or road/river tiles yet — see `docs/gui-map.md`. The
   other four tabs keep the placeholder heading.
-- Map tab movement (`App::handle_map_keys`): while the **Map** tab is
-  active, the arrow keys walk the player (`Game::walk`) and `s` searches the
-  current tile (`Game::search`), mirroring `tui::app::App::handle_map_key`.
-  The view stays camera-centred where the user panned it — it does not
-  recentre on the player.
+- Map tab controls (`MapView::ui` → `Option<MapCommand>`): a row of `N`/`S`/
+  `W`/`E` buttons and a **Search** button above the grid, plus the arrow
+  keys and `s` as accelerators (read in `map.rs`, not `App`). All produce a
+  `MapCommand::{Walk, Search}` that `App::ui` applies via `Game::walk` /
+  `Game::search`. Compass letters, not arrow glyphs — egui's default
+  proportional font has no arrow coverage. The view stays where the user
+  panned it — it does not recentre on the player.
+- Hint bar (`egui::Panel::bottom`, `hint_text`): one persistent line —
+  `gui-hint` (`[ ] switch tabs   q quit`) always, plus `gui-hint-map`
+  (`drag to pan   scroll to zoom`) on the Map tab. The gui's counterpart of
+  `tui`'s per-panel footer, collapsed to one line since every other panel
+  is self-evident buttons.
 - Panel content, one mouse-driven `render` per tab (`src/gui/*.rs`), each
   taking the same `viewmodel` data as its `tui` counterpart and returning an
   action `App::ui` applies to `game` — see `docs/gui-panels.md`:
@@ -71,11 +78,16 @@ through `viewmodel`/`game`.
     quests as collapsing sections (description + Accept button), or the
     blocked/empty message; the completed-quests line.
 
-With this, every tab has its content — `gui` reaches panel parity with
-`tui`. Update this list as further gui work lands (see `TODO.md`).
+With this, every tab has its content and the hint bar replaces `tui`'s
+per-panel footer — `gui` reaches feature parity with `tui`. Update this
+list as further gui work lands (see `TODO.md`).
 
 ## What is *not* built here
 
+- No per-panel footer. `tui`'s footer strings for Craft/Disassemble/
+  Experiment/Quests describe keyboard list-navigation the gui replaced with
+  clicking, so only the universal + Map hints are surfaced (in the hint
+  bar). `footer-*` i18n strings stay `tui`-only.
 - Not yet decided whether `tui` is retired now that `gui` has reached
   parity, or kept as a permanent alternate front end (ADR 0001 leaves this
   open).
@@ -84,9 +96,12 @@ With this, every tab has its content — `gui` reaches panel parity with
 
 - `Cargo.toml` — `eframe` dependency.
 - `src/gui/mod.rs` — the `eframe::App`; `Panel`; `render_player`/
-  `render_events`; the tab/quit toolbar and keyboard shortcuts in `App::ui`;
-  the `Panel::Map` render arm.
-- `src/gui/map.rs` — `MapView` (pan/zoom state + `egui::Painter` tile grid).
+  `render_events`; the tab/quit toolbar; the hint bar (`hint_text`); the
+  per-`Panel` render arms in `App::ui`.
+- `src/gui/map.rs` — `MapView` (pan/zoom + `egui::Painter` tile grid), the
+  N/S/W/E + Search controls, `MapCommand`, arrow/`s` key accelerators.
+- `src/gui/{experiment,craft,disassemble,quests}.rs` — one `render` per tab.
+- `src/i18n/locales/{en,pl}/main.ftl` — `action-*` / `gui-hint*` gui strings.
 - `src/viewmodel/map.rs` — `TileView`, `tile_views`, `terrain_rgb`.
 - `src/main.rs` — `mod gui;`, `Cli::gui` flag, shared `game`/`language`
   setup, dispatch in `main()`.
