@@ -24,23 +24,36 @@ through `viewmodel`/`game`.
 
 - Empty window (`src/gui/mod.rs`): an `eframe::App` with an empty
   `CentralPanel`, launched via `gui::run()` from `main` when `--gui` is
-  passed. No `Game`/`Language` wiring yet.
+  passed.
+- `Game`/`Language`/save wiring: `main` now builds `game`/`language` the
+  same way for both front ends (load-or-default, detect), then either hands
+  them to `tui::App::with_game` or `gui::run(game, language)`. `gui::App`
+  saves on close via `eframe::App::on_exit`, mirroring `tui`'s
+  save-after-`ratatui::run` in `main` — this only fires on a real window
+  close (not a `kill`), so it's not exercised by an automated test.
+- Player + event-log panel (`render_player`/`render_events` in
+  `src/gui/mod.rs`): same `viewmodel::inventory`/`viewmodel::events` calls
+  and `i18n::*` strings as `tui::app`'s equivalents, laid out in an
+  `egui::Panel::left` instead of a ratatui `Paragraph`. Event lines get the
+  same category colour-coding (`Color32` instead of ratatui's `Color`).
+- The rest of the window is an empty `CentralPanel` — a placeholder for the
+  map/craft/disassemble/experiment/quests panels, not yet built.
 
-Update this list as each subsequent piece lands (game/save wiring, player +
-event-log panel, map via `egui::Painter`, craft/disassemble/experiment/quests
-panels — see `TODO.md`).
+Update this list as each subsequent piece lands (map via `egui::Painter`,
+craft/disassemble/experiment/quests panels — see `TODO.md`).
 
 ## What is *not* built here
 
-- No `Game` or save/load wiring — `--gui` currently ignores `--load` and
-  never saves.
-- No map, player panel, event log, or any of the craft/disassemble/
-  experiment/quests panels yet.
+- No map, or any of the craft/disassemble/experiment/quests panels — the
+  central area is a bare `CentralPanel` with no content or panel-switching
+  yet.
 - Not yet decided whether `tui` is retired once `gui` reaches parity, or
   kept as a permanent alternate front end (ADR 0001 leaves this open).
 
 ## Code
 
 - `Cargo.toml` — `eframe` dependency.
-- `src/gui/mod.rs` — new, the `eframe::App` scaffold.
-- `src/main.rs` — `mod gui;`, `Cli::gui` flag, dispatch in `main()`.
+- `src/gui/mod.rs` — the `eframe::App` scaffold; `render_player`/
+  `render_events`.
+- `src/main.rs` — `mod gui;`, `Cli::gui` flag, shared `game`/`language`
+  setup, dispatch in `main()`.

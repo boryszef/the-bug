@@ -27,15 +27,6 @@ struct Cli {
 
 fn main() -> io::Result<()> {
     let cli = Cli::parse();
-
-    if cli.gui {
-        if let Err(e) = gui::run() {
-            eprintln!("gui error: {e}");
-            std::process::exit(1);
-        }
-        return Ok(());
-    }
-
     let language = i18n::detect(cli.lang.as_deref(), |key| std::env::var(key).ok());
 
     let game = match cli.load {
@@ -48,6 +39,14 @@ fn main() -> io::Result<()> {
         },
         None => game::Game::default(),
     };
+
+    if cli.gui {
+        if let Err(e) = gui::run(game, language) {
+            eprintln!("gui error: {e}");
+            std::process::exit(1);
+        }
+        return Ok(());
+    }
 
     let mut app = tui::App::with_game(game, language);
     ratatui::run(|terminal| app.run(terminal))?;
