@@ -148,21 +148,32 @@ pub fn event(kind: &EventKind, lang: Language) -> String {
         }
         EventKind::CraftShortage { needed, output } => {
             // "not enough of X" wants X in the plural genitive case in
-            // Polish (a shortage of a countable noun); English has no case
-            // to apply, so it stays nominative.
+            // Polish (a shortage of a countable noun); "to make Y" wants Y
+            // in the accusative (direct object of "zrobić"). English has no
+            // case to apply, so both stay nominative.
             let needed_arg = match lang {
                 Language::English => self::item(*needed, lang),
                 Language::Polish => item_attr(*needed, "genitive-plural", lang),
+            };
+            let output_arg = match lang {
+                Language::English => self::item(*output, lang),
+                Language::Polish => item_attr(*output, "accusative", lang),
             };
             fl!(
                 loader,
                 "event-craft-shortage",
                 needed = needed_arg,
-                output = self::item(*output, lang)
+                output = output_arg
             )
         }
         EventKind::Crafted { output } => {
-            fl!(loader, "event-crafted", output = self::item(*output, lang))
+            // "You craft Y" wants Y in the accusative in Polish (direct
+            // object of "Tworzysz").
+            let output_arg = match lang {
+                Language::English => self::item(*output, lang),
+                Language::Polish => item_attr(*output, "accusative", lang),
+            };
+            fl!(loader, "event-crafted", output = output_arg)
         }
         EventKind::ExperimentShortage {
             items,
@@ -376,15 +387,26 @@ mod tests {
     }
 
     #[test]
-    fn event_renders_craft_shortage_in_polish_with_plural_genitive_and_nominative() {
+    fn event_renders_craft_shortage_in_polish_with_plural_genitive_and_accusative() {
         let text = event(
             &EventKind::CraftShortage {
                 needed: Item::Stick,
-                output: Item::StoneAxe,
+                output: Item::Arrow,
             },
             Language::Polish,
         );
-        assert_eq!(text, "Masz za mało patyków, aby zrobić Kamienny Topór.");
+        assert_eq!(text, "Masz za mało patyków, aby zrobić Strzałę.");
+    }
+
+    #[test]
+    fn event_renders_crafted_in_polish_with_the_accusative_case() {
+        let text = event(
+            &EventKind::Crafted {
+                output: Item::Arrow,
+            },
+            Language::Polish,
+        );
+        assert_eq!(text, "Tworzysz Strzałę.");
     }
 
     /// Every `EventKind` variant, in every `Language`, resolves to a

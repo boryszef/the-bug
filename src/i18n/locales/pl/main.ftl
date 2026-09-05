@@ -1,8 +1,9 @@
 ### Polish strings — a first draft for a Polish speaker to review and
 ### correct (see docs/i18n-plan.md). Grammatical case is only resolved where
 ### `src/i18n/mod.rs` explicitly asks for it (terrain locative in
-### `event-found`, item genitive plural in the "not enough X" events); other
-### interpolated nouns fall back to the nominative form.
+### `event-found`, item genitive plural in the "not enough X" events, item
+### accusative as the direct object of "Tworzysz"/"zrobić" in the crafting
+### events); other interpolated nouns fall back to the nominative form.
 
 ## Event log lines.
 
@@ -21,71 +22,95 @@ event-experimented = Eksperyment: { $items } → { $output }{ $newly_learned ->
 }
 event-disassembled = Rozbierasz { $item }, odzyskując { $recovered }.
 
-## Item names (nominative), with a `.genitive` attribute (singular) and a
+## Item names (nominative), with a `.genitive` attribute (singular), a
 ## `.genitive-plural` attribute — the latter is what the "not enough X"
 ## events use, since Polish wants the plural genitive for a shortage of a
-## countable noun ("za mało patyków", not "za mało patyka").
+## countable noun ("za mało patyków", not "za mało patyka") — and an
+## `.accusative` attribute (singular) for when the item is the direct
+## object of a crafting verb ("Tworzysz Strzałę", not "Tworzysz Strzała").
+## Masculine and neuter nouns are identical in the nominative and
+## accusative, so most `.accusative` values just repeat the name.
 
 item-stick = Patyk
     .genitive = patyka
     .genitive-plural = patyków
+    .accusative = Patyk
 item-stone = Kamień
     .genitive = kamienia
     .genitive-plural = kamieni
+    .accusative = Kamień
 item-vine = Pnącze
     .genitive = pnącza
     .genitive-plural = pnączy
+    .accusative = Pnącze
 item-cord = Sznurek
     .genitive = sznurka
     .genitive-plural = sznurków
+    .accusative = Sznurek
 item-stone-axe = Kamienny Topór
     .genitive = kamiennego topora
     .genitive-plural = kamiennych toporów
+    .accusative = Kamienny Topór
 item-arrow = Strzała
     .genitive = strzały
     .genitive-plural = strzał
+    .accusative = Strzałę
 item-wooden-bow = Drewniany Łuk
     .genitive = drewnianego łuku
     .genitive-plural = drewnianych łuków
+    .accusative = Drewniany Łuk
 item-plastic-bottle = Plastikowa Butelka
     .genitive = plastikowej butelki
     .genitive-plural = plastikowych butelek
+    .accusative = Plastikową Butelkę
 item-copper-wire = Miedziany Drut
     .genitive = miedzianego drutu
     .genitive-plural = miedzianych drutów
+    .accusative = Miedziany Drut
 item-coil = Cewka
     .genitive = cewki
     .genitive-plural = cewek
+    .accusative = Cewkę
 item-pole = Drążek
     .genitive = drążka
     .genitive-plural = drążków
+    .accusative = Drążek
 item-microcontroller = Mikrokontroler
     .genitive = mikrokontrolera
     .genitive-plural = mikrokontrolerów
+    .accusative = Mikrokontroler
 item-speaker = Głośnik
     .genitive = głośnika
     .genitive-plural = głośników
+    .accusative = Głośnik
 item-metal-detector = Wykrywacz Metalu
     .genitive = wykrywacza metalu
     .genitive-plural = wykrywaczy metalu
+    .accusative = Wykrywacz Metalu
 item-battery = Bateria
     .genitive = baterii
     .genitive-plural = baterii
+    .accusative = Baterię
 item-solar-panel = Panel Słoneczny
     .genitive = panelu słonecznego
     .genitive-plural = paneli słonecznych
+    .accusative = Panel Słoneczny
 item-solar-charger = Ładowarka Słoneczna
     .genitive = ładowarki słonecznej
     .genitive-plural = ładowarek słonecznych
+    .accusative = Ładowarkę Słoneczną
 item-circuit-board = Płytka Drukowana
     .genitive = płytki drukowanej
     .genitive-plural = płytek drukowanych
+    .accusative = Płytkę Drukowaną
 item-umbrella = Parasol
     .genitive = parasola
     .genitive-plural = parasoli
+    .accusative = Parasol
 item-fabric = Tkanina
     .genitive = tkaniny
     .genitive-plural = tkanin
+    .accusative = Tkaninę
 
 ## Terrain names (nominative), with a `.locative` attribute (the full
 ## prepositional phrase, e.g. "w lesie" for "in the Forest") used by
