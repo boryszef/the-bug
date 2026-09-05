@@ -1,4 +1,5 @@
 mod craft;
+mod disassemble;
 mod experiment;
 mod map;
 
@@ -159,8 +160,14 @@ impl eframe::App for App {
                     self.game.craft(name);
                 }
             }
-            // Placeholder for the disassemble/quests panels' own content —
-            // see docs/gui-frontend.md.
+            Panel::Disassemble => {
+                let options = viewmodel::disassembly::options(&self.game.player);
+                if let Some(item) = disassemble::render(ui, &options, self.language) {
+                    self.game.disassemble(item);
+                }
+            }
+            // Placeholder for the quests panel's own content — see
+            // docs/gui-frontend.md.
             _ => {
                 ui.heading(i18n::ui(self.panel.title_id(), self.language));
             }

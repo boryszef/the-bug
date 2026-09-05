@@ -65,14 +65,15 @@ through `viewmodel`/`game`.
     click-to-move item buttons plus a run button; holds an `ItemSelection`.
   - **Craft** (`craft.rs`): a button per known recipe, disabled when its
     inputs aren't affordable (`viewmodel::crafting::CraftOption::enabled`).
-  - Disassemble / Quests: still the placeholder heading.
+  - **Disassemble** (`disassemble.rs`): a button per carried item some
+    reversible recipe produces (`viewmodel::disassembly::options`).
+  - Quests: still the placeholder heading.
 
 Update this list as each subsequent piece lands (see `TODO.md`).
 
 ## What is *not* built here
 
-- Disassemble / Quests panel content — those two tabs still show the
-  placeholder heading.
+- Quests panel content — that tab still shows the placeholder heading.
 - Not yet decided whether `tui` is retired once `gui` reaches parity, or
   kept as a permanent alternate front end (ADR 0001 leaves this open).
 
