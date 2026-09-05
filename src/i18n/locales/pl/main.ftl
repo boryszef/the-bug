@@ -180,7 +180,7 @@ disassemble-hint = ↑↓ ruch   Enter rozłóż   Esc anuluj
 quests-active-none = Nie przyjęto żadnego zadania.
 quests-active-blocked = Ukończ aktywne zadanie, aby przyjąć kolejne.
 quests-available-empty = Brak dostępnych zadań.
-quests-completed-none = Ukończone: (jeszcze żadnych)
+quests-completed-none = Ukończone: (brak)
 quests-completed = Ukończone: { $names }
 
 ## Footer key hints, one per panel.

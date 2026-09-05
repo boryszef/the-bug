@@ -2,6 +2,8 @@
 
 ## TODO
 
+* implement roads and rivers
+* make tiles more interesting - minimum would be a symbol representing the terrain (glyph) like in the TUI version
 * craft menu should show what items are missing for a recipe
 * map should not be random and certain terrain types should be clustered together (e.g. deadland, forest, mountains) — dev tool `tools/mapgen` authors candidate grids (docs/mapgen.md); still need to pick one, bundle it, and replace `Map::new`
 * crafting/experimenting/disassembly should only be possible at the village
