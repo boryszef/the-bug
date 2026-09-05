@@ -1,4 +1,5 @@
 mod game;
+mod gui;
 mod i18n;
 mod save;
 mod tui;
@@ -19,10 +20,22 @@ struct Cli {
     /// UI language (e.g. "en", "pl"). Defaults to the system locale.
     #[arg(long, value_name = "LANG")]
     lang: Option<String>,
+    /// Launch the graphical (egui) front end instead of the terminal one.
+    #[arg(long)]
+    gui: bool,
 }
 
 fn main() -> io::Result<()> {
     let cli = Cli::parse();
+
+    if cli.gui {
+        if let Err(e) = gui::run() {
+            eprintln!("gui error: {e}");
+            std::process::exit(1);
+        }
+        return Ok(());
+    }
+
     let language = i18n::detect(cli.lang.as_deref(), |key| std::env::var(key).ok());
 
     let game = match cli.load {
