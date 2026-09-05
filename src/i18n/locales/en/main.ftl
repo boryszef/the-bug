@@ -117,3 +117,4 @@ footer-quests = ↑↓ move   Enter accept   [ ] panel   q quit
 
 action-quit = Quit (q)
 action-experiment = Run experiment
+action-accept = Accept

@@ -67,15 +67,18 @@ through `viewmodel`/`game`.
     inputs aren't affordable (`viewmodel::crafting::CraftOption::enabled`).
   - **Disassemble** (`disassemble.rs`): a button per carried item some
     reversible recipe produces (`viewmodel::disassembly::options`).
-  - Quests: still the placeholder heading.
+  - **Quests** (`quests.rs`): active quest progress + description; available
+    quests as collapsing sections (description + Accept button), or the
+    blocked/empty message; the completed-quests line.
 
-Update this list as each subsequent piece lands (see `TODO.md`).
+With this, every tab has its content — `gui` reaches panel parity with
+`tui`. Update this list as further gui work lands (see `TODO.md`).
 
 ## What is *not* built here
 
-- Quests panel content — that tab still shows the placeholder heading.
-- Not yet decided whether `tui` is retired once `gui` reaches parity, or
-  kept as a permanent alternate front end (ADR 0001 leaves this open).
+- Not yet decided whether `tui` is retired now that `gui` has reached
+  parity, or kept as a permanent alternate front end (ADR 0001 leaves this
+  open).
 
 ## Code
 

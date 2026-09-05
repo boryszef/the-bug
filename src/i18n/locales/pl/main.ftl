@@ -195,3 +195,4 @@ footer-quests = ↑↓ ruch   Enter przyjmij   [ ] panel   q wyjście
 
 action-quit = Wyjście (q)
 action-experiment = Eksperymentuj
+action-accept = Przyjmij

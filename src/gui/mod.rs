@@ -2,6 +2,7 @@ mod craft;
 mod disassemble;
 mod experiment;
 mod map;
+mod quests;
 
 use std::collections::HashMap;
 
@@ -166,10 +167,13 @@ impl eframe::App for App {
                     self.game.disassemble(item);
                 }
             }
-            // Placeholder for the quests panel's own content — see
-            // docs/gui-frontend.md.
-            _ => {
-                ui.heading(i18n::ui(self.panel.title_id(), self.language));
+            Panel::Quests => {
+                let overview = viewmodel::quests::overview(&self.game);
+                if let Some(id) = quests::render(ui, &overview, self.language) {
+                    // Always Ok: `id` came from `overview.available`, built
+                    // from `Game::available_quests()` this frame.
+                    let _ = self.game.accept_quest(id);
+                }
             }
         });
     }
