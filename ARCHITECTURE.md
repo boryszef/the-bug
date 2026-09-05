@@ -5,40 +5,44 @@ The project's standing design decisions — not a specific feature's rationale
 When a new piece of code doesn't obviously fit one of the modules below, or a
 refactor changes where logic lives, this is the doc to check and update.
 
-## Layering: `ui` → `viewmodel` → `game`
+## Layering: front end → `viewmodel` → `game`
 
 Three layers, each only depending on the one below it:
 
 - **`src/game/`** — the domain model. Pure Rust, no rendering, no key
-  handling, no knowledge that a terminal exists. `Player`, `Map`, `Item`,
-  `Recipe`, `Event`, `Quest`, and `Game` (the orchestrator) all live here.
+  handling, no knowledge that a terminal (or a window) exists. `Player`,
+  `Map`, `Item`, `Recipe`, `Event`, `Quest`, and `Game` (the orchestrator)
+  all live here.
 - **`src/viewmodel/`** — presentation-agnostic helpers that shape `game`
   state for display: sorting, filtering, formatting, coordinate transforms,
   transient interaction state (e.g. `selection::ItemSelection`). No
-  ratatui types.
-- **`src/ui/`** — rendering and key-mapping only. Ratatui widgets, key
-  dispatch, layout.
+  ratatui or egui types — this is the layer both front ends below share.
+- **A front-end module** — rendering and input-mapping only, one per UI
+  toolkit: **`src/tui/`** (ratatui, terminal) and **`src/gui/`** (egui,
+  graphical — see `docs/adr/0001-ui-framework-egui.md`).
 
-The rule of thumb: if a different front-end (a web UI, say) would also need
-it, it doesn't belong in `src/ui/`. See `docs/refactor-thin-ui.md` for the
-refactor that established this.
+The rule of thumb: if a different front-end would also need it, it doesn't
+belong in a front-end module. See `docs/refactor-thin-ui.md` for the
+refactor that established this (written when there was only `src/ui/`;
+the same rule now applies to both `tui` and `gui`).
 
 ## The UI is temporary — keep it thin
 
-The ratatui front-end is a placeholder, not the product. Concretely:
+No front-end module is the product. Concretely:
 
 - Anything that isn't rendering or input-mapping moves to `viewmodel` (or
-  `game`, if it's really domain logic). `src/ui/*.rs` modules should be
-  small enough that swapping the front-end mostly means rewriting `ui/` and
-  leaving `game`/`viewmodel` untouched.
-- Interactive `ui` modules (`craft.rs`, `disassemble.rs`, `experiment.rs`,
+  `game`, if it's really domain logic). A front-end module's files should
+  be small enough that swapping — or adding — a front end mostly means
+  writing that module and leaving `game`/`viewmodel` untouched.
+- Interactive `tui` modules (`craft.rs`, `disassemble.rs`, `experiment.rs`,
   `quests.rs`) follow one shape: a small `State` struct holding only
   transient UI state (cursor, focus — never game data), a `handle_key`
   method, an `Outcome` enum describing what `App` should do next, and a
   `render` method. They take `game`/`viewmodel` data as parameters rather
   than holding a reference to `Game`, which keeps them independently
-  testable without a terminal.
-- `App` (`src/ui/app.rs`) owns key dispatch and layout only — see
+  testable without a terminal. `gui` should follow the equivalent shape for
+  its own toolkit as its panels are built out.
+- `tui::App` (`src/tui/app.rs`) owns key dispatch and layout only — see
   `docs/panel-layout.md` for the current panel-cycling structure.
 
 ## `Game` is a thin orchestrator — models own their own logic

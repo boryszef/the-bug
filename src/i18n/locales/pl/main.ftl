@@ -1,7 +1,7 @@
 ### Polish strings — a first draft for a Polish speaker to review and
 ### correct (see docs/i18n-plan.md). Grammatical case is only resolved where
 ### `src/i18n/mod.rs` explicitly asks for it (terrain locative in
-### `event-found`, item genitive in the "not enough X" events); other
+### `event-found`, item genitive plural in the "not enough X" events); other
 ### interpolated nouns fall back to the nominative form.
 
 ## Event log lines.
@@ -21,49 +21,71 @@ event-experimented = Eksperyment: { $items } → { $output }{ $newly_learned ->
 }
 event-disassembled = Rozbierasz { $item }, odzyskując { $recovered }.
 
-## Item names (nominative), with a `.genitive` attribute for the "not
-## enough X" events.
+## Item names (nominative), with a `.genitive` attribute (singular) and a
+## `.genitive-plural` attribute — the latter is what the "not enough X"
+## events use, since Polish wants the plural genitive for a shortage of a
+## countable noun ("za mało patyków", not "za mało patyka").
 
 item-stick = Patyk
     .genitive = patyka
+    .genitive-plural = patyków
 item-stone = Kamień
     .genitive = kamienia
+    .genitive-plural = kamieni
 item-vine = Pnącze
     .genitive = pnącza
+    .genitive-plural = pnączy
 item-cord = Sznurek
     .genitive = sznurka
+    .genitive-plural = sznurków
 item-stone-axe = Kamienny Topór
     .genitive = kamiennego topora
+    .genitive-plural = kamiennych toporów
 item-arrow = Strzała
     .genitive = strzały
+    .genitive-plural = strzał
 item-wooden-bow = Drewniany Łuk
     .genitive = drewnianego łuku
+    .genitive-plural = drewnianych łuków
 item-plastic-bottle = Plastikowa Butelka
     .genitive = plastikowej butelki
+    .genitive-plural = plastikowych butelek
 item-copper-wire = Miedziany Drut
     .genitive = miedzianego drutu
+    .genitive-plural = miedzianych drutów
 item-coil = Cewka
     .genitive = cewki
+    .genitive-plural = cewek
 item-pole = Drążek
     .genitive = drążka
+    .genitive-plural = drążków
 item-microcontroller = Mikrokontroler
     .genitive = mikrokontrolera
+    .genitive-plural = mikrokontrolerów
 item-speaker = Głośnik
     .genitive = głośnika
+    .genitive-plural = głośników
 item-metal-detector = Wykrywacz Metalu
     .genitive = wykrywacza metalu
+    .genitive-plural = wykrywaczy metalu
 item-battery = Bateria
     .genitive = baterii
+    .genitive-plural = baterii
 item-solar-panel = Panel Słoneczny
     .genitive = panelu słonecznego
+    .genitive-plural = paneli słonecznych
 item-solar-charger = Ładowarka Słoneczna
     .genitive = ładowarki słonecznej
+    .genitive-plural = ładowarek słonecznych
 item-circuit-board = Płytka Drukowana
     .genitive = płytki drukowanej
+    .genitive-plural = płytek drukowanych
 item-umbrella = Parasol
     .genitive = parasola
+    .genitive-plural = parasoli
 item-fabric = Tkanina
     .genitive = tkaniny
+    .genitive-plural = tkanin
 
 ## Terrain names (nominative), with a `.locative` attribute (the full
 ## prepositional phrase, e.g. "w lesie" for "in the Forest") used by

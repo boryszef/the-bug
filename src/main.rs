@@ -1,7 +1,8 @@
 mod game;
+mod gui;
 mod i18n;
 mod save;
-mod ui;
+mod tui;
 mod viewmodel;
 
 use std::io;
@@ -19,6 +20,9 @@ struct Cli {
     /// UI language (e.g. "en", "pl"). Defaults to the system locale.
     #[arg(long, value_name = "LANG")]
     lang: Option<String>,
+    /// Launch the graphical (egui) front end instead of the terminal one.
+    #[arg(long)]
+    gui: bool,
 }
 
 fn main() -> io::Result<()> {
@@ -36,7 +40,15 @@ fn main() -> io::Result<()> {
         None => game::Game::default(),
     };
 
-    let mut app = ui::App::with_game(game, language);
+    if cli.gui {
+        if let Err(e) = gui::run(game, language) {
+            eprintln!("gui error: {e}");
+            std::process::exit(1);
+        }
+        return Ok(());
+    }
+
+    let mut app = tui::App::with_game(game, language);
     ratatui::run(|terminal| app.run(terminal))?;
 
     match save::save(app.game()) {

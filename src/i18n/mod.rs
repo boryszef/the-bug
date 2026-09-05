@@ -147,11 +147,12 @@ pub fn event(kind: &EventKind, lang: Language) -> String {
             fl!(loader, "event-unknown-recipe", recipe = recipe.as_str())
         }
         EventKind::CraftShortage { needed, output } => {
-            // "not enough of X" wants X in the genitive case in Polish;
-            // English has no case to apply, so it stays nominative.
+            // "not enough of X" wants X in the plural genitive case in
+            // Polish (a shortage of a countable noun); English has no case
+            // to apply, so it stays nominative.
             let needed_arg = match lang {
                 Language::English => self::item(*needed, lang),
-                Language::Polish => item_attr(*needed, "genitive", lang),
+                Language::Polish => item_attr(*needed, "genitive-plural", lang),
             };
             fl!(
                 loader,
@@ -173,7 +174,7 @@ pub fn event(kind: &EventKind, lang: Language) -> String {
             let needed: u32 = *needed;
             let missing_arg = match lang {
                 Language::English => self::item(*missing, lang),
-                Language::Polish => item_attr(*missing, "genitive", lang),
+                Language::Polish => item_attr(*missing, "genitive-plural", lang),
             };
             fl!(
                 loader,
@@ -375,7 +376,7 @@ mod tests {
     }
 
     #[test]
-    fn event_renders_craft_shortage_in_polish_with_genitive_and_nominative() {
+    fn event_renders_craft_shortage_in_polish_with_plural_genitive_and_nominative() {
         let text = event(
             &EventKind::CraftShortage {
                 needed: Item::Stick,
@@ -383,10 +384,7 @@ mod tests {
             },
             Language::Polish,
         );
-        assert_eq!(
-            text,
-            "Nie masz wystarczająco dużo patyka, aby zrobić Kamienny Topór."
-        );
+        assert_eq!(text, "Masz za mało patyków, aby zrobić Kamienny Topór.");
     }
 
     /// Every `EventKind` variant, in every `Language`, resolves to a
