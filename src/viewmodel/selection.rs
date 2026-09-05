@@ -57,6 +57,11 @@ impl ItemSelection {
 
     /// `inventory` with the picked amounts removed (saturating): what can still
     /// be added.
+    ///
+    /// Only `tui::experiment` renders a precomputed "available" column; the
+    /// `gui` subtracts per row inline — so this is unused (but still tested)
+    /// in a `gui`-only build.
+    #[cfg_attr(not(feature = "tui"), allow(dead_code))]
     pub fn available(&self, inventory: &[(Item, u32)]) -> Vec<(Item, u32)> {
         inventory
             .iter()

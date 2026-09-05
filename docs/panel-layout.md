@@ -62,9 +62,11 @@ overlays on top of a fixed Map view.
   `Game::accept_quest`. Quest data comes from
   `viewmodel::quests::overview(&Game)` (new — `Overview { active:
   Option<ActiveQuest>, available, completed }`, all `&'static Quest`).
-  `Quest` gained `goal()`/`reward_xp()`/`reward_items()` accessors and
-  `Game` gained `quest(id) -> &'static Quest` to support this without
-  exposing `QuestCondition`/`EventTypeID`/`QUESTS` outside `game::quest`.
+  `Quest` gained a `goal()` accessor and `Game` gained
+  `quest(id) -> &'static Quest` to support this without exposing
+  `QuestCondition`/`EventTypeID`/`QUESTS` outside `game::quest`. (`Quest`
+  also briefly had `reward_xp()`/`reward_items()` accessors; the panel never
+  displayed rewards, so they were later removed as unused.)
 
 ## What is *not* built here
 
@@ -81,6 +83,5 @@ overlays on top of a fixed Map view.
   each.
 - `src/ui/quests.rs` — new, interactive panel (accept a quest).
 - `src/viewmodel/quests.rs` — new, `Overview`/`ActiveQuest`/`overview()`.
-- `src/game/quest.rs`, `src/game/mod.rs` — `Quest::goal`/`reward_xp`/
-  `reward_items`, `Game::quest(id)`.
+- `src/game/quest.rs`, `src/game/mod.rs` — `Quest::goal`, `Game::quest(id)`.
 - `src/ui/help.rs` — deleted.

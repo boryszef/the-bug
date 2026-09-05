@@ -48,8 +48,6 @@ impl QuestCondition {
 
 pub struct Quest {
     pub id: QuestID,
-    pub name: &'static str,
-    pub description: &'static str,
     pub dependencies: &'static [QuestID],
     pub(super) condition: QuestCondition,
     pub(super) reward_xp: u32,
@@ -62,21 +60,11 @@ impl Quest {
     pub fn goal(&self) -> u32 {
         self.condition.count
     }
-
-    pub fn reward_xp(&self) -> u32 {
-        self.reward_xp
-    }
-
-    pub fn reward_items(&self) -> &'static [(Item, u32)] {
-        self.reward_items
-    }
 }
 
 pub(super) const QUESTS: &[Quest] = &[
     Quest {
         id: QuestID::CraftArrows,
-        name: "Craft Arrows",
-        description: "Something has been stirring in the east again. Things had been quiet for a while, but trouble always seems to come from that direction. Whatever it is, it's spooked the big game, and a group of local hunters is gearing up for a hunt. They've asked you to craft 5 arrows for them. Head to the forest to gather sticks, then experiment with them to learn how arrows are made.",
         dependencies: &[],
         condition: QuestCondition {
             event: EventTypeID::CraftItem(Item::Arrow),
@@ -87,8 +75,6 @@ pub(super) const QUESTS: &[Quest] = &[
     },
     Quest {
         id: QuestID::ExploreRuins,
-        name: "Explore the Ruins",
-        description: "A passing traveler mentioned some ruins nearby, said to be scattered with old artifacts. Apparently, a few villages once stood on these flats, remnants of a great civilization from roughly 500 years ago — the \"Digital Civilization,\" as the explorers call it. You should go see it for yourself.",
         dependencies: &[],
         condition: QuestCondition {
             event: EventTypeID::VisitTerrain(TerrainType::Ruins),
@@ -119,8 +105,6 @@ mod tests {
 
     const FIXTURE_QUEST: Quest = Quest {
         id: QuestID::CraftArrows,
-        name: "Fixture",
-        description: "",
         dependencies: &[QuestID::ExploreRuins],
         condition: QuestCondition {
             event: EventTypeID::CraftItem(Item::Arrow),

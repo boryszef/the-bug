@@ -10,9 +10,12 @@
 #
 #:schema https://www.schemastore.org/prek.json
 
+# clippy runs once per front end: the shared layers are linted under both,
+# so a change that breaks the frozen `tui` build is caught at commit time.
 [[repos]]
 repo = "local"
 hooks = [
     { id = "cargo-fmt", name = "cargo fmt", entry = "cargo fmt --all -- --check", language = "system", types = ["rust"], pass_filenames = false },
-    { id = "cargo-clippy", name = "cargo clippy", entry = "cargo clippy --all-targets -- -D warnings", language = "system", types = ["rust"], pass_filenames = false },
+    { id = "cargo-clippy-gui", name = "cargo clippy (gui)", entry = "cargo clippy --all-targets -- -D warnings", language = "system", types = ["rust"], pass_filenames = false },
+    { id = "cargo-clippy-tui", name = "cargo clippy (tui)", entry = "cargo clippy --all-targets --no-default-features --features tui -- -D warnings", language = "system", types = ["rust"], pass_filenames = false },
 ]

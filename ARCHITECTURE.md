@@ -19,7 +19,11 @@ Three layers, each only depending on the one below it:
   ratatui or egui types — this is the layer both front ends below share.
 - **A front-end module** — rendering and input-mapping only, one per UI
   toolkit: **`src/tui/`** (ratatui, terminal) and **`src/gui/`** (egui,
-  graphical — see `docs/adr/0001-ui-framework-egui.md`).
+  graphical — see `docs/adr/0001-ui-framework-egui.md`). Exactly **one** is
+  compiled, chosen by the mutually exclusive `gui` (default) / `tui` Cargo
+  features — `src/main.rs` `#[cfg]`-gates the modules; both or neither is a
+  `compile_error!`. `tui` is frozen (kept building, not developed); `gui` is
+  where new work goes. See `docs/adr/0002-frontend-selected-at-build-time.md`.
 
 The rule of thumb: if a different front-end would also need it, it doesn't
 belong in a front-end module. See `docs/refactor-thin-ui.md` for the
@@ -147,10 +151,15 @@ design needs to be pinned down first.
   characterization tests first if not) → change → re-run the full suite
   unmodified as proof nothing changed. Keep refactor commits separate from
   behavior-changing ones.
-- **Before every commit**: `cargo test`, `cargo fmt --all -- --check`, and
-  `cargo clippy --all-targets -- -D warnings` (matches `prek`'s pre-commit
-  hook) must all be clean.
-- **UI changes**: also run the actual TUI (wrapped in `screen`/`tmux`, since
-  it needs a real pty) and drive it through the change — rendering isn't
-  unit-tested here, so this is the only real verification for layout/visual
-  correctness.
+- **Before every commit**: `cargo fmt --all -- --check`, plus `cargo test`
+  and `cargo clippy --all-targets -- -D warnings` for **both** front-end
+  feature sets — the default (`gui`) and
+  `--no-default-features --features tui` — since the shared `game`/
+  `viewmodel`/`save`/`i18n` layers compile under both. `prek`'s hook runs
+  `clippy` for both; run the `tui` `test` pass yourself when touching shared
+  code.
+- **UI changes**: also run the affected front end and drive it through the
+  change — rendering isn't unit-tested here, so this is the only real
+  verification for layout/visual correctness. The `tui` needs a real pty
+  (wrap in `screen`/`tmux`); build it with `--no-default-features --features
+  tui`. The `gui` is the default build (`cargo run`).

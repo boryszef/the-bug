@@ -9,6 +9,7 @@
 
 ## DONE
 
+* front end chosen at build time: `gui` (default) / `tui` (legacy, frozen) Cargo features, mutually exclusive; `--gui` flag removed (docs/adr/0002)
 * create alternative egui/eframe UI (map + movement + Experiment/Craft/Disassemble/Quests panels — parity with the tui; see docs/gui-frontend.md)
 * implement the quest system: one quest unlocks other quests, completing a quest awards XP and items, quests also tell the story of the game world
 * add i18n support (English + Polish, via Project Fluent)

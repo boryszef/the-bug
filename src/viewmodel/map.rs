@@ -1,6 +1,8 @@
 //! The map prepared for display: every tile paired with its world coordinates.
 
-use crate::game::{Map, MapTile, TerrainType};
+#[cfg(feature = "gui")]
+use crate::game::TerrainType;
+use crate::game::{Map, MapTile};
 
 /// One tile's data as a renderer needs it: its world coordinates and the
 /// terrain to draw there.
@@ -8,6 +10,10 @@ use crate::game::{Map, MapTile, TerrainType};
 /// Owned rather than a `&MapTile` reference so a later increment can add
 /// `feature`/`connections` fields without a front end reaching back into the
 /// domain model — see `docs/gui-map.md`.
+///
+/// Only the `gui` front end consumes this; `#[cfg]`-gated so a `tui`-only
+/// build doesn't carry it as dead code.
+#[cfg(feature = "gui")]
 pub struct TileView {
     pub world: (i32, i32),
     pub terrain: TerrainType,
@@ -16,6 +22,7 @@ pub struct TileView {
 /// Every tile as a [`TileView`]. Thin adapter over [`world_tiles`] for now;
 /// the indirection is what lets both a procedural and a sprite renderer
 /// share one descriptor.
+#[cfg(feature = "gui")]
 pub fn tile_views(map: &Map) -> impl Iterator<Item = TileView> + '_ {
     world_tiles(map).map(|(world, tile)| TileView {
         world,
@@ -26,6 +33,7 @@ pub fn tile_views(map: &Map) -> impl Iterator<Item = TileView> + '_ {
 /// The fill colour for a terrain type, as raw `(r, g, b)` so the palette
 /// stays free of any toolkit's colour type — mirrors how
 /// [`TerrainType::symbol`] centralises the glyph.
+#[cfg(feature = "gui")]
 pub fn terrain_rgb(terrain: TerrainType) -> (u8, u8, u8) {
     match terrain {
         TerrainType::Meadow => (0x7c, 0xb3, 0x42),
@@ -70,6 +78,7 @@ mod tests {
         assert_eq!(tile.terrain_type, TerrainType::Village);
     }
 
+    #[cfg(feature = "gui")]
     #[test]
     fn tile_views_pairs_every_world_coord_with_its_terrain() {
         let map = Map::new(&Player::default());
@@ -82,6 +91,7 @@ mod tests {
         assert_eq!(from_views, from_world_tiles);
     }
 
+    #[cfg(feature = "gui")]
     #[test]
     fn tile_views_reports_the_central_village_at_the_origin() {
         let map = Map::new(&Player::default());
@@ -93,6 +103,7 @@ mod tests {
         assert_eq!(origin.terrain, TerrainType::Village);
     }
 
+    #[cfg(feature = "gui")]
     #[test]
     fn terrain_rgb_is_distinct_per_terrain() {
         let colours = [

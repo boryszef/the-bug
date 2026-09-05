@@ -9,12 +9,14 @@ replacing it outright, so the game stays playable throughout the migration.
 
 ## Structure
 
-Single binary, no `src/lib.rs`. `mod tui;` and `mod gui;` sit side by side
-in `main.rs`; a new `--gui` flag on the existing `clap` `Cli` picks which one
-runs. Considered instead: a `src/lib.rs` + `src/bin/{tui,gui}.rs` split, so
-each binary only links what it needs — rejected for now as more
-restructuring than warranted before any `gui` code existed; worth
-revisiting once `gui` is more than a scaffold.
+Single binary, no `src/lib.rs`. The front end is a **compile-time choice**
+between two mutually exclusive Cargo features — `gui` (default, pulls
+`eframe`) and `tui` (legacy, pulls `ratatui`/`crossterm`) — not a runtime
+flag. `src/main.rs` `#[cfg]`-gates `mod gui;` / `mod tui;` and its
+`run_frontend`; both features on (or neither) is a `compile_error!`. See
+**`docs/adr/0002-frontend-selected-at-build-time.md`** — that ADR supersedes
+this section. (Historically this was a `--gui` flag with both toolkits
+linked; the flag is gone.)
 
 `src/gui/` follows the same layering rule as `src/tui/`
 (`ARCHITECTURE.md`): rendering and input-mapping only, everything else goes
@@ -23,8 +25,7 @@ through `viewmodel`/`game`.
 ## Progress
 
 - Empty window (`src/gui/mod.rs`): an `eframe::App` with an empty
-  `CentralPanel`, launched via `gui::run()` from `main` when `--gui` is
-  passed.
+  `CentralPanel`, launched via `gui::run()` from `main`.
 - `Game`/`Language`/save wiring: `main` now builds `game`/`language` the
   same way for both front ends (load-or-default, detect), then either hands
   them to `tui::App::with_game` or `gui::run(game, language)`. `gui::App`
@@ -95,15 +96,16 @@ list as further gui work lands (see `TODO.md`).
 
 ## Code
 
-- `Cargo.toml` — `eframe` dependency.
+- `Cargo.toml` — `eframe` as an optional dep behind the `gui` feature
+  (default); see ADR 0002.
 - `src/gui/mod.rs` — the `eframe::App`; `Panel`; `render_player`/
   `render_events`; the tab/quit toolbar; the hint bar (`hint_text`); the
   per-`Panel` render arms in `App::ui`.
 - `src/gui/map.rs` — `MapView` (pan/zoom + `egui::Painter` tile grid), the
-  N/S/W/E + Search controls, `MapCommand`, arrow/`s` key accelerators.
+  `←↑↓→` + Search controls, `MapCommand`, arrow/`s` key accelerators.
 - `src/gui/{experiment,craft,disassemble,quests}.rs` — one `render` per tab.
 - `src/i18n/locales/{en,pl}/main.ftl` — `action-*` / `gui-hint*` gui strings.
-- `src/viewmodel/map.rs` — `TileView`, `tile_views`, `terrain_rgb`.
-- `src/main.rs` — `mod gui;`, `Cli::gui` flag, shared `game`/`language`
-  setup, dispatch in `main()`.
-- `src/i18n/locales/{en,pl}/main.ftl` — `action-quit`.
+- `src/viewmodel/map.rs` — `TileView`, `tile_views`, `terrain_rgb`
+  (`#[cfg(feature = "gui")]`).
+- `src/main.rs` — `#[cfg(feature = "gui")] mod gui;`, shared `game`/
+  `language` setup, `#[cfg]`-selected `run_frontend`.

@@ -1,14 +1,31 @@
 mod game;
+#[cfg(feature = "gui")]
 mod gui;
 mod i18n;
 mod save;
+#[cfg(feature = "tui")]
 mod tui;
 mod viewmodel;
+
+#[cfg(all(feature = "gui", feature = "tui"))]
+compile_error!(
+    "the-bug: enable exactly one front end — `gui` or `tui`, not both. \
+     The default is `gui`; for the legacy terminal UI build with \
+     `--no-default-features --features tui`."
+);
+#[cfg(not(any(feature = "gui", feature = "tui")))]
+compile_error!(
+    "the-bug: no front end selected. Build with the default `gui` feature, \
+     or `--no-default-features --features tui` for the legacy terminal UI."
+);
 
 use std::io;
 use std::path::PathBuf;
 
 use clap::Parser;
+
+use crate::game::Game;
+use crate::i18n::Language;
 
 /// A tiny terminal survival game.
 #[derive(Parser)]
@@ -20,9 +37,6 @@ struct Cli {
     /// UI language (e.g. "en", "pl"). Defaults to the system locale.
     #[arg(long, value_name = "LANG")]
     lang: Option<String>,
-    /// Launch the graphical (egui) front end instead of the terminal one.
-    #[arg(long)]
-    gui: bool,
 }
 
 fn main() -> io::Result<()> {
@@ -37,17 +51,25 @@ fn main() -> io::Result<()> {
                 std::process::exit(1);
             }
         },
-        None => game::Game::default(),
+        None => Game::default(),
     };
 
-    if cli.gui {
-        if let Err(e) = gui::run(game, language) {
-            eprintln!("gui error: {e}");
-            std::process::exit(1);
-        }
-        return Ok(());
-    }
+    run_frontend(game, language)
+}
 
+/// Runs the graphical (egui) front end, then returns.
+#[cfg(feature = "gui")]
+fn run_frontend(game: Game, language: Language) -> io::Result<()> {
+    if let Err(e) = gui::run(game, language) {
+        eprintln!("gui error: {e}");
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+/// Runs the legacy terminal (ratatui) front end and saves on exit.
+#[cfg(all(feature = "tui", not(feature = "gui")))]
+fn run_frontend(game: Game, language: Language) -> io::Result<()> {
     let mut app = tui::App::with_game(game, language);
     ratatui::run(|terminal| app.run(terminal))?;
 

@@ -603,8 +603,6 @@ mod tests {
 
     const FIXTURE_QUEST: Quest = Quest {
         id: QuestID::CraftArrows,
-        name: "Fixture",
-        description: "",
         dependencies: &[QuestID::ExploreRuins],
         condition: QuestCondition {
             event: EventTypeID::CraftItem(Item::Arrow),
