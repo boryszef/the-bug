@@ -4,16 +4,6 @@ use std::time::Duration;
 
 use super::{Item, QuestID, TerrainType};
 
-/// Which part of the game an event belongs to. Used to colour the log.
-/// Derived from [`EventKind`] (see [`EventKind::category`]), not stored.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub enum EventCategory {
-    #[default]
-    General,
-    Experiment,
-    Crafting,
-}
-
 /// What happened, described structurally rather than as rendered text —
 /// wording lives entirely in `i18n`. One variant per `Game::log(...)` call
 /// site (see `src/game/mod.rs`).
@@ -54,24 +44,6 @@ pub enum EventKind {
     Disassembled { item: Item },
 }
 
-impl EventKind {
-    pub fn category(&self) -> EventCategory {
-        match self {
-            EventKind::Awoke | EventKind::Found { .. } => EventCategory::General,
-            EventKind::QuestAccepted { .. } | EventKind::QuestCompleted { .. } => {
-                EventCategory::General
-            }
-            EventKind::UnknownRecipe { .. }
-            | EventKind::CraftShortage { .. }
-            | EventKind::Crafted { .. }
-            | EventKind::Disassembled { .. } => EventCategory::Crafting,
-            EventKind::ExperimentShortage { .. }
-            | EventKind::ExperimentFailed { .. }
-            | EventKind::Experimented { .. } => EventCategory::Experiment,
-        }
-    }
-}
-
 /// One entry in the event log: what happened, and how far into the session
 /// it happened.
 #[derive(Debug)]
@@ -87,10 +59,6 @@ impl Event {
 
     pub fn kind(&self) -> &EventKind {
         &self.kind
-    }
-
-    pub fn category(&self) -> EventCategory {
-        self.kind.category()
     }
 
     /// Time from the start of the session to when this event was logged.
@@ -118,23 +86,5 @@ impl super::RestoreState for Event {
             saved.kind,
             Duration::from_secs_f64(saved.elapsed_secs.max(0.0)),
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn category_matches_each_variant_s_part_of_the_game() {
-        assert_eq!(EventKind::Awoke.category(), EventCategory::General);
-        assert_eq!(
-            EventKind::Crafted { output: Item::Cord }.category(),
-            EventCategory::Crafting
-        );
-        assert_eq!(
-            EventKind::ExperimentFailed { items: vec![] }.category(),
-            EventCategory::Experiment
-        );
     }
 }

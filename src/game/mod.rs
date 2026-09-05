@@ -5,7 +5,7 @@ mod player;
 mod quest;
 mod recipe;
 
-pub use event::{Event, EventCategory, EventKind};
+pub use event::{Event, EventKind};
 pub use item::Item;
 pub use map::{Direction, Map, MapTile, TerrainType};
 pub use player::Player;
@@ -343,7 +343,6 @@ mod tests {
                 needed: 5,
             }
         );
-        assert_eq!(last_event(&game).category(), EventCategory::Experiment);
 
         // failure: shows the inputs
         let mut game = Game::default();
@@ -421,10 +420,15 @@ mod tests {
     }
 
     #[test]
-    fn craft_events_are_categorised_crafting() {
+    fn craft_logs_unknown_recipe_then_crafted() {
         let mut game = Game::default();
         game.craft("Cord"); // unknown recipe
-        assert_eq!(last_event(&game).category(), EventCategory::Crafting);
+        assert_eq!(
+            last_event(&game).kind(),
+            &EventKind::UnknownRecipe {
+                recipe: "Cord".to_string()
+            }
+        );
 
         game.player.grant_recipe("Cord");
         game.player.inventory.insert(Item::Vine, 2);
@@ -433,7 +437,6 @@ mod tests {
             last_event(&game).kind(),
             &EventKind::Crafted { output: Item::Cord }
         );
-        assert_eq!(last_event(&game).category(), EventCategory::Crafting);
     }
 
     #[test]
@@ -546,7 +549,6 @@ mod tests {
                 item: Item::StoneAxe
             }
         );
-        assert_eq!(last_event(&game).category(), EventCategory::Crafting);
     }
 
     #[test]

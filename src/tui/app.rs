@@ -11,7 +11,7 @@ use ratatui::{
 };
 use std::io;
 
-use crate::game::{Direction, EventCategory, Game};
+use crate::game::{Direction, EventKind, Game};
 use crate::i18n::{self, Language};
 use crate::viewmodel;
 
@@ -321,7 +321,7 @@ fn render_events(game: &Game, area: Rect, buf: &mut Buffer, lang: Language) {
                 event.timestamp,
                 i18n::event(event.kind, lang)
             ));
-            match category_color(event.kind.category()) {
+            match event_color(event.kind) {
                 Some(color) => line.style(Style::default().fg(color)),
                 None => line,
             }
@@ -333,13 +333,21 @@ fn render_events(game: &Game, area: Rect, buf: &mut Buffer, lang: Language) {
         .render(area, buf);
 }
 
-/// The colour an event-log line gets from its category; `None` keeps the
+/// The colour an event-log line gets based on its kind; `None` keeps the
 /// default foreground.
-fn category_color(category: EventCategory) -> Option<Color> {
-    match category {
-        EventCategory::General => None,
-        EventCategory::Crafting => Some(Color::Yellow),
-        EventCategory::Experiment => Some(Color::Cyan),
+fn event_color(kind: &EventKind) -> Option<Color> {
+    match kind {
+        EventKind::Awoke
+        | EventKind::Found { .. }
+        | EventKind::QuestAccepted { .. }
+        | EventKind::QuestCompleted { .. } => None,
+        EventKind::UnknownRecipe { .. }
+        | EventKind::CraftShortage { .. }
+        | EventKind::Crafted { .. }
+        | EventKind::Disassembled { .. } => Some(Color::Yellow),
+        EventKind::ExperimentShortage { .. }
+        | EventKind::ExperimentFailed { .. }
+        | EventKind::Experimented { .. } => Some(Color::Cyan),
     }
 }
 

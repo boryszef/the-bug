@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use eframe::egui::{self, Color32, RichText, Ui};
 
-use crate::game::{EventCategory, Game};
+use crate::game::{EventKind, Game};
 use crate::i18n::{self, Language};
 use crate::save;
 use crate::viewmodel;
@@ -107,19 +107,27 @@ fn render_events(game: &Game, lang: Language, ui: &mut Ui) {
 
     for event in viewmodel::events::recent(game, 10) {
         let text = format!("[{}] {}", event.timestamp, i18n::event(event.kind, lang));
-        match category_color(event.kind.category()) {
+        match event_color(event.kind) {
             Some(color) => ui.label(RichText::new(text).color(color)),
             None => ui.label(text),
         };
     }
 }
 
-/// The colour an event-log line gets from its category; `None` keeps the
-/// default text color. Mirrors `tui::app::category_color`.
-fn category_color(category: EventCategory) -> Option<Color32> {
-    match category {
-        EventCategory::General => None,
-        EventCategory::Crafting => Some(Color32::YELLOW),
-        EventCategory::Experiment => Some(Color32::CYAN),
+/// The colour an event-log line gets based on its kind; `None` keeps the
+/// default text color. Mirrors `tui::app::event_color`.
+fn event_color(kind: &EventKind) -> Option<Color32> {
+    match kind {
+        EventKind::Awoke
+        | EventKind::Found { .. }
+        | EventKind::QuestAccepted { .. }
+        | EventKind::QuestCompleted { .. } => None,
+        EventKind::UnknownRecipe { .. }
+        | EventKind::CraftShortage { .. }
+        | EventKind::Crafted { .. }
+        | EventKind::Disassembled { .. } => Some(Color32::YELLOW),
+        EventKind::ExperimentShortage { .. }
+        | EventKind::ExperimentFailed { .. }
+        | EventKind::Experimented { .. } => Some(Color32::CYAN),
     }
 }

@@ -242,10 +242,6 @@ mod tests {
                 newly_learned: true,
             }
         );
-        assert_eq!(
-            restored.events().last().unwrap().category(),
-            crate::game::EventCategory::Experiment
-        );
     }
 
     #[test]
