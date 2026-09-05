@@ -63,14 +63,16 @@ through `viewmodel`/`game`.
   action `App::ui` applies to `game` — see `docs/gui-panels.md`:
   - **Experiment** (`experiment.rs`): two columns (Available / Selected) of
     click-to-move item buttons plus a run button; holds an `ItemSelection`.
-  - Craft / Disassemble / Quests: still the placeholder heading.
+  - **Craft** (`craft.rs`): a button per known recipe, disabled when its
+    inputs aren't affordable (`viewmodel::crafting::CraftOption::enabled`).
+  - Disassemble / Quests: still the placeholder heading.
 
 Update this list as each subsequent piece lands (see `TODO.md`).
 
 ## What is *not* built here
 
-- Craft / Disassemble / Quests panel content — those three tabs still show
-  the placeholder heading.
+- Disassemble / Quests panel content — those two tabs still show the
+  placeholder heading.
 - Not yet decided whether `tui` is retired once `gui` reaches parity, or
   kept as a permanent alternate front end (ADR 0001 leaves this open).
 

@@ -1,3 +1,4 @@
+mod craft;
 mod experiment;
 mod map;
 
@@ -152,8 +153,14 @@ impl eframe::App for App {
                     self.game.experiment(&items);
                 }
             }
-            // Placeholder for the craft/disassemble/quests panels' own
-            // content — see docs/gui-frontend.md.
+            Panel::Craft => {
+                let options = viewmodel::crafting::options(&self.game.player);
+                if let Some(name) = craft::render(ui, &options, self.language) {
+                    self.game.craft(name);
+                }
+            }
+            // Placeholder for the disassemble/quests panels' own content —
+            // see docs/gui-frontend.md.
             _ => {
                 ui.heading(i18n::ui(self.panel.title_id(), self.language));
             }
