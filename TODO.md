@@ -3,7 +3,7 @@
 ## TODO
 
 * craft menu should show what items are missing for a recipe
-* map should not be random and certain terrain types should be clustered together (e.g. deadland, forest, mountains)
+* map should not be random and certain terrain types should be clustered together (e.g. deadland, forest, mountains) — dev tool `tools/mapgen` authors candidate grids (docs/mapgen.md); still need to pick one, bundle it, and replace `Map::new`
 * crafting/experimenting/disassembly should only be possible at the village
 * Players "bag" should have a limited size, when full, the player should take their findings to the village and deposit them in the storage
 

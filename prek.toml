@@ -12,10 +12,14 @@
 
 # clippy runs once per front end: the shared layers are linted under both,
 # so a change that breaks the frozen `tui` build is caught at commit time.
+# tools/mapgen is a separate crate outside this package, so it gets its own
+# fmt/clippy hooks (they only fire when its files change).
 [[repos]]
 repo = "local"
 hooks = [
     { id = "cargo-fmt", name = "cargo fmt", entry = "cargo fmt --all -- --check", language = "system", types = ["rust"], pass_filenames = false },
     { id = "cargo-clippy-gui", name = "cargo clippy (gui)", entry = "cargo clippy --all-targets -- -D warnings", language = "system", types = ["rust"], pass_filenames = false },
     { id = "cargo-clippy-tui", name = "cargo clippy (tui)", entry = "cargo clippy --all-targets --no-default-features --features tui -- -D warnings", language = "system", types = ["rust"], pass_filenames = false },
+    { id = "mapgen-fmt", name = "mapgen fmt", entry = "cargo fmt --manifest-path tools/mapgen/Cargo.toml -- --check", language = "system", files = "^tools/mapgen/.*\\.rs$", pass_filenames = false },
+    { id = "mapgen-clippy", name = "mapgen clippy", entry = "cargo clippy --manifest-path tools/mapgen/Cargo.toml --all-targets -- -D warnings", language = "system", files = "^tools/mapgen/.*\\.rs$", pass_filenames = false },
 ]

@@ -106,7 +106,8 @@ a small struct holding only transient UI state, no game data.
 
 1. **Predefined map:** load a bundled ASCII grid (reusing
    `save::terrain_code` / `save::parse_terrain`, entry point
-   `Map::from_terrain`) instead of the random fill.
+   `Map::from_terrain`) instead of the random fill. Candidate grids are
+   authored with the `tools/mapgen` dev tool — see `docs/mapgen.md`.
 2. **Road / river feature layer:** `feature: Option<Feature>` on `MapTile`;
    `TileView` gains `feature` + a neighbour-derived edge mask computed in
    `viewmodel::map`; procedural stub-drawing in `gui/map.rs` (a segment from

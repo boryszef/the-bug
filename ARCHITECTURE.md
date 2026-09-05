@@ -134,6 +134,17 @@ shapes and the whole-`Game` glue that doesn't belong to any single type
 (version stamping, reconstructing `started` from the saved events). See
 `docs/save-load.md`.
 
+## `tools/` holds standalone dev utilities, not part of the game
+
+`tools/<name>/` is a self-contained crate (own `Cargo.toml` + `Cargo.lock`,
+empty `[workspace]` table) that is built and run on its own, never shipped and
+never linked into `the-bug`. Because ADR 0002 rules out a library/binary
+split, these tools cannot reuse crate internals — they re-declare the small
+amount they need (e.g. `tools/mapgen` mirrors `save.rs`'s terrain letters) with
+a comment pointing back. They are outside the root package, so root
+`fmt`/`clippy`/`test` don't cover them; `prek` gets a per-tool hook instead.
+First one: `tools/mapgen` (`docs/mapgen.md`).
+
 ## Docs record the *why*, not just the *what*
 
 Each `docs/*.md` file is a short, standing record for one feature/decision:
