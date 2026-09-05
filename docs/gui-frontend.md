@@ -53,6 +53,11 @@ through `viewmodel`/`game`.
   `feature`/`connections` field and a sprite backend. Still the random map;
   no predefined maps or road/river tiles yet — see `docs/gui-map.md`. The
   other four tabs keep the placeholder heading.
+- Map tab movement (`App::handle_map_keys`): while the **Map** tab is
+  active, the arrow keys walk the player (`Game::walk`) and `s` searches the
+  current tile (`Game::search`), mirroring `tui::app::App::handle_map_key`.
+  The view stays camera-centred where the user panned it — it does not
+  recentre on the player.
 
 Update this list as each subsequent piece lands
 (craft/disassemble/experiment/quests panel content — see `TODO.md`).

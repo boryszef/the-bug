@@ -97,8 +97,9 @@ a small struct holding only transient UI state, no game data.
 - No road / river tiles, no `Feature` type, no edge-connection logic, no
   save-format change.
 - No sprite/texture rendering — procedural fills only.
-- No terrain legend, no keyboard movement on the `gui` Map tab (arrows still
-  only cycle panels), no per-tile tooltips or click-to-inspect.
+- No terrain legend, no per-tile tooltips or click-to-inspect. (Keyboard
+  movement on the Map tab landed as a separate follow-up — see
+  `docs/gui-frontend.md`.)
 - `tui`'s map renderer is not changed or refactored.
 
 ## Follow-on increments (tracked, not in this change)

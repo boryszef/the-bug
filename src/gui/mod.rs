@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use eframe::egui::{self, Color32, Key, RichText, Ui};
 
-use crate::game::{EventKind, Game};
+use crate::game::{Direction, EventKind, Game};
 use crate::i18n::{self, Language};
 use crate::save;
 use crate::viewmodel;
@@ -102,6 +102,9 @@ impl eframe::App for App {
         if ctx.input(|i| i.key_pressed(Key::Q)) {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         }
+        if self.panel == Panel::Map {
+            self.handle_map_keys(&ctx);
+        }
 
         egui::Panel::top("tabs_and_quit").show(ui, |ui| {
             ui.horizontal(|ui| {
@@ -144,6 +147,26 @@ impl eframe::App for App {
         match save::save(&self.game) {
             Ok(path) => println!("Game saved to {}", path.display()),
             Err(e) => eprintln!("Warning: could not save game: {e}"),
+        }
+    }
+}
+
+impl App {
+    /// Arrow keys walk the player, `s` searches the current tile — only
+    /// while the Map tab is active. Mirrors `tui::app::App::handle_map_key`.
+    fn handle_map_keys(&mut self, ctx: &egui::Context) {
+        for (key, dir) in [
+            (Key::ArrowUp, Direction::North),
+            (Key::ArrowDown, Direction::South),
+            (Key::ArrowLeft, Direction::West),
+            (Key::ArrowRight, Direction::East),
+        ] {
+            if ctx.input(|i| i.key_pressed(key)) {
+                self.game.walk(dir);
+            }
+        }
+        if ctx.input(|i| i.key_pressed(Key::S)) {
+            self.game.search();
         }
     }
 }
