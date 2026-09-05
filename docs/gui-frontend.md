@@ -45,14 +45,22 @@ through `viewmodel`/`game`.
   `ViewportCommand::Close`, which triggers the same `on_exit` save path as
   closing the window normally. The central area still has no per-panel
   content — it just shows the active tab's title as a placeholder heading.
+- Map tab tile grid (`src/gui/map.rs`, `MapView`): the **Map** tab draws
+  the map via `egui::Painter` — one `rect_filled` per visible tile coloured
+  by `viewmodel::map::terrain_rgb`, plus a player marker; drag pans, scroll/
+  pinch zooms (clamped). Tiles arrive as `viewmodel::map::TileView`s
+  (`tile_views`), a renderer-neutral descriptor with room for a later
+  `feature`/`connections` field and a sprite backend. Still the random map;
+  no predefined maps or road/river tiles yet — see `docs/gui-map.md`. The
+  other four tabs keep the placeholder heading.
 
-Update this list as each subsequent piece lands (map via `egui::Painter`,
-craft/disassemble/experiment/quests panel content — see `TODO.md`).
+Update this list as each subsequent piece lands
+(craft/disassemble/experiment/quests panel content — see `TODO.md`).
 
 ## What is *not* built here
 
-- No map, or any of the craft/disassemble/experiment/quests panels' actual
-  content — tab switching works, but every tab shows the same placeholder
+- None of the craft/disassemble/experiment/quests panels' actual content —
+  tab switching works, but those four tabs show the same placeholder
   heading.
 - Not yet decided whether `tui` is retired once `gui` reaches parity, or
   kept as a permanent alternate front end (ADR 0001 leaves this open).
@@ -61,7 +69,10 @@ craft/disassemble/experiment/quests panel content — see `TODO.md`).
 
 - `Cargo.toml` — `eframe` dependency.
 - `src/gui/mod.rs` — the `eframe::App`; `Panel`; `render_player`/
-  `render_events`; the tab/quit toolbar and keyboard shortcuts in `App::ui`.
+  `render_events`; the tab/quit toolbar and keyboard shortcuts in `App::ui`;
+  the `Panel::Map` render arm.
+- `src/gui/map.rs` — `MapView` (pan/zoom state + `egui::Painter` tile grid).
+- `src/viewmodel/map.rs` — `TileView`, `tile_views`, `terrain_rgb`.
 - `src/main.rs` — `mod gui;`, `Cli::gui` flag, shared `game`/`language`
   setup, dispatch in `main()`.
 - `src/i18n/locales/{en,pl}/main.ftl` — `action-quit`.

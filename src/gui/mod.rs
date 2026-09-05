@@ -1,3 +1,5 @@
+mod map;
+
 use std::collections::HashMap;
 
 use eframe::egui::{self, Color32, Key, RichText, Ui};
@@ -6,6 +8,8 @@ use crate::game::{EventKind, Game};
 use crate::i18n::{self, Language};
 use crate::save;
 use crate::viewmodel;
+
+use map::MapView;
 
 /// Launches the egui/eframe front end on `game`, blocking until the window
 /// closes. Saves `game` to disk on close, mirroring `tui::App`'s
@@ -19,6 +23,7 @@ pub fn run(game: Game, language: Language) -> eframe::Result<()> {
                 game,
                 language,
                 panel: Panel::default(),
+                map_view: MapView::default(),
             }))
         }),
     )
@@ -82,6 +87,7 @@ struct App {
     game: Game,
     language: Language,
     panel: Panel,
+    map_view: MapView,
 }
 
 impl eframe::App for App {
@@ -120,10 +126,17 @@ impl eframe::App for App {
                 render_events(&self.game, self.language, ui);
             });
 
-        // Placeholder for the map/craft/disassemble/experiment/quests
-        // panels' own content — see docs/gui-frontend.md.
-        egui::CentralPanel::default().show(ui, |ui| {
-            ui.heading(i18n::ui(self.panel.title_id(), self.language));
+        egui::CentralPanel::default().show(ui, |ui| match self.panel {
+            Panel::Map => self.map_view.ui(
+                ui,
+                viewmodel::map::tile_views(&self.game.map),
+                self.game.player.coordinates,
+            ),
+            // Placeholder for the craft/disassemble/experiment/quests
+            // panels' own content — see docs/gui-frontend.md.
+            _ => {
+                ui.heading(i18n::ui(self.panel.title_id(), self.language));
+            }
         });
     }
 
