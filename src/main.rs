@@ -1,7 +1,7 @@
 mod game;
 mod i18n;
 mod save;
-mod ui;
+mod tui;
 mod viewmodel;
 
 use std::io;
@@ -36,7 +36,7 @@ fn main() -> io::Result<()> {
         None => game::Game::default(),
     };
 
-    let mut app = ui::App::with_game(game, language);
+    let mut app = tui::App::with_game(game, language);
     ratatui::run(|terminal| app.run(terminal))?;
 
     match save::save(app.game()) {
