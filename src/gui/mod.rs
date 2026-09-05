@@ -17,7 +17,12 @@ use map::MapView;
 pub fn run(game: Game, language: Language) -> eframe::Result<()> {
     eframe::run_native(
         "the-bug",
-        eframe::NativeOptions::default(),
+        eframe::NativeOptions {
+            viewport: egui::ViewportBuilder::default()
+                .with_inner_size([1280.0, 800.0])
+                .with_min_inner_size([800.0, 600.0]),
+            ..Default::default()
+        },
         Box::new(|_cc| {
             Ok(Box::new(App {
                 game,
