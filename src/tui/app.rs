@@ -337,10 +337,9 @@ fn render_events(game: &Game, area: Rect, buf: &mut Buffer, lang: Language) {
 /// default foreground.
 fn event_color(kind: &EventKind) -> Option<Color> {
     match kind {
-        EventKind::Awoke
-        | EventKind::Found { .. }
-        | EventKind::QuestAccepted { .. }
-        | EventKind::QuestCompleted { .. } => None,
+        EventKind::Awoke => None,
+        EventKind::Found { .. } => Some(Color::Green),
+        EventKind::QuestAccepted { .. } | EventKind::QuestCompleted { .. } => Some(Color::Magenta),
         EventKind::UnknownRecipe { .. }
         | EventKind::CraftShortage { .. }
         | EventKind::Crafted { .. }

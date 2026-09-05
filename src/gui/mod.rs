@@ -118,10 +118,11 @@ fn render_events(game: &Game, lang: Language, ui: &mut Ui) {
 /// default text color. Mirrors `tui::app::event_color`.
 fn event_color(kind: &EventKind) -> Option<Color32> {
     match kind {
-        EventKind::Awoke
-        | EventKind::Found { .. }
-        | EventKind::QuestAccepted { .. }
-        | EventKind::QuestCompleted { .. } => None,
+        EventKind::Awoke => None,
+        EventKind::Found { .. } => Some(Color32::GREEN),
+        EventKind::QuestAccepted { .. } | EventKind::QuestCompleted { .. } => {
+            Some(Color32::MAGENTA)
+        }
         EventKind::UnknownRecipe { .. }
         | EventKind::CraftShortage { .. }
         | EventKind::Crafted { .. }
