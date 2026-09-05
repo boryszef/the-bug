@@ -2,11 +2,15 @@
 
 ## TODO
 
-* implement the quest system: one quest unlocks other quests, completing a quest awards XP and items, quests also tell the story of the game world
 * craft menu should show what items are missing for a recipe
+* map should not be random and certain terrain types should be clustered together (e.g. deadland, forest, mountains)
+* crafting/experimenting/disassembly should only be possible at the village
+* Players "bag" should have a limited size, when full, the player should take their findings to the village and deposit them in the storage
+* create alternative egui/eframe UI
 
 ## DONE
 
+* implement the quest system: one quest unlocks other quests, completing a quest awards XP and items, quests also tell the story of the game world
 * add i18n support (English + Polish, via Project Fluent)
 * implement item disassembly (e.g. stone axe -> stick + stone + rope, umbrella -> pole + fabric)
 * inventory panel: hide exhausted (zero) items and wrap the text
