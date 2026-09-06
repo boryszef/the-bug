@@ -121,8 +121,6 @@ terrain-meadow = Łąka
     .locative = na łące
 terrain-forest = Las
     .locative = w lesie
-terrain-village = Wieś
-    .locative = we wsi
 terrain-deadland = Pustkowie
     .locative = na pustkowiu
 

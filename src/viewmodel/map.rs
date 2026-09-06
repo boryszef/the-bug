@@ -50,7 +50,6 @@ pub fn terrain_rgb(terrain: TerrainType) -> (u8, u8, u8) {
     match terrain {
         TerrainType::Meadow => (0x7c, 0xb3, 0x42),
         TerrainType::Forest => (0x2f, 0x6d, 0x2f),
-        TerrainType::Village => (0xc8, 0x8a, 0x3c),
         TerrainType::Deadland => (0x33, 0x30, 0x2b),
     }
 }
@@ -70,7 +69,9 @@ pub fn world_tiles(map: &Map) -> impl Iterator<Item = ((i32, i32), &MapTile)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::{Player, TerrainType};
+    #[cfg(feature = "gui")]
+    use crate::game::TerrainType;
+    use crate::game::{Player, Poi};
 
     #[test]
     fn visits_every_tile() {
@@ -80,12 +81,12 @@ mod tests {
     }
 
     #[test]
-    fn origin_maps_to_the_central_village() {
+    fn origin_carries_the_village_poi() {
         let map = Map::new(&Player::default());
         let (_, tile) = world_tiles(&map)
             .find(|&(coords, _)| coords == (0, 0))
             .expect("a tile at the origin");
-        assert_eq!(tile.terrain_type, TerrainType::Village);
+        assert_eq!(tile.poi, Some(Poi::Village));
     }
 
     #[cfg(feature = "gui")]
@@ -103,14 +104,14 @@ mod tests {
 
     #[cfg(feature = "gui")]
     #[test]
-    fn tile_views_reports_the_central_village_at_the_origin() {
+    fn tile_views_reports_the_village_poi_at_the_origin() {
         let map = Map::new(&Player::default());
 
         let origin = tile_views(&map)
             .find(|t| t.world == (0, 0))
             .expect("a tile at the origin");
 
-        assert_eq!(origin.terrain, TerrainType::Village);
+        assert_eq!(origin.poi, Some(Poi::Village));
     }
 
     #[cfg(feature = "gui")]
@@ -154,7 +155,6 @@ mod tests {
         let colours = [
             terrain_rgb(TerrainType::Meadow),
             terrain_rgb(TerrainType::Forest),
-            terrain_rgb(TerrainType::Village),
             terrain_rgb(TerrainType::Deadland),
         ];
 

@@ -140,10 +140,12 @@ impl MapView {
                     &tile.neighbours,
                 );
             } else if self.tile_px >= POI_ICON_MIN_PX {
+                let c = rect.center();
                 match tile.poi {
-                    Some(Poi::Cave) => draw_cave_icon(&painter, rect.center(), self.tile_px),
-                    Some(Poi::Ruins) => draw_ruins_icon(&painter, rect.center(), self.tile_px),
-                    Some(Poi::Village) | None => {}
+                    Some(Poi::Cave) => draw_cave_icon(&painter, c, self.tile_px),
+                    Some(Poi::Ruins) => draw_ruins_icon(&painter, c, self.tile_px),
+                    Some(Poi::Village) => draw_village_icon(&painter, c, self.tile_px),
+                    None => {}
                 }
             }
         }
@@ -217,6 +219,17 @@ fn draw_ruins_icon(painter: &Painter, center: Pos2, tile_px: f32) {
     }
 }
 
+/// The village: a little hut — a square body under a triangular roof.
+fn draw_village_icon(painter: &Painter, center: Pos2, tile_px: f32) {
+    let (roof, body) = village_hut(center, tile_px * POI_ICON_RATIO);
+    painter.rect_filled(body, 0.0, POI_ICON_COLOR);
+    painter.add(Shape::convex_polygon(
+        roof.to_vec(),
+        POI_ICON_COLOR,
+        Stroke::NONE,
+    ));
+}
+
 /// For each edge whose neighbour is a *different* terrain, paints a few teeth
 /// of that neighbour's colour reaching in from the edge, so the border reads as
 /// ragged rather than a straight line. `neighbours` is `[N, E, S, W]`.
@@ -277,6 +290,24 @@ fn cave_triangle(center: Pos2, size: f32) -> [Pos2; 3] {
         Pos2::new(center.x - h, center.y + h),
         Pos2::new(center.x + h, center.y + h),
     ]
+}
+
+/// The village hut: `(roof triangle, body rect)` for an icon box `size` on a
+/// side centred on `center`. The body is the lower ~55%, the roof the upper
+/// ~55% (they overlap a little at the eaves).
+fn village_hut(center: Pos2, size: f32) -> ([Pos2; 3], Rect) {
+    let h = size / 2.0;
+    let eaves = center.y - h * 0.1;
+    let body = Rect::from_min_max(
+        Pos2::new(center.x - h * 0.7, eaves),
+        Pos2::new(center.x + h * 0.7, center.y + h),
+    );
+    let roof = [
+        Pos2::new(center.x, center.y - h),
+        Pos2::new(center.x - h, eaves),
+        Pos2::new(center.x + h, eaves),
+    ];
+    (roof, body)
 }
 
 /// Four skyline bars — uneven heights, bottoms on a common baseline — for an
@@ -464,6 +495,24 @@ mod tests {
             for j in (i + 1)..heights.len() {
                 assert!((heights[i] - heights[j]).abs() > 1e-3, "bar heights differ");
             }
+        }
+    }
+
+    #[test]
+    fn village_hut_has_a_roof_above_a_body_within_the_icon_box() {
+        let c = Pos2::new(0.0, 0.0);
+        let size = 20.0;
+        let ([apex, rl, rr], body) = village_hut(c, size);
+
+        assert!(apex.y < body.min.y, "roof apex above the body");
+        assert!(rl.x < c.x && rr.x > c.x, "roof spans the centre");
+        assert!(
+            body.min.x > rl.x && body.max.x < rr.x,
+            "body narrower than the roof"
+        );
+        for p in [apex, rl, rr, body.min, body.max] {
+            assert!((p.x - c.x).abs() <= size / 2.0 + 1e-3);
+            assert!((p.y - c.y).abs() <= size / 2.0 + 1e-3);
         }
     }
 }

@@ -3,11 +3,11 @@
 //! Pipeline (see `docs/mapgen.md` for the rationale):
 //!
 //! 1. **Quotas** — turn the cluster percentages into exact per-terrain tile
-//!    counts over the non-village cells (largest-remainder rounding, so the
-//!    counts always sum exactly).
+//!    counts over every cell (largest-remainder rounding, so the counts always
+//!    sum exactly).
 //! 2. **`affinity = 1` layout** — recursive rectilinear bisection slices the
-//!    clustering cells into one contiguous block per terrain.
-//! 3. **Melt** — swap pairs of clustering cells, always taking a swap that
+//!    cells into one contiguous block per terrain.
+//! 3. **Melt** — swap pairs of cells, always taking a swap that
 //!    doesn't worsen clustering and taking a worsening one with flat probability
 //!    `(1 - affinity)^2`. This disorders the clean layout toward randomness
 //!    without a temperature to tune. Swaps never change counts, so the
@@ -20,7 +20,6 @@ use std::fmt;
 use rand::RngExt;
 use rand::seq::SliceRandom;
 
-use super::is_clustering;
 use crate::game::TerrainType;
 
 /// Melt iterations, as a multiple of the clustering-cell count. Enough that a
@@ -47,9 +46,7 @@ pub(crate) enum GenError {
     PercentSum(f64),
     EvenSize(usize),
     TooSmall(usize),
-    WrongCategory(TerrainType),
     DuplicateTerrain(TerrainType),
-    CannotPlaceClusters,
 }
 
 impl fmt::Display for GenError {
@@ -61,16 +58,7 @@ impl fmt::Display for GenError {
             }
             GenError::EvenSize(n) => write!(f, "size must be odd (got {n})"),
             GenError::TooSmall(n) => write!(f, "size must be at least 5 (got {n})"),
-            GenError::WrongCategory(t) => write!(
-                f,
-                "{t:?} cannot be a cluster (clustering terrain is Meadow/Forest/Deadland)"
-            ),
             GenError::DuplicateTerrain(t) => write!(f, "{t:?} is listed more than once"),
-            GenError::CannotPlaceClusters => write!(
-                f,
-                "could not grow contiguous clusters; try a lower affinity, fewer \
-                 terrains, less scatter, or a larger size"
-            ),
         }
     }
 }
@@ -85,9 +73,6 @@ impl Spec {
 
         let mut seen = Vec::new();
         for &(t, _) in &self.clusters {
-            if !is_clustering(t) {
-                return Err(GenError::WrongCategory(t));
-            }
             if seen.contains(&t) {
                 return Err(GenError::DuplicateTerrain(t));
             }
@@ -110,8 +95,9 @@ impl Spec {
     }
 }
 
-/// Generates a `size x size` grid: `Village` dead-centre, every other cell
-/// filled with a clustering terrain at exactly its quota.
+/// Generates a `size x size` grid: every cell filled with a clustering terrain
+/// at exactly its quota. (The village and other points of interest are an
+/// overlay laid on top by `Map::new` — `docs/map-pois.md`.)
 pub(crate) fn generate(
     spec: &Spec,
     rng: &mut impl rand::Rng,
@@ -119,51 +105,41 @@ pub(crate) fn generate(
     spec.validate()?;
 
     let size = spec.size;
-    let mid = size / 2;
-    let cluster_budget = size * size - 1;
-    let quotas = cluster_quotas(&spec.clusters, cluster_budget);
+    let quotas = cluster_quotas(&spec.clusters, size * size);
 
-    // Every non-village cell, shuffled — these are the clustering cells.
-    let mut s_cells: Vec<Cell> = (0..size)
+    let mut cells: Vec<Cell> = (0..size)
         .flat_map(|y| (0..size).map(move |x| (x, y)))
-        .filter(|&c| c != (mid, mid))
         .collect();
-    s_cells.shuffle(rng);
-    let s_cells = &s_cells[..];
+    cells.shuffle(rng);
 
     let mut grid = vec![vec![TerrainType::Deadland; size]; size];
-    grid[mid][mid] = TerrainType::Village;
 
     if spec.affinity <= EPS {
-        let mut bag: Vec<TerrainType> = Vec::with_capacity(s_cells.len());
+        let mut bag: Vec<TerrainType> = Vec::with_capacity(cells.len());
         for &(terrain, count) in &quotas {
             bag.extend(std::iter::repeat_n(terrain, count));
         }
         bag.shuffle(rng);
-        for (&(x, y), &terrain) in s_cells.iter().zip(&bag) {
+        for (&(x, y), &terrain) in cells.iter().zip(&bag) {
             grid[y][x] = terrain;
         }
         return Ok(grid);
     }
 
-    // The affinity-1 layout: recursively slice the clustering cells into one
-    // contiguous block per terrain, each exactly its quota.
+    // The affinity-1 layout: recursively slice the cells into one contiguous
+    // block per terrain, each exactly its quota. Over a full rectangle every
+    // slice comes out contiguous, so unlike the old scatter-holed grid there's
+    // nothing that can fail here.
     let active: Vec<(TerrainType, usize)> =
         quotas.iter().copied().filter(|&(_, q)| q > 0).collect();
-    let mut layout = s_cells.to_vec();
     let mut assignment: HashMap<Cell, TerrainType> = HashMap::new();
-    bisect(&mut layout, &active, rng, &mut assignment);
+    bisect(&mut cells, &active, rng, &mut assignment);
     for (&(x, y), &terrain) in &assignment {
         grid[y][x] = terrain;
     }
 
-    // The 1-cell village can, very rarely, split a slice.
-    if active.iter().any(|&(t, _)| components(&grid, t) != 1) {
-        return Err(GenError::CannotPlaceClusters);
-    }
-
     if spec.affinity < 1.0 - EPS {
-        melt(&mut grid, s_cells, spec.affinity, rng);
+        melt(&mut grid, &cells, spec.affinity, rng);
     }
 
     Ok(grid)
@@ -278,8 +254,8 @@ fn melt(grid: &mut [Vec<TerrainType>], cells: &[Cell], affinity: f64, rng: &mut 
     }
 }
 
-/// Change in the number of unlike orthogonally-adjacent clustering-cell pairs if
-/// the terrain at `p` and `q` were swapped. Only edges touching `p` or `q` move.
+/// Change in the number of unlike orthogonally-adjacent pairs if the terrain at
+/// `p` and `q` were swapped. Only edges touching `p` or `q` move.
 fn boundary_delta(grid: &[Vec<TerrainType>], p: Cell, q: Cell) -> i32 {
     let (tp, tq) = (grid[p.1][p.0], grid[q.1][q.0]);
     let mut delta = 0;
@@ -289,18 +265,14 @@ fn boundary_delta(grid: &[Vec<TerrainType>], p: Cell, q: Cell) -> i32 {
             continue;
         }
         let tn = grid[nb.1][nb.0];
-        if is_clustering(tn) {
-            delta += i32::from(tn != tq) - i32::from(tn != tp);
-        }
+        delta += i32::from(tn != tq) - i32::from(tn != tp);
     }
     for nb in orthogonal(q, grid.len()) {
         if nb == p {
             continue;
         }
         let tn = grid[nb.1][nb.0];
-        if is_clustering(tn) {
-            delta += i32::from(tn != tp) - i32::from(tn != tq);
-        }
+        delta += i32::from(tn != tp) - i32::from(tn != tq);
     }
 
     delta
@@ -324,7 +296,8 @@ fn orthogonal((x, y): Cell, size: usize) -> Vec<Cell> {
 }
 
 /// The number of 4-connected components of `terrain` in `grid` (other terrain
-/// is ignored). Used to verify the affinity-1 layout, and as a test helper.
+/// is ignored). A test helper.
+#[cfg(test)]
 pub(crate) fn components(grid: &[Vec<TerrainType>], terrain: TerrainType) -> usize {
     let size = grid.len();
     let mut seen = vec![vec![false; size]; size];
@@ -352,9 +325,9 @@ pub(crate) fn components(grid: &[Vec<TerrainType>], terrain: TerrainType) -> usi
     count
 }
 
-/// The fraction of orthogonally-adjacent clustering-cell pairs whose two ends
-/// differ. Near `0` when clustered, near the mixing probability when random. A
-/// test helper.
+/// The fraction of orthogonally-adjacent cell pairs whose two ends differ.
+/// Near `0` when clustered, near the mixing probability when random. A test
+/// helper.
 #[cfg(test)]
 pub(crate) fn boundary_ratio(grid: &[Vec<TerrainType>]) -> f64 {
     let size = grid.len();
@@ -363,19 +336,12 @@ pub(crate) fn boundary_ratio(grid: &[Vec<TerrainType>]) -> f64 {
     for y in 0..size {
         for x in 0..size {
             let t = grid[y][x];
-            if !is_clustering(t) {
-                continue;
-            }
             for nb in [(x + 1, y), (x, y + 1)] {
                 if nb.0 >= size || nb.1 >= size {
                     continue;
                 }
-                let tn = grid[nb.1][nb.0];
-                if !is_clustering(tn) {
-                    continue;
-                }
                 total += 1;
-                if tn != t {
+                if grid[nb.1][nb.0] != t {
                     unlike += 1;
                 }
             }
@@ -414,8 +380,7 @@ mod tests {
     #[test]
     fn composition_is_exact() {
         let s = spec(23, 0.5);
-        let budget = 23 * 23 - 1;
-        let quotas = cluster_quotas(&s.clusters, budget);
+        let quotas = cluster_quotas(&s.clusters, 23 * 23);
         let grid = generate(&s, &mut rng()).unwrap();
 
         for (terrain, quota) in quotas {
@@ -424,20 +389,9 @@ mod tests {
         let total: usize = grid.iter().map(|r| r.len()).sum();
         assert_eq!(total, 23 * 23);
         assert_eq!(
-            count(&grid, TerrainType::Forest)
-                + count(&grid, TerrainType::Meadow)
-                + count(&grid, TerrainType::Village),
+            count(&grid, TerrainType::Forest) + count(&grid, TerrainType::Meadow),
             23 * 23
         );
-    }
-
-    #[test]
-    fn village_at_exact_centre() {
-        for affinity in [0.0, 0.5, 1.0] {
-            let grid = generate(&spec(23, affinity), &mut rng()).unwrap();
-            assert_eq!(grid[11][11], TerrainType::Village);
-            assert_eq!(count(&grid, TerrainType::Village), 1);
-        }
     }
 
     #[test]
@@ -549,7 +503,7 @@ mod tests {
         assert!(
             grid.iter()
                 .flatten()
-                .all(|&t| "MFV.".contains(crate::save::terrain_code(t)))
+                .all(|&t| "MF.".contains(crate::save::terrain_code(t)))
         );
     }
 
@@ -578,15 +532,6 @@ mod tests {
             }
             .validate(),
             Err(GenError::TooSmall(3))
-        );
-
-        let village = Spec {
-            clusters: vec![(TerrainType::Village, 100.0)],
-            ..spec(23, 0.5)
-        };
-        assert_eq!(
-            village.validate(),
-            Err(GenError::WrongCategory(TerrainType::Village))
         );
 
         let dupe = Spec {

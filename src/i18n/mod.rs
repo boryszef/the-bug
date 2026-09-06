@@ -277,7 +277,6 @@ fn terrain_id(terrain: TerrainType) -> &'static str {
     match terrain {
         TerrainType::Meadow => "terrain-meadow",
         TerrainType::Forest => "terrain-forest",
-        TerrainType::Village => "terrain-village",
         TerrainType::Deadland => "terrain-deadland",
     }
 }

@@ -47,7 +47,6 @@ item-fabric = Fabric
 
 terrain-meadow = Meadow
 terrain-forest = Forest
-terrain-village = Village
 terrain-deadland = Deadland
 
 ## Point-of-interest names, src/game/map.rs's Poi.

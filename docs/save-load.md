@@ -57,7 +57,6 @@ row:
 |------|----------|
 | `M`  | Meadow   |
 | `F`  | Forest   |
-| `V`  | Village  |
 | `.`  | Deadland |
 
 **POI codes** — the optional `pois` grid, same shape, one point of interest per
@@ -74,8 +73,9 @@ The `terrain` grid's dimensions define the map size (`half = rows / 2`); the
 `pois` grid, if present, must match them. Rows must all be the same length; an
 unknown code or a ragged grid is rejected.
 
-Caves and ruins used to be terrain codes `C` / `R`; a save that still uses them
-no longer loads (`docs/map-pois.md` — clean break, no migration).
+Caves, ruins and the village used to be terrain codes `C` / `R` / `V`; a save
+that still uses them no longer loads (`docs/map-pois.md` — clean break, no
+migration). The village is now a `v` in the `pois` grid.
 
 `version` is the game's semantic version (`CARGO_PKG_VERSION`) at save time.
 Loading a file written by a different version prints a note but still loads;
@@ -95,7 +95,8 @@ hand-made files may omit the field. There is no migration logic yet.
 - Bump `level`, add `"inventory": { "Cord": 5 }`, add `"Stone Axe"` to
   `recipes` to jump ahead.
 - Redraw the `terrain` grid to build a specific map; add a `pois` grid (same
-  size) with a `v` for the village and `c` / `r` for caves / ruins.
+  size) with a `v` for the village (put one somewhere — the game expects it)
+  and `c` / `r` for caves / ruins.
 - `events` can be trimmed to `[]` or a single line for a clean log.
 
 ## Code

@@ -24,7 +24,6 @@ pub(crate) fn terrain_code(terrain: TerrainType) -> char {
     match terrain {
         TerrainType::Meadow => 'M',
         TerrainType::Forest => 'F',
-        TerrainType::Village => 'V',
         TerrainType::Deadland => '.',
     }
 }
@@ -33,7 +32,6 @@ fn terrain_from_code(code: char) -> Option<TerrainType> {
     match code {
         'M' => Some(TerrainType::Meadow),
         'F' => Some(TerrainType::Forest),
-        'V' => Some(TerrainType::Village),
         '.' => Some(TerrainType::Deadland),
         _ => None,
     }
@@ -306,7 +304,7 @@ mod tests {
         // events; that shape is deliberately not migrated (docs/i18n-plan.md).
         let json = r#"{
             "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
-            "map": { "terrain": ["V"] },
+            "map": { "terrain": ["M"] },
             "events": [{ "category": "General", "text": "hi", "elapsed_secs": 0.0 }]
         }"#;
         let mut path = std::env::temp_dir();
@@ -334,7 +332,7 @@ mod tests {
     fn player_without_experience_fields_defaults_to_zero() {
         let json = r#"{
             "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
-            "map": { "terrain": ["V"] },
+            "map": { "terrain": ["M"] },
             "events": []
         }"#;
         let game = restore(serde_json::from_str(json).unwrap()).unwrap();
@@ -347,7 +345,7 @@ mod tests {
         let json = r#"{
             "player": { "level": 1, "coordinates": [0, 0], "inventory": {},
                         "recipes": ["Cord", "Nonsense"] },
-            "map": { "terrain": ["V"] },
+            "map": { "terrain": ["M"] },
             "events": []
         }"#;
         let game = restore(serde_json::from_str(json).unwrap()).unwrap();
@@ -390,7 +388,7 @@ mod tests {
     fn player_without_quest_fields_defaults_to_no_quests() {
         let json = r#"{
             "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
-            "map": { "terrain": ["V"] },
+            "map": { "terrain": ["M"] },
             "events": []
         }"#;
         let game = restore(serde_json::from_str(json).unwrap()).unwrap();
@@ -403,7 +401,7 @@ mod tests {
     fn ragged_terrain_grid_is_rejected() {
         let json = r#"{
             "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
-            "map": { "terrain": ["VF", "M"] },
+            "map": { "terrain": ["MF", "M"] },
             "events": []
         }"#;
         let err = restore(serde_json::from_str(json).unwrap()).unwrap_err();
@@ -414,7 +412,7 @@ mod tests {
     fn unknown_terrain_code_is_rejected() {
         let json = r#"{
             "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
-            "map": { "terrain": ["VX"] },
+            "map": { "terrain": ["MX"] },
             "events": []
         }"#;
         let err = restore(serde_json::from_str(json).unwrap()).unwrap_err();
@@ -426,7 +424,6 @@ mod tests {
         for terrain in [
             TerrainType::Meadow,
             TerrainType::Forest,
-            TerrainType::Village,
             TerrainType::Deadland,
         ] {
             assert_eq!(terrain_from_code(terrain_code(terrain)), Some(terrain));
@@ -466,7 +463,7 @@ mod tests {
     fn save_without_a_pois_grid_loads_with_no_pois() {
         let json = r#"{
             "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
-            "map": { "terrain": ["FMF", "M.M", "FMV"] },
+            "map": { "terrain": ["FMF", "M.M", "FMM"] },
             "events": []
         }"#;
         let game = restore(serde_json::from_str(json).unwrap()).unwrap();
@@ -493,7 +490,7 @@ mod tests {
     fn a_pois_grid_that_does_not_match_the_terrain_is_rejected() {
         let json = r#"{
             "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
-            "map": { "terrain": ["FMF", "M.M", "FMV"], "pois": ["c.", "..", ".."] },
+            "map": { "terrain": ["FMF", "M.M", "FMM"], "pois": ["c.", "..", ".."] },
             "events": []
         }"#;
         let err = restore(serde_json::from_str(json).unwrap()).unwrap_err();
@@ -522,7 +519,7 @@ mod tests {
                 "recipes": ["Cord"]
             },
             "map": {
-                "terrain": ["FMF", "M.M", "FMV"],
+                "terrain": ["FMF", "M.M", "FMM"],
                 "pois":    ["c..", "...", "..r"]
             },
             "events": [{ "kind": "Awoke", "elapsed_secs": 4.5 }]

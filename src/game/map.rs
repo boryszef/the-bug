@@ -24,10 +24,6 @@ const FOREST_PERCENT: f64 = 100.0 * 20.0 / 90.0;
 /// weights): the count scales with the map so density stays constant by level.
 const CAVE_FRACTION: f64 = 0.07;
 const RUINS_FRACTION: f64 = 0.03;
-/// How many times to re-roll the RNG before giving up. The generator's
-/// pre-melt layout check fails only when the single village cell splits a
-/// terrain slice — rare — so a small cap is plenty; exhausting it is a panic.
-const MAPGEN_ATTEMPTS: usize = 8;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum Direction {
@@ -52,7 +48,6 @@ impl Direction {
 pub enum TerrainType {
     Meadow,
     Forest,
-    Village,
     Deadland,
 }
 
@@ -62,7 +57,6 @@ impl TerrainType {
         match self {
             TerrainType::Meadow => '𖧧',
             TerrainType::Forest => '𖠰',
-            TerrainType::Village => '🛖',
             TerrainType::Deadland => ' ',
         }
     }
@@ -199,13 +193,9 @@ impl Map {
         };
 
         let mut rng = rand::rng();
-        for _ in 0..MAPGEN_ATTEMPTS {
-            if let Ok(grid) = crate::mapgen::generate(&spec, &mut rng) {
-                let pois = scatter_pois(grid.len(), &mut rng);
-                return Map::from_terrain(grid, pois);
-            }
-        }
-        panic!("map generation failed with a hardcoded spec");
+        let grid = crate::mapgen::generate(&spec, &mut rng).expect("hardcoded spec is valid");
+        let pois = scatter_pois(grid.len(), &mut rng);
+        Map::from_terrain(grid, pois)
     }
 
     /// Rebuilds a map from a saved terrain grid and its parallel POI grid. Tile
@@ -287,9 +277,9 @@ impl super::RestoreState for Map {
 }
 
 /// Lays out the map's points of interest as a grid parallel to the terrain
-/// grid: `Cave` and `Ruins` on cells picked uniformly at random, at the same
-/// densities the old scatter terrain used. The centre cell is left clear for
-/// the village.
+/// grid: `Village` dead-centre (fixed), then `Cave` and `Ruins` on other cells
+/// picked uniformly at random, at the same densities the old scatter terrain
+/// used.
 fn scatter_pois(size: usize, rng: &mut impl rand::Rng) -> Vec<Vec<Option<Poi>>> {
     let mid = size / 2;
     let count = |fraction: f64| (fraction * (size * size) as f64).round() as usize;
@@ -301,6 +291,7 @@ fn scatter_pois(size: usize, rng: &mut impl rand::Rng) -> Vec<Vec<Option<Poi>>> 
     cells.shuffle(rng);
 
     let mut pois = vec![vec![None; size]; size];
+    pois[mid][mid] = Some(Poi::Village);
     let (caves, rest) = cells.split_at(count(CAVE_FRACTION));
     for &(x, y) in caves {
         pois[y][x] = Some(Poi::Cave);
@@ -339,18 +330,15 @@ mod tests {
     }
 
     #[test]
-    fn world_to_tile_center_is_village() {
+    fn world_to_tile_center_is_the_village() {
         let player = Player::default();
         let map = Map::new(&player);
         // center in world coords is (0,0)
         let (cx, cy) = map.world_to_tile((0, 0));
-        // ensure center tile is the village created at middle
+        // the village POI sits on the centre tile
         let tile = map.get_tile((0, 0)).expect("center tile exists");
-        match tile.terrain_type {
-            TerrainType::Village => (),
-            other => panic!("expected Village at center, found {other:?}"),
-        }
-        // also ensure indices point to the middle
+        assert_eq!(tile.poi, Some(Poi::Village));
+        // and the indices point to the middle
         let mid = map.tiles.len() / 2;
         assert_eq!((cx, cy), (mid, mid));
     }
@@ -418,10 +406,7 @@ mod tests {
             let expected = (MAP_MIN_SIZE + level * MAP_PER_LEVEL_INCREMENT) as usize;
             assert_eq!(map.tiles.len(), expected);
             assert!(map.tiles.iter().all(|row| row.len() == expected));
-            assert_eq!(
-                map.get_tile((0, 0)).unwrap().terrain_type,
-                TerrainType::Village
-            );
+            assert_eq!(map.get_tile((0, 0)).unwrap().poi, Some(Poi::Village));
         }
     }
 
@@ -440,8 +425,8 @@ mod tests {
 
         assert_eq!(count(Poi::Cave), expect(CAVE_FRACTION));
         assert_eq!(count(Poi::Ruins), expect(RUINS_FRACTION));
-        // caves/ruins never land on the centre cell.
-        assert_eq!(map.get_tile((0, 0)).unwrap().poi, None);
+        // the centre is always the village, never a cave or ruin.
+        assert_eq!(map.get_tile((0, 0)).unwrap().poi, Some(Poi::Village));
     }
 
     #[test]

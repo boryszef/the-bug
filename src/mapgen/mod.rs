@@ -12,14 +12,3 @@ mod generator;
 #[cfg(test)]
 pub(crate) use generator::components;
 pub(crate) use generator::{Spec, generate};
-
-use crate::game::TerrainType;
-
-/// Terrains that form clusters: everything the affinity mechanic applies to.
-/// (`Village` is placed as a single fixed cell and takes no part.)
-fn is_clustering(terrain: TerrainType) -> bool {
-    matches!(
-        terrain,
-        TerrainType::Meadow | TerrainType::Forest | TerrainType::Deadland
-    )
-}
