@@ -73,9 +73,20 @@ impl TerrainType {
     }
 }
 
+/// A point of interest sitting on a tile, on top of its terrain — a discrete
+/// landmark, as opposed to the terrain fill. At most one per tile (it's an
+/// `Option` on [`MapTile`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Poi {
+    Cave,
+    Ruins,
+    Village,
+}
+
 #[derive(Debug)]
 pub struct MapTile {
     pub terrain_type: TerrainType,
+    pub poi: Option<Poi>,
     pub(super) items: HashMap<Item, f64>,
     pub(super) last_search_time: Option<Instant>,
 }
@@ -104,9 +115,17 @@ fn items_for_terrain(terrain: TerrainType) -> HashMap<Item, f64> {
 }
 
 impl MapTile {
+    /// A tile with terrain but no POI — a convenience for tests; real tiles are
+    /// built through [`with_terrain_and_poi`](Self::with_terrain_and_poi).
+    #[cfg(test)]
     pub(super) fn with_terrain(terrain_type: TerrainType) -> MapTile {
+        Self::with_terrain_and_poi(terrain_type, None)
+    }
+
+    pub(super) fn with_terrain_and_poi(terrain_type: TerrainType, poi: Option<Poi>) -> MapTile {
         MapTile {
             terrain_type,
+            poi,
             items: items_for_terrain(terrain_type),
             last_search_time: None,
         }
@@ -154,19 +173,27 @@ impl Map {
         let mut rng = rand::rng();
         for _ in 0..MAPGEN_ATTEMPTS {
             if let Ok(grid) = crate::mapgen::generate(&spec, &mut rng) {
-                return Map::from_terrain(grid);
+                let n = grid.len();
+                return Map::from_terrain(grid, vec![vec![None; n]; n]);
             }
         }
         panic!("map generation failed with a hardcoded spec");
     }
 
-    /// Rebuilds a map from a saved terrain grid. Tile items are recomputed
-    /// from the terrain; per-tile search cooldowns start fresh.
-    pub(crate) fn from_terrain(grid: Vec<Vec<TerrainType>>) -> Map {
-        let half = (grid.len() / 2) as i32;
-        let tiles = grid
+    /// Rebuilds a map from a saved terrain grid and its parallel POI grid. Tile
+    /// items are recomputed from the terrain; per-tile search cooldowns start
+    /// fresh.
+    pub(crate) fn from_terrain(terrain: Vec<Vec<TerrainType>>, pois: Vec<Vec<Option<Poi>>>) -> Map {
+        let half = (terrain.len() / 2) as i32;
+        let tiles = terrain
             .into_iter()
-            .map(|row| row.into_iter().map(MapTile::with_terrain).collect())
+            .zip(pois)
+            .map(|(trow, prow)| {
+                trow.into_iter()
+                    .zip(prow)
+                    .map(|(t, p)| MapTile::with_terrain_and_poi(t, p))
+                    .collect()
+            })
             .collect();
         Map { tiles, half }
     }
@@ -207,16 +234,15 @@ impl super::SaveState for Map {
     type Saved = crate::save::MapState;
 
     fn save_state(&self) -> Self::Saved {
-        crate::save::MapState {
-            terrain: self
-                .tiles
+        let grid = |code: fn(&MapTile) -> char| {
+            self.tiles
                 .iter()
-                .map(|row| {
-                    row.iter()
-                        .map(|tile| crate::save::terrain_code(tile.terrain_type))
-                        .collect()
-                })
-                .collect(),
+                .map(|row| row.iter().map(code).collect())
+                .collect()
+        };
+        crate::save::MapState {
+            terrain: grid(|t| crate::save::terrain_code(t.terrain_type)),
+            pois: grid(|t| crate::save::poi_code(t.poi)),
         }
     }
 }
@@ -225,9 +251,10 @@ impl super::RestoreState for Map {
     type Saved = crate::save::MapState;
 
     fn restore_state(saved: Self::Saved) -> io::Result<Map> {
-        Ok(Map::from_terrain(crate::save::parse_terrain(
-            &saved.terrain,
-        )?))
+        let terrain = crate::save::parse_terrain(&saved.terrain)?;
+        let width = terrain.first().map_or(0, Vec::len);
+        let pois = crate::save::parse_pois(&saved.pois, terrain.len(), width)?;
+        Ok(Map::from_terrain(terrain, pois))
     }
 }
 

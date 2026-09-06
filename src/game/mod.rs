@@ -7,7 +7,7 @@ mod recipe;
 
 pub use event::{Event, EventKind};
 pub use item::Item;
-pub use map::{Direction, Map, MapTile, TerrainType};
+pub use map::{Direction, Map, MapTile, Poi, TerrainType};
 pub use player::Player;
 pub use quest::{Quest, QuestError, QuestID};
 pub(crate) use recipe::reversible_recipe_for;
@@ -511,6 +511,7 @@ mod tests {
         let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
         game.map.tiles[ty][tx] = MapTile {
             terrain_type: TerrainType::Forest,
+            poi: None,
             items: HashMap::from([(Item::Stick, 1.0), (Item::Vine, 1.0)]),
             last_search_time: None,
         };

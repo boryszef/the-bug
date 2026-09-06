@@ -11,7 +11,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 
 use crate::game::{
-    Event, EventKind, Game, Item, Map, Player, QuestID, RestoreState, SaveState, TerrainType,
+    Event, EventKind, Game, Item, Map, Player, Poi, QuestID, RestoreState, SaveState, TerrainType,
 };
 
 /// The game's semantic version, stamped into every save file.
@@ -39,6 +39,27 @@ fn terrain_from_code(code: char) -> Option<TerrainType> {
         'R' => Some(TerrainType::Ruins),
         'V' => Some(TerrainType::Village),
         '.' => Some(TerrainType::Deadland),
+        _ => None,
+    }
+}
+
+/// Single-character codes for a tile's point of interest — `.` (or a space) for
+/// none — kept in a grid parallel to `terrain` in the save file.
+pub(crate) fn poi_code(poi: Option<Poi>) -> char {
+    match poi {
+        None => '.',
+        Some(Poi::Cave) => 'c',
+        Some(Poi::Ruins) => 'r',
+        Some(Poi::Village) => 'v',
+    }
+}
+
+fn poi_from_code(code: char) -> Option<Option<Poi>> {
+    match code {
+        '.' | ' ' => Some(None),
+        'c' => Some(Some(Poi::Cave)),
+        'r' => Some(Some(Poi::Ruins)),
+        'v' => Some(Some(Poi::Village)),
         _ => None,
     }
 }
@@ -79,6 +100,10 @@ pub(crate) struct MapState {
     /// One string per map row, one character per tile (see `terrain_code`).
     /// The grid size is the map size.
     pub(crate) terrain: Vec<String>,
+    /// Points of interest, a grid parallel to `terrain` (see `poi_code`).
+    /// Absent in older / hand-made saves — then every tile has no POI.
+    #[serde(default)]
+    pub(crate) pois: Vec<String>,
 }
 
 /// The on-disk shape of one event-log entry. Old save files' `events` array
@@ -154,6 +179,41 @@ pub(crate) fn parse_terrain(rows: &[String]) -> io::Result<Vec<Vec<TerrainType>>
                         io::Error::new(
                             io::ErrorKind::InvalidData,
                             format!("unknown terrain code {code:?}"),
+                        )
+                    })
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// Parses the POI rows into a grid parallel to a `height` × `width` terrain
+/// grid. An empty `rows` (older / hand-made save) yields an all-`None` grid of
+/// that size; otherwise the grid must match those dimensions and use known
+/// codes. Used by `Map::restore_state` in `game.rs`.
+pub(crate) fn parse_pois(
+    rows: &[String],
+    height: usize,
+    width: usize,
+) -> io::Result<Vec<Vec<Option<Poi>>>> {
+    if rows.is_empty() {
+        return Ok(vec![vec![None; width]; height]);
+    }
+    if rows.len() != height || rows.iter().any(|row| row.chars().count() != width) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "map pois grid must match the terrain grid's dimensions",
+        ));
+    }
+
+    rows.iter()
+        .map(|row| {
+            row.chars()
+                .map(|code| {
+                    poi_from_code(code).ok_or_else(|| {
+                        io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            format!("unknown poi code {code:?}"),
                         )
                     })
                 })
@@ -377,6 +437,70 @@ mod tests {
         ] {
             assert_eq!(terrain_from_code(terrain_code(terrain)), Some(terrain));
         }
+    }
+
+    #[test]
+    fn poi_codes_round_trip() {
+        for poi in [None, Some(Poi::Cave), Some(Poi::Ruins), Some(Poi::Village)] {
+            assert_eq!(poi_from_code(poi_code(poi)), Some(poi));
+        }
+    }
+
+    #[test]
+    fn pois_survive_a_full_save_round_trip() {
+        let mut game = Game::default();
+        let side = game.map.tiles.len();
+        game.map.tiles[0][0].poi = Some(Poi::Cave);
+        game.map.tiles[1][2].poi = Some(Poi::Ruins);
+        game.map.tiles[side - 1][side - 1].poi = Some(Poi::Village);
+
+        let restored = roundtrip(&game);
+
+        assert_eq!(restored.map.tiles[0][0].poi, Some(Poi::Cave));
+        assert_eq!(restored.map.tiles[1][2].poi, Some(Poi::Ruins));
+        assert_eq!(
+            restored.map.tiles[side - 1][side - 1].poi,
+            Some(Poi::Village)
+        );
+        assert_eq!(restored.map.tiles[0][1].poi, None);
+    }
+
+    #[test]
+    fn save_without_a_pois_grid_loads_with_no_pois() {
+        let json = r#"{
+            "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
+            "map": { "terrain": ["FMF", "M.M", "FMV"] },
+            "events": []
+        }"#;
+        let game = restore(serde_json::from_str(json).unwrap()).unwrap();
+        assert!(game.map.tiles.iter().flatten().all(|t| t.poi.is_none()));
+    }
+
+    #[test]
+    fn load_reads_a_hand_edited_pois_grid() {
+        let json = r#"{
+            "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
+            "map": {
+                "terrain": ["FMF", "M.M", "FM."],
+                "pois":    ["c..", "...", "..v"]
+            },
+            "events": []
+        }"#;
+        let game = restore(serde_json::from_str(json).unwrap()).unwrap();
+        assert_eq!(game.map.tiles[0][0].poi, Some(Poi::Cave));
+        assert_eq!(game.map.tiles[2][2].poi, Some(Poi::Village));
+        assert_eq!(game.map.tiles[1][1].poi, None);
+    }
+
+    #[test]
+    fn a_pois_grid_that_does_not_match_the_terrain_is_rejected() {
+        let json = r#"{
+            "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
+            "map": { "terrain": ["FMF", "M.M", "FMV"], "pois": ["c.", "..", ".."] },
+            "events": []
+        }"#;
+        let err = restore(serde_json::from_str(json).unwrap()).unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
     }
 
     #[test]
