@@ -65,16 +65,6 @@ impl Quest {
 
 pub(super) const QUESTS: &[Quest] = &[
     Quest {
-        id: QuestID::CraftArrows,
-        dependencies: &[],
-        condition: QuestCondition {
-            event: EventTypeID::CraftItem(Item::Arrow),
-            count: 5,
-        },
-        reward_xp: 20,
-        reward_items: &[],
-    },
-    Quest {
         id: QuestID::ExploreRuins,
         dependencies: &[],
         condition: QuestCondition {
@@ -82,6 +72,16 @@ pub(super) const QUESTS: &[Quest] = &[
             count: 1,
         },
         reward_xp: 10,
+        reward_items: &[],
+    },
+    Quest {
+        id: QuestID::CraftArrows,
+        dependencies: &[QuestID::ExploreRuins],
+        condition: QuestCondition {
+            event: EventTypeID::CraftItem(Item::StoneAxe),
+            count: 1,
+        },
+        reward_xp: 20,
         reward_items: &[],
     },
 ];

@@ -63,7 +63,7 @@ poi-village = Village
 ## Quest name/description, src/game/quest.rs's QUESTS table.
 
 quest-craft-arrows-name = Trouble in the East
-quest-craft-arrows-description = Something has been stirring in the east again. Things had been quiet for a while, but trouble always seems to come from that direction. Whatever it is, it's spooked the big game, and a group of local hunters is gearing up for a hunt. They've asked you to craft 5 arrows for them. Head to the forest to gather sticks, then experiment with them to learn how arrows are made.
+quest-craft-arrows-description = Something has been stirring in the east again. Things had been quiet for a while, but trouble always seems to come from that direction. Whatever it is, you'd better be prepared! Head to the forest, the meadow and the cave, gather materials, then experiment with them to learn how craft a stone axe.
 quest-explore-ruins-name = The Digital Civilization
 quest-explore-ruins-description = A passing traveler mentioned some ruins nearby, said to be scattered with old artifacts. Apparently, a few villages once stood on these flats, remnants of a great civilization from roughly 500 years ago — the "Digital Civilization," as the explorers call it. You should go see it for yourself.
 
