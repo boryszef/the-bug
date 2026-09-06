@@ -75,4 +75,27 @@ mod tests {
         assert_eq!(overview.completed.len(), 1);
         assert_eq!(overview.completed[0].id, QuestID::CraftAxe);
     }
+
+    #[test]
+    fn stock_up_unlocks_once_the_axe_quest_is_done() {
+        let mut game = Game::default();
+        assert!(
+            !overview(&game)
+                .available
+                .iter()
+                .any(|q| q.id == QuestID::StockUp),
+            "hidden while its dependency is unmet"
+        );
+
+        game.player
+            .restore_quest_state(None, 0, vec![QuestID::ExploreRuins, QuestID::CraftAxe]);
+
+        assert!(
+            overview(&game)
+                .available
+                .iter()
+                .any(|q| q.id == QuestID::StockUp),
+            "available once Trouble in the East is complete"
+        );
+    }
 }

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub enum QuestID {
     CraftAxe,
     ExploreRuins,
+    StockUp,
 }
 
 /// Failure reasons for [`super::Game::accept_quest`].
@@ -84,6 +85,16 @@ pub(super) const QUESTS: &[Quest] = &[
             count: 1,
         },
         reward_xp: 20,
+        reward_items: &[],
+    },
+    Quest {
+        id: QuestID::StockUp,
+        dependencies: &[QuestID::CraftAxe],
+        condition: QuestCondition {
+            event: EventTypeID::Hunt,
+            count: 5,
+        },
+        reward_xp: 30,
         reward_items: &[],
     },
 ];

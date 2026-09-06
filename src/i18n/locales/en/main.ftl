@@ -74,6 +74,8 @@ quest-craft-axe-name = Trouble in the East
 quest-craft-axe-description = Something has been stirring in the east again. Things had been quiet for a while, but trouble always seems to come from that direction. Whatever it is, you'd better be prepared! Head to the forest, the meadow and the cave, gather materials, then experiment with them to learn how craft a stone axe.
 quest-explore-ruins-name = The Digital Civilization
 quest-explore-ruins-description = A passing traveler mentioned some ruins nearby, said to be scattered with old artifacts. Apparently, a few villages once stood on these flats, remnants of a great civilization from roughly 500 years ago — the "Digital Civilization," as the explorers call it. You should go see it for yourself.
+quest-stock-up-name = Stock Up for Hard Times
+quest-stock-up-description = An old hand at the settlement keeps eyeing the sky. The cold months are closing in, she says, and the stores won't see everyone through. Take your bow to the meadows and the forest and bring back what you can — meat, hide, bone, fur. Five good hunts should be a start.
 
 ## Panel titles.
 

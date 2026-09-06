@@ -359,6 +359,7 @@ pub fn quest_name(id: QuestID, lang: Language) -> String {
     let key = match id {
         QuestID::CraftAxe => "quest-craft-axe-name",
         QuestID::ExploreRuins => "quest-explore-ruins-name",
+        QuestID::StockUp => "quest-stock-up-name",
     };
     lang.loader().get(key)
 }
@@ -367,6 +368,7 @@ pub fn quest_description(id: QuestID, lang: Language) -> String {
     let key = match id {
         QuestID::CraftAxe => "quest-craft-axe-description",
         QuestID::ExploreRuins => "quest-explore-ruins-description",
+        QuestID::StockUp => "quest-stock-up-description",
     };
     lang.loader().get(key)
 }
@@ -597,7 +599,7 @@ mod tests {
 
     #[test]
     fn quest_text_renders_in_every_language() {
-        for id in [QuestID::CraftAxe, QuestID::ExploreRuins] {
+        for id in [QuestID::CraftAxe, QuestID::ExploreRuins, QuestID::StockUp] {
             for lang in [Language::English, Language::Polish] {
                 assert!(!quest_name(id, lang).is_empty());
                 assert!(!quest_description(id, lang).is_empty());

@@ -174,8 +174,11 @@ mod tests {
     #[test]
     fn enter_on_empty_available_list_stays() {
         let mut game = Game::default();
-        game.player
-            .restore_quest_state(None, 0, vec![QuestID::CraftAxe, QuestID::ExploreRuins]);
+        game.player.restore_quest_state(
+            None,
+            0,
+            vec![QuestID::CraftAxe, QuestID::ExploreRuins, QuestID::StockUp],
+        );
         let overview = quests::overview(&game);
         let mut panel = Quests::default();
 

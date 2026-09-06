@@ -1026,6 +1026,50 @@ mod tests {
     }
 
     #[test]
+    fn stock_up_needs_trouble_in_the_east_first() {
+        let mut game = Game::default();
+        assert_eq!(
+            game.accept_quest(QuestID::StockUp),
+            Err(QuestError::DependenciesNotMet)
+        );
+    }
+
+    #[test]
+    fn hunting_five_times_completes_the_stock_up_quest() {
+        let mut game = Game::default();
+        game.player
+            .restore_quest_state(None, 0, vec![QuestID::CraftAxe]);
+        game.accept_quest(QuestID::StockUp).unwrap();
+        game.player.inventory.insert(Item::WoodenBow, 1);
+        game.player.inventory.insert(Item::Arrow, 5);
+
+        for _ in 0..5 {
+            game.hunt();
+        }
+
+        assert_eq!(game.player.open_quest(), None);
+        assert!(game.player.completed_quests().contains(&QuestID::StockUp));
+        assert_eq!(game.player.experience, 30);
+    }
+
+    #[test]
+    fn hunts_short_of_the_goal_leave_the_stock_up_quest_open() {
+        let mut game = Game::default();
+        game.player
+            .restore_quest_state(None, 0, vec![QuestID::CraftAxe]);
+        game.accept_quest(QuestID::StockUp).unwrap();
+        game.player.inventory.insert(Item::WoodenBow, 1);
+        game.player.inventory.insert(Item::Arrow, 3);
+
+        for _ in 0..3 {
+            game.hunt();
+        }
+
+        assert_eq!(game.player.open_quest(), Some(QuestID::StockUp));
+        assert_eq!(game.player.quest_progress(), 3);
+    }
+
+    #[test]
     fn walking_onto_the_target_poi_completes_the_quest() {
         let mut game = Game::default();
         game.player.coordinates = (0, 0);

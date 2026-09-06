@@ -33,7 +33,7 @@ This was chosen over storing `EventTypeID` on the existing display `Event`/
   A plain `u32` counter has none of that risk.
 
 If a future quest needs multiple conditions or a real audit trail, that can be
-layered on later — not needed for the two quests that exist today.
+layered on later — not needed for the quests that exist today.
 
 ## Types (`src/game.rs`)
 
@@ -41,8 +41,10 @@ layered on later — not needed for the two quests that exist today.
   Deserialize` derives (needed to fix a build break: `Player` derives `Debug`
   and contains `Option<QuestID>`, but `QuestID` didn't derive `Debug`).
 - `EventTypeID` — `CraftItem(Item)`, `VisitTerrain(TerrainType)`,
-  `VisitPoi(Poi)`. Not persisted; only used transiently to route a game action
-  to the open quest's condition. ("Explore the ruins" counts a `VisitPoi`.)
+  `VisitPoi(Poi)`, `Hunt`. Not persisted; only used transiently to route a game
+  action to the open quest's condition. ("Explore the ruins" counts a
+  `VisitPoi`; "Stock Up for Hard Times" counts five `Hunt`s — one per completed
+  hunt, fired by `Game::hunt`, see `docs/hunting.md`.)
 - `QuestCondition { event: EventTypeID, count: u32 }`.
 - `Quest` (existing scaffold) — gains `condition: QuestCondition`,
   `reward_xp: u32`, `reward_items: &'static [(Item, u32)]`.
@@ -105,8 +107,9 @@ The pre-existing `SaveState` DTO struct (the whole-file shape) is renamed to
 
 - No multi-condition quests — `Quest` has exactly one `QuestCondition`.
 - Reward amounts are game content, filled in with placeholder values; not
-  decided here. (The dependency chain — `CraftAxe` depends on `ExploreRuins` —
-  was set later, in "change initial quests".)
+  decided here. (The dependency chain was set later: `ExploreRuins` →
+  `CraftAxe` → `StockUp`, the last added with the hunting feature — five
+  `Hunt`s, 30 XP.)
 
 The quests panel (`src/ui/quests.rs`, `src/viewmodel/quests.rs`) is wired up
 — see `docs/panel-layout.md`.

@@ -180,6 +180,8 @@ quest-craft-axe-name = Kłopoty na wschodzie
 quest-craft-axe-description = Coś znów szykuje się na wschodzie. Od jakiegoś czasu było spokojnie, ale doświadczenie pokazuje, że kłopoty zawsze nadchodzą z tamtej strony. Cokolwiek to jest, lepiej się przygotuj! Idź do lasu, na łąkę i do jaskini, zbierz materiały, a potem poeksperymentuj z nimi i naucz się jak zrobić kamienną siekierę.
 quest-explore-ruins-name = Cywilizacja Cyfrowa
 quest-explore-ruins-description = Przejezdny podróżny wspomniał o pobliskich ruinach, podobno usianych starymi przedmiotami. Podobno na tych równinach znajdowało się niegdyś kilka wiosek - pozostałości wielkiej cywilizacji sprzed 500 lat — "Cywilizacji Cyfrowej", jak nazywają ją odkrywcy. Powinieneś zobaczyć to na własne oczy.
+quest-stock-up-name = Zapasy na ciężkie czasy
+quest-stock-up-description = Ktoś doświadczony w osadzie wciąż zerka na niebo. Idą chłody, mówi, a zapasy nie wystarczą dla wszystkich. Weź łuk, idź na łąki i do lasu i przynieś, co się da — mięso, skórę, kości, futro. Pięć porządnych polowań to dobry początek.
 
 ## Panel titles.
 
