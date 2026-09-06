@@ -43,8 +43,9 @@ layered on later — not needed for the quests that exist today.
 - `EventTypeID` — `CraftItem(Item)`, `VisitTerrain(TerrainType)`,
   `VisitPoi(Poi)`, `Hunt`. Not persisted; only used transiently to route a game
   action to the open quest's condition. ("Explore the ruins" counts a
-  `VisitPoi`; "Stock Up for Hard Times" counts five `Hunt`s — one per completed
-  hunt, fired by `Game::hunt`, see `docs/hunting.md`.)
+  `VisitPoi`; "Stock Up for Hard Times" counts five `Hunt`s — one per
+  *successful* hunt, i.e. one that brought something back, fired by
+  `Game::hunt`, see `docs/hunting.md`.)
 - `QuestCondition { event: EventTypeID, count: u32 }`.
 - `Quest` (existing scaffold) — gains `condition: QuestCondition`,
   `reward_xp: u32`, `reward_items: &'static [(Item, u32)]`.

@@ -33,9 +33,9 @@ Bow becomes useful (it lets you hunt) and Arrows get spent doing it.
   the arrow bought nothing. Rendered `Hunt: 1 Meat + 1 Hide.` /
   `Hunt: the quarry got away.` (Polish `Polowanie: …`), in the experiment-log
   style.
-- **Quest hook.** Every completed hunt (arrow loosed, loot or not) fires
-  `EventTypeID::Hunt`, which the "Stock Up for Hard Times" quest counts — see
-  `docs/quest-system.md`.
+- **Quest hook.** A *successful* hunt (one that brings something back) fires
+  `EventTypeID::Hunt`, which the "Stock Up for Hard Times" quest counts — a
+  wasted arrow doesn't count. See `docs/quest-system.md`.
 
 ### Controls
 

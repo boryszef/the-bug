@@ -28,7 +28,7 @@ pub(super) enum EventTypeID {
     CraftItem(Item),
     VisitTerrain(TerrainType),
     VisitPoi(Poi),
-    /// One completed hunt (an arrow was loosed), whatever it brought back.
+    /// One successful hunt — a hunt that brought at least one thing back.
     Hunt,
 }
 

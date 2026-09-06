@@ -192,8 +192,9 @@ impl Game {
 
     /// Hunts the player's current tile: needs a Wooden Bow held (kept) and
     /// spends one Arrow, then rolls the tile's game. Like `search` there's no
-    /// terrain gate — a tile with no fauna just comes back empty. Counts as one
-    /// hunt toward an open quest whether or not it brought anything back.
+    /// terrain gate — a tile with no fauna just comes back empty. A hunt that
+    /// brings something back counts toward an open quest; a wasted arrow does
+    /// not.
     pub fn hunt(&mut self) {
         let coords = self.player.coordinates;
         if self.map.get_tile(coords).is_none() {
@@ -227,9 +228,9 @@ impl Game {
             self.log(EventKind::Hunted {
                 items: bag.iter().map(|&item| (item, 1)).collect(),
             });
+            self.note_quest_event(EventTypeID::Hunt);
         }
         self.map.update_tile_last_hunt_time(coords);
-        self.note_quest_event(EventTypeID::Hunt);
     }
 
     pub fn craft(&mut self, recipe_name: &str) {
@@ -1034,17 +1035,35 @@ mod tests {
         );
     }
 
-    #[test]
-    fn hunting_five_times_completes_the_stock_up_quest() {
+    /// Accepts "Stock Up for Hard Times" and hands the player a bow.
+    fn game_with_the_stock_up_quest_open() -> Game {
         let mut game = Game::default();
         game.player
             .restore_quest_state(None, 0, vec![QuestID::CraftAxe]);
         game.accept_quest(QuestID::StockUp).unwrap();
         game.player.inventory.insert(Item::WoodenBow, 1);
+        game
+    }
+
+    /// Forces the player's tile to a Meadow whose game is a sure thing, then
+    /// hunts — resets `last_hunt_time` each call so repeated hunts all land.
+    fn sure_hunt(game: &mut Game) {
+        let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
+        let mut tile = MapTile::with_terrain(TerrainType::Meadow);
+        for probability in tile.hunt_items.values_mut() {
+            *probability = 1.0;
+        }
+        game.map.tiles[ty][tx] = tile;
+        game.hunt();
+    }
+
+    #[test]
+    fn five_successful_hunts_complete_the_stock_up_quest() {
+        let mut game = game_with_the_stock_up_quest_open();
         game.player.inventory.insert(Item::Arrow, 5);
 
         for _ in 0..5 {
-            game.hunt();
+            sure_hunt(&mut game);
         }
 
         assert_eq!(game.player.open_quest(), None);
@@ -1054,19 +1073,30 @@ mod tests {
 
     #[test]
     fn hunts_short_of_the_goal_leave_the_stock_up_quest_open() {
-        let mut game = Game::default();
-        game.player
-            .restore_quest_state(None, 0, vec![QuestID::CraftAxe]);
-        game.accept_quest(QuestID::StockUp).unwrap();
-        game.player.inventory.insert(Item::WoodenBow, 1);
+        let mut game = game_with_the_stock_up_quest_open();
         game.player.inventory.insert(Item::Arrow, 3);
 
         for _ in 0..3 {
-            game.hunt();
+            sure_hunt(&mut game);
         }
 
         assert_eq!(game.player.open_quest(), Some(QuestID::StockUp));
         assert_eq!(game.player.quest_progress(), 3);
+    }
+
+    #[test]
+    fn a_hunt_that_catches_nothing_does_not_count_toward_the_stock_up_quest() {
+        let mut game = game_with_the_stock_up_quest_open();
+        game.player.inventory.insert(Item::Arrow, 1);
+        // a barren tile: the hunt still spends the arrow, but catches nothing
+        let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
+        game.map.tiles[ty][tx] = MapTile::with_terrain(TerrainType::Deadland);
+
+        game.hunt();
+
+        assert_eq!(last_event(&game).kind(), &EventKind::HuntMissed);
+        assert_eq!(game.player.quest_progress(), 0);
+        assert_eq!(game.player.open_quest(), Some(QuestID::StockUp));
     }
 
     #[test]
