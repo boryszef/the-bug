@@ -5,7 +5,6 @@
 * EPIC: improve the map
   * implement roads and rivers
   * implement "bridge" POI - requires intersection of river and road, allows new items (eg. steel bolt, rusty metal)
-  * POI should be represented by higher quality symbols
 * EPIC: reach game mechanics
   * crafting/experimenting/disassembly should only be possible at the village
   * Players "bag" should have a limited size, when full, the player should take their findings to the village and deposit them in the storage
@@ -27,6 +26,7 @@
   * separate POI from terrain types - POI becomes an overlay, so the tile can be eg. forrest + cave and yields findings from both.
   * display text showing current terrain type and POI
   * Search button should have a shortcut `[s]` printed
+  * higher quality POI symbols — procedural two-ink icons (arched cave, columned ruins, hut with a doorway)
 * generate the map with the mapgen clustering algorithm, moved in-crate to `src/mapgen/` and tuned by consts in `src/game/map.rs` (affinity 0.75); standalone `tools/mapgen` retired (docs/mapgen.md)
 * front end chosen at build time: `gui` (default) / `tui` (legacy, frozen) Cargo features, mutually exclusive; `--gui` flag removed (docs/adr/0002)
 * create alternative egui/eframe UI (map + movement + Experiment/Craft/Disassemble/Quests panels — parity with the tui; see docs/gui-frontend.md)

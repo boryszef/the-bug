@@ -25,35 +25,38 @@ It reads like a spreadsheet — hard square cells, no markers. The `TODO.md`
 Increments 1 and 2 are covered here; 3 is `docs/map-pois.md`; 4 and 5 come
 last and get their own docs.
 
-## 1. POI icons (Cave, Ruins)
+## 1. POI icons (Cave, Ruins, Village)
 
-> Increment 3 (`docs/map-pois.md`) later re-keyed this off `tile.poi` instead
-> of `tile.terrain` and added a village hut; the drawing described here is
-> otherwise unchanged.
+> Increment 3 (`docs/map-pois.md`) re-keyed this off `tile.poi` instead of
+> `tile.terrain` and added the village. A later pass redrew all three shapes
+> and added a second ink — described below.
 
 `src/gui/map.rs` only — pure rendering, no `game`/`viewmodel` change.
 
-After a tile's base square is painted, if the tile is `Cave` or `Ruins` and the
-zoom is at least `POI_ICON_MIN_PX`, a small icon in one dark ink
-(`POI_ICON_COLOR`) is drawn centred on the tile, sized `POI_ICON_RATIO` of the
-tile:
+After a tile's base square is painted, if the tile has a POI and the zoom is at
+least `POI_ICON_MIN_PX`, a small icon sized `POI_ICON_RATIO` of the tile is
+drawn centred on it, in two inks: `POI_ICON_COLOR` (a lit pale bone) and
+`POI_ICON_SHADOW` (a dark recess drawn on top of the lit shape):
 
-- **Cave** — a filled triangle, apex up (a hill / a cave mouth).
-- **Ruins** — four vertical bars of uneven height, bottoms aligned (a broken
-  skyline).
+- **Cave** — a bone arch with a smaller dark arch cut into it: a cave mouth.
+- **Ruins** — a full-height column and a broken shorter one with a gap between,
+  a lintel resting across the top of the tall one, and a shadow strip down its
+  inner face.
+- **Village** — a body under a triangular roof, with a dark doorway at its foot.
 
-The geometry comes from pure helpers (`cave_triangle`, `ruins_bars`) so it can
-be unit-tested the way the rest of `src/gui/map.rs`'s helpers are; the drawing
-calls themselves aren't tested (no assertable output — same rule as
-`MapView::ui`).
+The geometry comes from pure helpers (`arch_points`, `ruins_parts`,
+`village_hut` / `village_door`) so it can be unit-tested the way the rest of
+`src/gui/map.rs`'s helpers are; the drawing calls themselves aren't tested (no
+assertable output — same rule as `MapView::ui`).
 
 ### Not emoji
 
-`TerrainType::symbol()` returns `🪨` / `🏙` and the `tui` prints those on its
+`Poi::symbol()` returns `🪨` / `🏙` / `🛖` and the `tui` prints those on its
 canvas. The `gui` does **not** reuse them: egui 0.36 renders emoji monochrome,
 its bundled fonts may not even carry `🪨` (U+1FAA8, 2020), and the repo has no
-`FontDefinitions` customisation. A drawn shape is reliable and matches the
-"procedural, no image assets" choice from `docs/adr/0001` / `docs/gui-map.md`.
+`FontDefinitions` customisation. Drawn shapes are reliable and match the
+"procedural, no image assets" choice from `docs/adr/0001` / `docs/gui-map.md` —
+two flat inks, no gradients or sprites.
 
 ## 2. Wavy borders (field terrains)
 

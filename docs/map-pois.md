@@ -23,10 +23,11 @@ most one POI: that's just the `Option`.
 - **Quests.** `EventTypeID::VisitPoi(Poi)` fires when the player steps onto a
   tile with that POI; the "explore the ruins" quest now counts a `VisitPoi`,
   not a `VisitTerrain`.
-- **Rendering.** The gui draws the POI's icon on the tile (and skips the wavy
-  edge-trickle there, so the icon reads cleanly); the tui prints the POI's
-  glyph in place of the terrain's. Both come from `Poi::symbol` /
-  `MapTile`'s `Display`.
+- **Rendering.** The gui draws a procedural two-ink icon on the tile
+  (`draw_cave_icon` / `draw_ruins_icon` / `draw_village_icon` in
+  `src/gui/map.rs`; see `docs/map-improvements.md` §1) and skips the wavy
+  edge-trickle there so the icon reads cleanly. The tui prints the POI's glyph
+  in place of the terrain's, from `Poi::symbol` / `MapTile`'s `Display`.
 
 The item probabilities are unchanged from the old scatter terrain
 (Cave → `Stone` 0.30; Ruins → `CopperWire` / `PlasticBottle` / `Umbrella` 0.20

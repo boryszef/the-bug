@@ -24,9 +24,12 @@ const SCROLL_ZOOM_RATE: f32 = 0.002;
 const PLAYER_MARKER_RATIO: f32 = 0.3;
 const PLAYER_MARKER_COLOR: Color32 = Color32::from_rgb(0xff, 0xd0, 0x2f);
 
-/// One ink for the point-of-interest icons — a pale bone that reads on any of
-/// the terrain fills a POI can now sit on (dark deadland included).
+/// The lit ink for the point-of-interest icons — a pale bone that reads on any
+/// of the terrain fills a POI can sit on (dark deadland included).
 const POI_ICON_COLOR: Color32 = Color32::from_rgb(0xe4, 0xdd, 0xcf);
+/// The shadow ink — a cave mouth, a doorway, the far side of a ruin. Drawn on
+/// top of the lit shapes, so it only has to read against [`POI_ICON_COLOR`].
+const POI_ICON_SHADOW: Color32 = Color32::from_rgb(0x37, 0x2e, 0x24);
 /// POI icon extent as a fraction of the tile.
 const POI_ICON_RATIO: f32 = 0.6;
 /// Below this tile size the POI icon is skipped — it would just be noise.
@@ -213,24 +216,35 @@ fn tile_rect(wx: i32, wy: i32, viewport: Rect, center: Vec2, tile_px: f32) -> Re
     Rect::from_center_size(middle, Vec2::splat(tile_px))
 }
 
-/// A cave: a small upward wedge (a hill / a cave mouth).
+/// A cave: a bone arch with a darker arched opening cut into it — a cave mouth.
 fn draw_cave_icon(painter: &Painter, center: Pos2, tile_px: f32) {
-    let tri = cave_triangle(center, tile_px * POI_ICON_RATIO);
+    let size = tile_px * POI_ICON_RATIO;
+    let baseline = center.y + size / 2.0;
     painter.add(Shape::convex_polygon(
-        tri.to_vec(),
+        arch_points(center.x, baseline, size / 2.0, size * 0.95),
         POI_ICON_COLOR,
+        Stroke::NONE,
+    ));
+    painter.add(Shape::convex_polygon(
+        arch_points(center.x, baseline, size * 0.28, size * 0.58),
+        POI_ICON_SHADOW,
         Stroke::NONE,
     ));
 }
 
-/// Ruins: a broken skyline of uneven bars.
+/// Ruins: a standing column and a broken one, a lintel across the top, and a
+/// shaded inner face for depth.
 fn draw_ruins_icon(painter: &Painter, center: Pos2, tile_px: f32) {
-    for bar in ruins_bars(center, tile_px * POI_ICON_RATIO) {
-        painter.rect_filled(bar, 0.0, POI_ICON_COLOR);
+    let ruin = ruins_parts(center, tile_px * POI_ICON_RATIO);
+    for column in ruin.columns {
+        painter.rect_filled(column, 0.0, POI_ICON_COLOR);
     }
+    painter.rect_filled(ruin.lintel, 0.0, POI_ICON_COLOR);
+    painter.rect_filled(ruin.shade, 0.0, POI_ICON_SHADOW);
 }
 
-/// The village: a little hut — a square body under a triangular roof.
+/// The village: a little hut — a body under a triangular roof, with a dark
+/// doorway.
 fn draw_village_icon(painter: &Painter, center: Pos2, tile_px: f32) {
     let (roof, body) = village_hut(center, tile_px * POI_ICON_RATIO);
     painter.rect_filled(body, 0.0, POI_ICON_COLOR);
@@ -239,6 +253,7 @@ fn draw_village_icon(painter: &Painter, center: Pos2, tile_px: f32) {
         POI_ICON_COLOR,
         Stroke::NONE,
     ));
+    painter.rect_filled(village_door(body), 0.0, POI_ICON_SHADOW);
 }
 
 /// For each edge whose neighbour is a *different* terrain, paints a few teeth
@@ -292,15 +307,18 @@ fn edge_teeth(center: Pos2, tile_px: f32, edge: usize) -> [Rect; TRICKLE_TEETH] 
     })
 }
 
-/// The three corners of the cave wedge — apex up, base along the bottom — for
-/// an icon box `size` on a side centred on `center`.
-fn cave_triangle(center: Pos2, size: f32) -> [Pos2; 3] {
-    let h = size / 2.0;
-    [
-        Pos2::new(center.x, center.y - h),
-        Pos2::new(center.x - h, center.y + h),
-        Pos2::new(center.x + h, center.y + h),
-    ]
+/// Points tracing the upper half of an ellipse — the outline of a filled arch —
+/// from the left foot of the span (`cx - rx`, `baseline_y`) up and over to the
+/// right foot (`cx + rx`, `baseline_y`). The polygon's own closing edge along
+/// the baseline finishes the silhouette.
+fn arch_points(cx: f32, baseline_y: f32, rx: f32, ry: f32) -> Vec<Pos2> {
+    const SEGMENTS: usize = 16;
+    (0..=SEGMENTS)
+        .map(|i| {
+            let angle = std::f32::consts::PI * i as f32 / SEGMENTS as f32;
+            Pos2::new(cx - rx * angle.cos(), baseline_y - ry * angle.sin())
+        })
+        .collect()
 }
 
 /// The village hut: `(roof triangle, body rect)` for an icon box `size` on a
@@ -321,22 +339,57 @@ fn village_hut(center: Pos2, size: f32) -> ([Pos2; 3], Rect) {
     (roof, body)
 }
 
-/// Four skyline bars — uneven heights, bottoms on a common baseline — for an
-/// icon box `size` on a side centred on `center`.
-fn ruins_bars(center: Pos2, size: f32) -> [Rect; 4] {
-    const HEIGHTS: [f32; 4] = [0.5, 0.95, 0.68, 0.82];
+/// The dark doorway at the foot of the hut `body` — centred, a third of its
+/// width, a bit over half its height.
+fn village_door(body: Rect) -> Rect {
+    let w = body.width() * 0.32;
+    let height = body.height() * 0.55;
+    Rect::from_min_max(
+        Pos2::new(body.center().x - w / 2.0, body.max.y - height),
+        Pos2::new(body.center().x + w / 2.0, body.max.y),
+    )
+}
+
+/// A ruined structure: a full-height column, a broken (shorter) one with a
+/// gap between, a lintel resting across the top of the tall column, and a
+/// shadow strip down its inner face. For an icon box `size` centred on `center`.
+struct RuinsShape {
+    /// `[full-height, broken]`.
+    columns: [Rect; 2],
+    lintel: Rect,
+    shade: Rect,
+}
+
+fn ruins_parts(center: Pos2, size: f32) -> RuinsShape {
     let h = size / 2.0;
     let baseline = center.y + h;
-    let left = center.x - h;
-    let slot = size / 4.0;
-    let bar_w = slot * 0.7;
-    std::array::from_fn(|i| {
-        let x0 = left + slot * i as f32 + (slot - bar_w) / 2.0;
-        Rect::from_min_max(
-            Pos2::new(x0, baseline - size * HEIGHTS[i]),
-            Pos2::new(x0 + bar_w, baseline),
-        )
-    })
+    let top = center.y - h;
+    let column_w = size * 0.24;
+    let gap = size * 0.18;
+    let left_x = center.x - gap / 2.0 - column_w;
+    let right_x = center.x + gap / 2.0;
+
+    let tall = Rect::from_min_max(
+        Pos2::new(left_x, top),
+        Pos2::new(left_x + column_w, baseline),
+    );
+    let broken = Rect::from_min_max(
+        Pos2::new(right_x, center.y - h * 0.1),
+        Pos2::new(right_x + column_w, baseline),
+    );
+    let lintel = Rect::from_min_max(
+        Pos2::new(left_x, top),
+        Pos2::new(right_x + column_w * 0.4, top + size * 0.16),
+    );
+    let shade = Rect::from_min_max(
+        Pos2::new(left_x + column_w - size * 0.07, top + size * 0.16),
+        Pos2::new(left_x + column_w, baseline),
+    );
+    RuinsShape {
+        columns: [tall, broken],
+        lintel,
+        shade,
+    }
 }
 
 /// The inclusive ranges of world tile coordinates (x, then y) that can be at
@@ -419,18 +472,30 @@ mod tests {
     }
 
     #[test]
-    fn cave_triangle_is_an_upward_wedge_within_the_icon_box() {
-        let c = Pos2::new(100.0, 50.0);
-        let size = 20.0;
-        let [apex, bl, br] = cave_triangle(c, size);
+    fn arch_points_trace_a_dome_from_one_foot_to_the_other() {
+        let (cx, baseline, rx, ry) = (100.0_f32, 60.0_f32, 10.0_f32, 16.0_f32);
+        let pts = arch_points(cx, baseline, rx, ry);
 
-        assert!(apex.y < c.y, "apex above centre");
-        assert!(bl.y > c.y && br.y > c.y, "base below centre");
-        assert!(bl.x < br.x, "base runs left to right");
-        for p in [apex, bl, br] {
-            assert!((p.x - c.x).abs() <= size / 2.0 + 1e-3);
-            assert!((p.y - c.y).abs() <= size / 2.0 + 1e-3);
+        assert!(pts.len() >= 3);
+        let first = *pts.first().unwrap();
+        let last = *pts.last().unwrap();
+        assert!((first.x - (cx - rx)).abs() < 1e-3 && (first.y - baseline).abs() < 1e-3);
+        assert!((last.x - (cx + rx)).abs() < 1e-3 && (last.y - baseline).abs() < 1e-3);
+
+        // every point sits within the arch's bounding half-ellipse, above the
+        // baseline, and the span runs strictly left to right
+        for p in &pts {
+            assert!(p.x >= cx - rx - 1e-3 && p.x <= cx + rx + 1e-3);
+            assert!(p.y <= baseline + 1e-3 && p.y >= baseline - ry - 1e-3);
         }
+        for w in pts.windows(2) {
+            assert!(w[0].x < w[1].x + 1e-3, "left to right");
+        }
+        let apex = pts.iter().min_by(|a, b| a.y.total_cmp(&b.y)).unwrap();
+        assert!(
+            apex.y < baseline - ry * 0.9,
+            "the top of the dome reaches up"
+        );
     }
 
     #[test]
@@ -481,45 +546,62 @@ mod tests {
     }
 
     #[test]
-    fn ruins_bars_are_four_distinct_bars_on_a_common_baseline() {
+    fn ruins_parts_are_two_columns_on_a_baseline_with_a_lintel_on_the_taller() {
         let c = Pos2::new(0.0, 0.0);
         let size = 24.0;
-        let bars = ruins_bars(c, size);
+        let half = size / 2.0 + 1e-3;
+        let RuinsShape {
+            columns: [tall, broken],
+            lintel,
+            shade,
+        } = ruins_parts(c, size);
 
-        let baseline = bars[0].max.y;
-        for b in &bars {
-            assert!((b.max.y - baseline).abs() < 1e-3, "bars share a baseline");
-            assert!(b.min.x >= c.x - size / 2.0 - 1e-3 && b.max.x <= c.x + size / 2.0 + 1e-3);
-            assert!(
-                b.min.y >= c.y - size / 2.0 - 1e-3,
-                "bar stays in the icon box"
-            );
-        }
-        for w in bars.windows(2) {
-            assert!(
-                w[0].max.x <= w[1].min.x + 1e-3,
-                "bars left to right, no overlap"
-            );
-        }
-        let heights: Vec<f32> = bars.iter().map(Rect::height).collect();
-        for i in 0..heights.len() {
-            for j in (i + 1)..heights.len() {
-                assert!((heights[i] - heights[j]).abs() > 1e-3, "bar heights differ");
-            }
+        assert!((tall.max.y - broken.max.y).abs() < 1e-3, "share a baseline");
+        assert!(
+            tall.height() > broken.height() + 1e-3,
+            "one is broken short"
+        );
+        assert!(
+            tall.max.x <= broken.min.x + 1e-3,
+            "tall on the left, a gap between"
+        );
+
+        assert!(lintel.min.y <= tall.min.y + 1e-3, "lintel rests on the top");
+        assert!(
+            lintel.min.x <= tall.min.x + 1e-3 && lintel.max.x > tall.max.x,
+            "lintel bridges out from the tall column"
+        );
+        assert!(
+            shade.min.x >= tall.min.x - 1e-3 && shade.max.x <= tall.max.x + 1e-3,
+            "shade runs down the tall column's face"
+        );
+
+        for r in [tall, broken, lintel, shade] {
+            assert!((r.min.x - c.x).abs() <= half && (r.max.x - c.x).abs() <= half);
+            assert!((r.min.y - c.y).abs() <= half && (r.max.y - c.y).abs() <= half);
         }
     }
 
     #[test]
-    fn village_hut_has_a_roof_above_a_body_within_the_icon_box() {
+    fn village_hut_has_a_roof_above_a_body_with_a_door_at_its_foot() {
         let c = Pos2::new(0.0, 0.0);
         let size = 20.0;
         let ([apex, rl, rr], body) = village_hut(c, size);
+        let door = village_door(body);
 
         assert!(apex.y < body.min.y, "roof apex above the body");
         assert!(rl.x < c.x && rr.x > c.x, "roof spans the centre");
         assert!(
             body.min.x > rl.x && body.max.x < rr.x,
             "body narrower than the roof"
+        );
+        assert!(
+            (door.max.y - body.max.y).abs() < 1e-3,
+            "door sits on the ground"
+        );
+        assert!(
+            door.min.x > body.min.x && door.max.x < body.max.x && door.min.y > body.min.y,
+            "door is inside the lower body"
         );
         for p in [apex, rl, rr, body.min, body.max] {
             assert!((p.x - c.x).abs() <= size / 2.0 + 1e-3);
