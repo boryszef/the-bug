@@ -42,6 +42,11 @@ item-solar-charger = Solar Charger
 item-circuit-board = Circuit Board
 item-umbrella = Umbrella
 item-fabric = Fabric
+item-electronic-toy = Electronic Toy
+item-rusty-metal = Rusty Metal
+item-metal-knife = Metal Knife
+item-electric-motor = Electric Motor
+item-steel-bolt = Steel Bolt
 
 ## Terrain names, src/game/map.rs's TerrainType.
 

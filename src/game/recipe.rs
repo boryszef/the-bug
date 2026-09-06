@@ -86,6 +86,12 @@ pub(super) const RECIPES: &[Recipe] = &[
         output: Item::Umbrella,
         reversible: true,
     },
+    Recipe {
+        name: "Electronic Toy",
+        inputs: &[(Item::Battery, 1), (Item::Speaker, 1)],
+        output: Item::ElectronicToy,
+        reversible: true,
+    },
 ];
 
 /// The reversible recipe that produces `output`, if any. Drives disassembly:

@@ -257,6 +257,11 @@ fn item_id(item: Item) -> &'static str {
         Item::CircuitBoard => "item-circuit-board",
         Item::Umbrella => "item-umbrella",
         Item::Fabric => "item-fabric",
+        Item::ElectronicToy => "item-electronic-toy",
+        Item::RustyMetal => "item-rusty-metal",
+        Item::MetalKnife => "item-metal-knife",
+        Item::ElectricMotor => "item-electric-motor",
+        Item::SteelBolt => "item-steel-bolt",
     }
 }
 

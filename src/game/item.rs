@@ -22,4 +22,9 @@ pub enum Item {
     CircuitBoard,
     Umbrella,
     Fabric,
+    ElectricMotor,
+    SteelBolt,
+    RustyMetal,
+    MetalKnife,
+    ElectronicToy,
 }

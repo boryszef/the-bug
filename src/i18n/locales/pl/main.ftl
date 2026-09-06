@@ -112,6 +112,26 @@ item-fabric = Tkanina
     .genitive = tkaniny
     .genitive-plural = tkanin
     .accusative = Tkaninę
+item-electronic-toy = Elektroniczna Zabawka
+    .genitive = elektronicznej zabawki
+    .genitive-plural = elektronicznych zabawek
+    .accusative = elektroniczną zabawkę
+item-rusty-metal = Zardzewiały Metal
+    .genitive = zardzewiałego metalu
+    .genitive-plural = zardzewiałego metalu
+    .accusative = zardzewniały metal
+item-metal-knife = Metalowy Nóż
+    .genitive = metalowego noża
+    .genitive-plural = metalowych noży
+    .accusative = metalowy nóż
+item-electric-motor = Silnik Elektryczny
+    .genitive = silnika elektrycznego
+    .genitive-plural = silników elektrycznych
+    .accusative = silnik elektryczny
+item-steel-bolt = Stalowy Nit
+    .genitive = stalowego nitu
+    .genitive-plural = stalowych nitów
+    .accusative = stalowy nit
 
 ## Terrain names (nominative), with a `.locative` attribute (the full
 ## prepositional phrase, e.g. "w lesie" for "in the Forest") used by
