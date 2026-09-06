@@ -502,6 +502,12 @@ mod tests {
                     !text.is_empty() && !text.contains("Unknown localization"),
                     "{kind:?} in {lang:?} rendered {text:?}"
                 );
+                // egui's proportional font has no arrow glyph, so event text
+                // must avoid `→` (it shows as a tofu box in the gui log).
+                assert!(
+                    !text.contains('\u{2192}'),
+                    "{kind:?} in {lang:?} has an unrenderable arrow: {text:?}"
+                );
             }
         }
     }

@@ -15,9 +15,9 @@ event-quest-completed = Zadanie ukończone: { $quest }!
 event-unknown-recipe = Nie wiesz jak zrobić { $recipe }.
 event-craft-shortage = Masz za mało { $needed }, aby zrobić { $output }.
 event-crafted = Tworzysz { $output }.
-event-experiment-shortage = Eksperyment: { $items } → za mało { $missing } (masz { $available }, potrzeba { $needed })
-event-experiment-failed = Eksperyment: { $items } → klapa
-event-experimented = Eksperyment: { $items } → { $output }{ $newly_learned ->
+event-experiment-shortage = Eksperyment: { $items } -> za mało { $missing } (masz { $available }, potrzeba { $needed })
+event-experiment-failed = Eksperyment: { $items } -> klapa
+event-experimented = Eksperyment: { $items } -> { $output }{ $newly_learned ->
     [yes] { " (nowy przepis!)" }
    *[no] {""}
 }
