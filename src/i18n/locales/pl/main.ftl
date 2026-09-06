@@ -135,9 +135,9 @@ poi-village = Wieś
 
 ## Quest name/description.
 
-quest-craft-arrows-name = Wyprodukuj Strzały
+quest-craft-arrows-name = Kłopoty na wschodzie
 quest-craft-arrows-description = Coś znów szykuje się na wschodzie. Od jakiegoś czasu było spokojnie, ale doświadczenie pokazuje, że kłopoty zawsze nadchodzą z tamtej strony. Cokolwiek to jest, spłoszyło grubszą zwierzynę, więc grupa miejscowych myśliwych szykuje się na polowanie. Poprosili cię o przygotowanie 5 strzał. Idź do lasu po patyki, a potem poeksperymentuj z nimi, by nauczyć się, jak robi się strzały.
-quest-explore-ruins-name = Zbadaj Ruiny
+quest-explore-ruins-name = Cywilizacja Cyfrowa
 quest-explore-ruins-description = Przejezdny podróżny wspomniał o pobliskich ruinach, podobno usianych starymi przedmiotami. Podobno na tych równinach znajdowało się niegdyś kilka wiosek - pozostałości wielkiej cywilizacji sprzed 500 lat — "Cywilizacji Cyfrowej", jak nazywają ją odkrywcy. Powinieneś zobaczyć to na własne oczy.
 
 ## Panel titles.
