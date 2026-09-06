@@ -21,8 +21,8 @@ pub(super) fn render(ui: &mut Ui, options: &[CraftOption], lang: Language) -> Op
     egui::ScrollArea::vertical().show(ui, |ui| {
         for option in options {
             // One row per recipe: the button, then its consumables as
-            // `have/need` at the same text size, met ones muted and short ones
-            // in red.
+            // `have/need` and its tools as bare names, all at the same text
+            // size — met/held ones muted, missing ones in red.
             ui.horizontal(|ui| {
                 let label = i18n::item(option.output, lang);
                 if ui.add_enabled(option.enabled, Button::new(label)).clicked() {
@@ -41,6 +41,15 @@ pub(super) fn render(ui: &mut Ui, options: &[CraftOption], lang: Language) -> Op
                         ui.visuals().error_fg_color
                     };
                     ui.label(RichText::new(text).color(colour));
+                }
+                // Tools: no quantity — one is enough and it isn't consumed.
+                for tool in &option.tools {
+                    let colour = if tool.present {
+                        ui.visuals().weak_text_color()
+                    } else {
+                        ui.visuals().error_fg_color
+                    };
+                    ui.label(RichText::new(i18n::item(tool.item, lang)).color(colour));
                 }
             });
         }

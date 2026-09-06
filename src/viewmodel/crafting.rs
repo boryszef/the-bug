@@ -16,6 +16,13 @@ impl CraftConsumable {
     }
 }
 
+/// A tool the recipe requires (held, not consumed), and whether the player
+/// currently has one.
+pub struct CraftTool {
+    pub item: Item,
+    pub present: bool,
+}
+
 /// One row of the craft menu.
 pub struct CraftOption {
     /// The recipe name, passed to [`crate::game::Game::craft`] — a lookup
@@ -24,7 +31,10 @@ pub struct CraftOption {
     pub output: Item,
     /// The recipe's consumables with the player's current stock, in recipe order.
     pub consumables: Vec<CraftConsumable>,
-    /// The player currently holds every consumable in the required amount.
+    /// The recipe's required tools and whether the player holds each, in recipe
+    /// order.
+    pub tools: Vec<CraftTool>,
+    /// The player holds every consumable in the required amount and every tool.
     pub enabled: bool,
 }
 
@@ -43,11 +53,21 @@ pub fn options(player: &Player) -> Vec<CraftOption> {
                     have: player.inventory.get(&item).copied().unwrap_or(0),
                 })
                 .collect();
+            let tools: Vec<CraftTool> = recipe
+                .tools()
+                .iter()
+                .map(|&item| CraftTool {
+                    item,
+                    present: player.inventory.get(&item).copied().unwrap_or(0) > 0,
+                })
+                .collect();
             CraftOption {
                 id: recipe.name(),
                 output: recipe.output(),
-                enabled: consumables.iter().all(CraftConsumable::met),
+                enabled: consumables.iter().all(CraftConsumable::met)
+                    && tools.iter().all(|t| t.present),
                 consumables,
+                tools,
             }
         })
         .collect()
@@ -105,5 +125,24 @@ mod tests {
         assert_eq!((vine.have, vine.need), (0, 2));
         assert!(!vine.met());
         assert!(!opt.enabled);
+    }
+
+    #[test]
+    fn a_missing_tool_disables_the_option_even_with_every_consumable() {
+        let mut game = Game::default();
+        game.player.grant_recipe("Wooden Bow"); // needs a Stone Axe tool
+        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Cord, 1);
+
+        let opt = options(&game.player).pop().unwrap();
+        assert_eq!(opt.tools.len(), 1);
+        assert_eq!(opt.tools[0].item, Item::StoneAxe);
+        assert!(!opt.tools[0].present);
+        assert!(!opt.enabled);
+
+        game.player.inventory.insert(Item::StoneAxe, 1);
+        let opt = options(&game.player).pop().unwrap();
+        assert!(opt.tools[0].present);
+        assert!(opt.enabled);
     }
 }

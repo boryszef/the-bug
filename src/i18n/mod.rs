@@ -175,6 +175,25 @@ pub fn event(kind: &EventKind, lang: Language) -> String {
                 output = output_arg
             )
         }
+        EventKind::CraftMissingTool { tool, output } => {
+            // "you need an X" wants X in the genitive in Polish (object of
+            // "potrzebujesz"); "to make Y" wants Y in the accusative (object of
+            // "zrobić"). English stays nominative for both.
+            let tool_arg = match lang {
+                Language::English => self::item(*tool, lang),
+                Language::Polish => item_attr(*tool, "genitive", lang),
+            };
+            let output_arg = match lang {
+                Language::English => self::item(*output, lang),
+                Language::Polish => item_attr(*output, "accusative", lang),
+            };
+            fl!(
+                loader,
+                "event-craft-missing-tool",
+                tool = tool_arg,
+                output = output_arg
+            )
+        }
         EventKind::Crafted { output } => {
             // "You craft Y" wants Y in the accusative in Polish (direct
             // object of "Tworzysz").
@@ -440,6 +459,21 @@ mod tests {
     }
 
     #[test]
+    fn event_renders_craft_missing_tool_in_polish_with_genitive_tool_and_accusative_output() {
+        let text = event(
+            &EventKind::CraftMissingTool {
+                tool: Item::StoneAxe,
+                output: Item::WoodenBow,
+            },
+            Language::Polish,
+        );
+        assert_eq!(
+            text,
+            "Potrzebujesz kamiennego topora, aby zrobić Drewniany Łuk."
+        );
+    }
+
+    #[test]
     fn event_renders_crafted_in_polish_with_the_accusative_case() {
         let text = event(
             &EventKind::Crafted {
@@ -479,6 +513,10 @@ mod tests {
             EventKind::CraftShortage {
                 needed: Item::Stick,
                 output: Item::Arrow,
+            },
+            EventKind::CraftMissingTool {
+                tool: Item::StoneAxe,
+                output: Item::WoodenBow,
             },
             EventKind::Crafted { output: Item::Cord },
             EventKind::ExperimentShortage {

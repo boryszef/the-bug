@@ -206,6 +206,14 @@ impl Game {
             return;
         }
 
+        if let Some(tool) = self.player.first_missing_tool(recipe.tools()) {
+            self.log(EventKind::CraftMissingTool {
+                tool,
+                output: recipe.output(),
+            });
+            return;
+        }
+
         self.player.spend_all(recipe.consumables());
 
         self.grant_item(recipe.output(), 1);
@@ -239,6 +247,17 @@ impl Game {
             });
             return;
         };
+
+        if let Some(tool) = self.player.first_missing_tool(recipe.tools()) {
+            // The combination was right, but a required tool isn't in hand —
+            // the recipe isn't learned and nothing is produced (the
+            // consumables are already spent, like any failed experiment).
+            self.log(EventKind::CraftMissingTool {
+                tool,
+                output: recipe.output(),
+            });
+            return;
+        }
 
         let newly_learned = self.player.learn_recipe(*recipe);
 
@@ -420,6 +439,90 @@ mod tests {
         game.experiment(&[(Item::Vine, 2)]);
 
         assert_eq!(game.player.inventory.get(&Item::Vine), None);
+    }
+
+    #[test]
+    fn craft_without_the_required_tool_is_blocked() {
+        let mut game = Game::default();
+        game.player.grant_recipe("Wooden Bow");
+        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Cord, 1);
+
+        game.craft("Wooden Bow"); // needs a Stone Axe, not holding one
+
+        assert_eq!(
+            last_event(&game).kind(),
+            &EventKind::CraftMissingTool {
+                tool: Item::StoneAxe,
+                output: Item::WoodenBow,
+            }
+        );
+        assert_eq!(game.player.inventory.get(&Item::WoodenBow), None);
+        // craft checks before spending — the consumables are untouched
+        assert_eq!(game.player.inventory.get(&Item::Stick), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::Cord), Some(&1));
+    }
+
+    #[test]
+    fn craft_does_not_consume_the_tool() {
+        let mut game = Game::default();
+        game.player.grant_recipe("Wooden Bow");
+        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Cord, 1);
+        game.player.inventory.insert(Item::StoneAxe, 1);
+
+        game.craft("Wooden Bow");
+
+        assert_eq!(game.player.inventory.get(&Item::WoodenBow), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::Stick), None);
+        assert_eq!(game.player.inventory.get(&Item::Cord), None);
+        assert_eq!(game.player.inventory.get(&Item::StoneAxe), Some(&1));
+    }
+
+    #[test]
+    fn experiment_matching_a_recipe_without_its_tool_fails() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Cord, 1);
+
+        game.experiment(&[(Item::Stick, 1), (Item::Cord, 1)]); // Wooden Bow, no axe
+
+        assert_eq!(
+            last_event(&game).kind(),
+            &EventKind::CraftMissingTool {
+                tool: Item::StoneAxe,
+                output: Item::WoodenBow,
+            }
+        );
+        assert_eq!(game.player.inventory.get(&Item::WoodenBow), None);
+        // a failed experiment still spends the combination
+        assert_eq!(game.player.inventory.get(&Item::Stick), None);
+        assert_eq!(game.player.inventory.get(&Item::Cord), None);
+        assert!(
+            game.player
+                .known_recipes()
+                .iter()
+                .all(|r| r.output() != Item::WoodenBow)
+        );
+    }
+
+    #[test]
+    fn experiment_with_the_tool_present_discovers_and_builds() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Cord, 1);
+        game.player.inventory.insert(Item::StoneAxe, 1);
+
+        game.experiment(&[(Item::Stick, 1), (Item::Cord, 1)]);
+
+        assert_eq!(game.player.inventory.get(&Item::WoodenBow), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::StoneAxe), Some(&1));
+        assert!(
+            game.player
+                .known_recipes()
+                .iter()
+                .any(|r| r.output() == Item::WoodenBow)
+        );
     }
 
     #[test]

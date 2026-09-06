@@ -286,6 +286,7 @@ fn event_color(kind: &EventKind) -> Option<Color32> {
         }
         EventKind::UnknownRecipe { .. }
         | EventKind::CraftShortage { .. }
+        | EventKind::CraftMissingTool { .. }
         | EventKind::Crafted { .. }
         | EventKind::Disassembled { .. } => Some(Color32::YELLOW),
         EventKind::ExperimentShortage { .. }

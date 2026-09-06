@@ -338,6 +338,7 @@ fn event_color(kind: &EventKind) -> Option<Color> {
         EventKind::QuestAccepted { .. } | EventKind::QuestCompleted { .. } => Some(Color::Magenta),
         EventKind::UnknownRecipe { .. }
         | EventKind::CraftShortage { .. }
+        | EventKind::CraftMissingTool { .. }
         | EventKind::Crafted { .. }
         | EventKind::Disassembled { .. } => Some(Color::Yellow),
         EventKind::ExperimentShortage { .. }

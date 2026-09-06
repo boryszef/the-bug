@@ -16,6 +16,7 @@ pub enum RecipeFlow {
 pub struct Recipe {
     name: &'static str,
     consumables: &'static [(Item, u32)],
+    tools: &'static [Item],
     output: Item,
     flow: RecipeFlow,
 }
@@ -28,6 +29,13 @@ impl Recipe {
     /// The items consumed when the recipe runs.
     pub fn consumables(&self) -> &'static [(Item, u32)] {
         self.consumables
+    }
+
+    /// Items the player must be holding to run the recipe — one of each
+    /// suffices, and none are consumed. A future release may let an entry be a
+    /// category ("any axe") rather than a specific item.
+    pub fn tools(&self) -> &'static [Item] {
+        self.tools
     }
 
     pub fn output(&self) -> Item {
@@ -57,30 +65,35 @@ pub(super) const RECIPES: &[Recipe] = &[
     Recipe {
         name: "Arrow",
         consumables: &[(Item::Stick, 1)],
+        tools: &[Item::StoneAxe],
         output: Item::Arrow,
         flow: RecipeFlow::CraftOnly,
     },
     Recipe {
         name: "Wooden Bow",
         consumables: &[(Item::Stick, 1), (Item::Cord, 1)],
+        tools: &[Item::StoneAxe],
         output: Item::WoodenBow,
         flow: RecipeFlow::Both,
     },
     Recipe {
         name: "Cord",
         consumables: &[(Item::Vine, 2)],
+        tools: &[],
         output: Item::Cord,
         flow: RecipeFlow::CraftOnly,
     },
     Recipe {
         name: "Stone Axe",
         consumables: &[(Item::Stick, 1), (Item::Stone, 1), (Item::Cord, 1)],
+        tools: &[],
         output: Item::StoneAxe,
         flow: RecipeFlow::Both,
     },
     Recipe {
         name: "Coil",
         consumables: &[(Item::CopperWire, 2), (Item::PlasticBottle, 1)],
+        tools: &[],
         output: Item::Coil,
         flow: RecipeFlow::CraftOnly,
     },
@@ -92,6 +105,7 @@ pub(super) const RECIPES: &[Recipe] = &[
             (Item::Speaker, 1),
             (Item::Microcontroller, 1),
         ],
+        tools: &[],
         output: Item::MetalDetector,
         flow: RecipeFlow::Both,
     },
@@ -102,18 +116,21 @@ pub(super) const RECIPES: &[Recipe] = &[
             (Item::SolarPanel, 1),
             (Item::CircuitBoard, 1),
         ],
+        tools: &[],
         output: Item::SolarCharger,
         flow: RecipeFlow::Both,
     },
     Recipe {
         name: "Umbrella",
         consumables: &[(Item::Fabric, 1), (Item::Pole, 1)],
+        tools: &[],
         output: Item::Umbrella,
         flow: RecipeFlow::DisassembleOnly,
     },
     Recipe {
         name: "Electronic Toy",
         consumables: &[(Item::Battery, 1), (Item::Speaker, 1)],
+        tools: &[],
         output: Item::ElectronicToy,
         flow: RecipeFlow::DisassembleOnly,
     },
@@ -148,9 +165,14 @@ mod tests {
         Recipe {
             name: "x",
             consumables: &[],
+            tools: &[],
             output: Item::Stick,
             flow,
         }
+    }
+
+    fn recipe_named(name: &str) -> &'static Recipe {
+        RECIPES.iter().find(|r| r.name() == name).unwrap()
     }
 
     #[test]
@@ -163,5 +185,11 @@ mod tests {
 
         let disasm_only = recipe(RecipeFlow::DisassembleOnly);
         assert!(!disasm_only.craftable() && disasm_only.disassemblable());
+    }
+
+    #[test]
+    fn tools_lists_the_recipes_required_but_unconsumed_items() {
+        assert_eq!(recipe_named("Wooden Bow").tools(), &[Item::StoneAxe]);
+        assert_eq!(recipe_named("Cord").tools(), &[] as &[Item]);
     }
 }

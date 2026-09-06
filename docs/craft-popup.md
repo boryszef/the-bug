@@ -53,8 +53,13 @@ text size, met ones muted and short ones in the error colour
 (`Coil  3/2 Copper Wire  0/1 Plastic Bottle`). The `tui` panel appends the same
 list to each row's text (`Coil  (3/2 Copper Wire, 0/1 Plastic Bottle)`).
 
-(`consumables` / `CraftConsumable` were `inputs` / `CraftInput` until recipes
-grew a second, non-consumed item list.)
+## Update: recipe tools (later)
+
+`CraftOption` also carries `tools: Vec<CraftTool { item, present }>`, and
+`enabled` now requires every consumable met **and** every tool held. The panels
+render tools with no `have/need` number — muted when held, in the error colour
+when missing. See `recipe-tools.md`. (`consumables` / `CraftConsumable` were
+`inputs` / `CraftInput` before this — tools made "inputs" ambiguous.)
 
 Paths since the original: `src/game/recipe.rs`, `src/viewmodel/crafting.rs`,
 `src/gui/craft.rs` (the `src/game.rs` / `src/ui/` names above predate the

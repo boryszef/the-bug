@@ -165,6 +165,12 @@ impl Player {
         })
     }
 
+    /// The first tool in `tools` the player isn't holding. `None` if they hold
+    /// every one (a single unit suffices — tools aren't consumed).
+    pub(super) fn first_missing_tool(&self, tools: &[Item]) -> Option<Item> {
+        tools.iter().copied().find(|&tool| !self.has_item(tool))
+    }
+
     /// Adds `amount` to the player's experience.
     pub(super) fn add_experience(&mut self, amount: u32) {
         self.experience += amount;

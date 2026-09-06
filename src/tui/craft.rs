@@ -81,10 +81,21 @@ impl Craft {
                     .map(|c| format!("{}/{} {}", c.have, c.need, i18n::item(c.item, lang)))
                     .collect::<Vec<_>>()
                     .join(", ");
-                let text = if consumables.is_empty() {
-                    i18n::item(option.output, lang)
-                } else {
-                    format!("{}  ({consumables})", i18n::item(option.output, lang))
+                // Tools carry no numbers — one of each suffices and none are
+                // consumed. The tui has no per-item colour, so a missing tool
+                // only shows by the whole row being dimmed.
+                let tools = option
+                    .tools
+                    .iter()
+                    .map(|t| i18n::item(t.item, lang))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let output = i18n::item(option.output, lang);
+                let text = match (consumables.is_empty(), tools.is_empty()) {
+                    (true, true) => output,
+                    (false, true) => format!("{output}  ({consumables})"),
+                    (true, false) => format!("{output}  [{tools}]"),
+                    (false, false) => format!("{output}  ({consumables}) [{tools}]"),
                 };
                 ListItem::new(text).style(style)
             });
@@ -111,12 +122,14 @@ mod tests {
                 id: "Cord",
                 output: Item::Cord,
                 consumables: vec![],
+                tools: vec![],
                 enabled: true,
             },
             CraftOption {
                 id: "Stone Axe",
                 output: Item::StoneAxe,
                 consumables: vec![],
+                tools: vec![],
                 enabled: false,
             },
         ]

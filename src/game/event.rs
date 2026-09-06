@@ -22,6 +22,9 @@ pub enum EventKind {
     UnknownRecipe { recipe: String },
     /// Knew the recipe for `output` but didn't have enough `needed`.
     CraftShortage { needed: Item, output: Item },
+    /// Knew the recipe for `output` (or matched it while experimenting) but
+    /// wasn't holding the required `tool`.
+    CraftMissingTool { tool: Item, output: Item },
     /// Successfully crafted `output`.
     Crafted { output: Item },
     /// Tried to experiment with `items` but didn't have enough of `missing`

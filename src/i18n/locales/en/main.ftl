@@ -11,6 +11,7 @@ event-quest-accepted = Quest accepted: { $quest }
 event-quest-completed = Quest complete: { $quest }!
 event-unknown-recipe = You don't know how to craft a { $recipe }.
 event-craft-shortage = You don't have enough { $needed } to craft a { $output }.
+event-craft-missing-tool = You need a { $tool } to craft a { $output }.
 event-crafted = You craft a { $output }.
 event-experiment-shortage = Experiment: { $items } -> not enough { $missing } (have { $available }, need { $needed })
 event-experiment-failed = Experiment: { $items } -> nothing

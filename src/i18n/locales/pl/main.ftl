@@ -14,6 +14,7 @@ event-quest-accepted = Zadanie przyjęte: { $quest }
 event-quest-completed = Zadanie ukończone: { $quest }!
 event-unknown-recipe = Nie wiesz jak zrobić { $recipe }.
 event-craft-shortage = Masz za mało { $needed }, aby zrobić { $output }.
+event-craft-missing-tool = Potrzebujesz { $tool }, aby zrobić { $output }.
 event-crafted = Tworzysz { $output }.
 event-experiment-shortage = Eksperyment: { $items } -> za mało { $missing } (masz { $available }, potrzeba { $needed })
 event-experiment-failed = Eksperyment: { $items } -> klapa
