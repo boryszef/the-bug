@@ -18,7 +18,7 @@ most one POI: that's just the `Option`.
 
 - **Search yield.** A tile offers its terrain's items *and* its POI's, each
   tagged with where it came from (`FoundIn::Terrain` / `FoundIn::Poi`). The
-  event log names the place: "a Stick in the forest", "a Stone in the cave".
+  event log names the place: "a Branch in the forest", "a Stone in the cave".
   `Village` has no items of its own — searching it yields only its terrain's.
 - **Quests.** `EventTypeID::VisitPoi(Poi)` fires when the player steps onto a
   tile with that POI; the "explore the ruins" quest now counts a `VisitPoi`,

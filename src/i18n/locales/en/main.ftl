@@ -22,7 +22,7 @@ event-disassembled = You take apart a { $item }, recovering { $recovered }.
 
 ## Item names (nominative), src/game/item.rs's Item.
 
-item-stick = Stick
+item-stick = Branch
 item-stone = Stone
 item-vine = Vine
 item-cord = Cord

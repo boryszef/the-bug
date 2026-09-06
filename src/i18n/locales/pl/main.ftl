@@ -26,16 +26,17 @@ event-disassembled = Rozbierasz { $item }, odzyskując { $recovered }.
 ## Item names (nominative), with a `.genitive` attribute (singular), a
 ## `.genitive-plural` attribute — the latter is what the "not enough X"
 ## events use, since Polish wants the plural genitive for a shortage of a
-## countable noun ("za mało patyków", not "za mało patyka") — and an
+## countable noun ("za mało kamieni", not "za mało kamień") — and an
 ## `.accusative` attribute (singular) for when the item is the direct
 ## object of a crafting verb ("Tworzysz Strzałę", not "Tworzysz Strzała").
-## Masculine and neuter nouns are identical in the nominative and
-## accusative, so most `.accusative` values just repeat the name.
+## Where the nominative and accusative coincide (masculine/neuter nouns, and
+## consonant-stem feminine ones like "gałąź"), the `.accusative` just repeats
+## the name.
 
-item-stick = Patyk
-    .genitive = patyka
-    .genitive-plural = patyków
-    .accusative = Patyk
+item-stick = Gałąź
+    .genitive = gałęzi
+    .genitive-plural = gałęzi
+    .accusative = Gałąź
 item-stone = Kamień
     .genitive = kamienia
     .genitive-plural = kamieni

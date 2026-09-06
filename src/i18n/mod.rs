@@ -400,7 +400,7 @@ mod tests {
             },
             Language::English,
         );
-        assert_eq!(text, "You find a Stick in the Forest.");
+        assert_eq!(text, "You find a Branch in the Forest.");
     }
 
     #[test]
@@ -436,7 +436,7 @@ mod tests {
             },
             Language::Polish,
         );
-        assert_eq!(text, "Masz za mało patyków, aby zrobić Strzałę.");
+        assert_eq!(text, "Masz za mało gałęzi, aby zrobić Strzałę.");
     }
 
     #[test]
@@ -527,7 +527,7 @@ mod tests {
         );
         assert_eq!(
             text,
-            "You take apart a Stone Axe, recovering 1 Stick + 1 Stone + 1 Cord."
+            "You take apart a Stone Axe, recovering 1 Branch + 1 Stone + 1 Cord."
         );
     }
 
