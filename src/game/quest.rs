@@ -27,6 +27,8 @@ pub(super) enum EventTypeID {
     CraftItem(Item),
     VisitTerrain(TerrainType),
     VisitPoi(Poi),
+    /// One completed hunt (an arrow was loosed), whatever it brought back.
+    Hunt,
 }
 
 /// What it takes to complete a quest: `count` occurrences of `event`.

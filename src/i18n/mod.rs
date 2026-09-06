@@ -251,6 +251,19 @@ pub fn event(kind: &EventKind, lang: Language) -> String {
                 recovered = recovered
             )
         }
+        EventKind::Hunted { items } => {
+            fl!(loader, "event-hunted", items = describe_items(items, lang))
+        }
+        EventKind::HuntMissed => fl!(loader, "event-hunt-missed"),
+        EventKind::HuntUnprepared { missing } => {
+            // "you need a X" wants X in the genitive in Polish (object of
+            // "potrzebujesz"); English stays nominative.
+            let missing_arg = match lang {
+                Language::English => self::item(*missing, lang),
+                Language::Polish => item_attr(*missing, "genitive", lang),
+            };
+            fl!(loader, "event-hunt-unprepared", missing = missing_arg)
+        }
     }
 }
 
@@ -281,6 +294,10 @@ fn item_id(item: Item) -> &'static str {
         Item::MetalKnife => "item-metal-knife",
         Item::ElectricMotor => "item-electric-motor",
         Item::SteelBolt => "item-steel-bolt",
+        Item::Meat => "item-meat",
+        Item::Bone => "item-bone",
+        Item::Hide => "item-hide",
+        Item::Fur => "item-fur",
     }
 }
 
@@ -537,6 +554,13 @@ mod tests {
             },
             EventKind::Disassembled {
                 item: Item::StoneAxe,
+            },
+            EventKind::Hunted {
+                items: vec![(Item::Meat, 1), (Item::Hide, 1)],
+            },
+            EventKind::HuntMissed,
+            EventKind::HuntUnprepared {
+                missing: Item::Arrow,
             },
         ];
 

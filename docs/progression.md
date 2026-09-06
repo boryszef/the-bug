@@ -43,3 +43,7 @@ yield several different items. This is exercised by
 `search_yields_every_item_a_tile_offers`. In practice each terrain currently
 lists only one item (`TERRAIN_ITEMS`), so a search yields 0 or 1 until a terrain
 gains a second item.
+
+`Game::hunt()` works the same way over a separate `HUNT_ITEMS` table (Meadow and
+Forest only — Meat / Hide / Bone / Fur, ~0.1–0.5 each), with its own
+`last_hunt_time` decay. See `docs/hunting.md`.

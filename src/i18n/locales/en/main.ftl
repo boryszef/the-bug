@@ -20,6 +20,9 @@ event-experimented = Experiment: { $items } -> { $output }{ $newly_learned ->
    *[no] {""}
 }
 event-disassembled = You take apart a { $item }, recovering { $recovered }.
+event-hunted = Hunt: { $items }.
+event-hunt-missed = Hunt: the quarry got away.
+event-hunt-unprepared = You need a { $missing } to hunt.
 
 ## Item names (nominative), src/game/item.rs's Item.
 
@@ -48,6 +51,10 @@ item-rusty-metal = Rusty Metal
 item-metal-knife = Metal Knife
 item-electric-motor = Electric Motor
 item-steel-bolt = Steel Bolt
+item-meat = Meat
+item-bone = Bone
+item-hide = Hide
+item-fur = Fur
 
 ## Terrain names, src/game/map.rs's TerrainType.
 
@@ -117,7 +124,7 @@ quests-completed = Completed: { $names }
 
 ## Footer key hints, one per panel (src/tui/app.rs's render_footer).
 
-footer-map = ←↑↓→ move   s search   [ ] panel   q quit
+footer-map = ←↑↓→ move   s search   h hunt   [ ] panel   q quit
 footer-experiment = ↑↓ move   ←→ add/remove   Tab switch column   e run   [ ] panel   q quit
 footer-craft = ↑↓ move   Enter craft   [ ] panel   q quit
 footer-disassemble = ↑↓ move   Enter take apart   [ ] panel   q quit
@@ -129,5 +136,6 @@ action-quit = Quit (q)
 action-experiment = Run experiment
 action-accept = Accept
 action-search = Search (s)
+action-hunt = Hunt (h)
 gui-hint = [ ] switch tabs   q quit
 gui-hint-map = drag to pan   scroll to zoom

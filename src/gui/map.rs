@@ -50,6 +50,7 @@ const TRICKLE_TOOTH_W: f32 = 0.26;
 pub(super) enum MapCommand {
     Walk(Direction),
     Search,
+    Hunt,
 }
 
 /// Transient pan/zoom state for the map tab.
@@ -70,11 +71,11 @@ impl Default for MapView {
 }
 
 impl MapView {
-    /// Draws the movement/search controls and, below them, the tile grid:
+    /// Draws the movement/search/hunt controls and, below them, the tile grid:
     /// a filled square per visible tile, then the player marker. Consumes
     /// drag (pan) and scroll or pinch (zoom) over the grid. Returns the
     /// player's requested action, from a button or its keyboard accelerator
-    /// (arrow keys / `s`).
+    /// (arrow keys / `s` / `h`).
     pub fn ui(
         &mut self,
         ui: &mut Ui,
@@ -101,6 +102,9 @@ impl MapView {
             ui.separator();
             if ui.button(i18n::ui("action-search", lang)).clicked() {
                 command = Some(MapCommand::Search);
+            }
+            if ui.button(i18n::ui("action-hunt", lang)).clicked() {
+                command = Some(MapCommand::Hunt);
             }
         });
 
@@ -195,7 +199,10 @@ fn read_map_keys(ui: &Ui) -> Option<MapCommand> {
                 return Some(MapCommand::Walk(dir));
             }
         }
-        i.key_pressed(Key::S).then_some(MapCommand::Search)
+        if i.key_pressed(Key::S) {
+            return Some(MapCommand::Search);
+        }
+        i.key_pressed(Key::H).then_some(MapCommand::Hunt)
     })
 }
 

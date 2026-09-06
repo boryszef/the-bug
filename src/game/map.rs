@@ -96,7 +96,11 @@ pub struct MapTile {
     pub poi: Option<Poi>,
     /// What a search here can turn up: item → (base probability, its source).
     pub(super) items: HashMap<Item, (f64, FoundIn)>,
+    /// What a hunt here can turn up: item → base probability. Empty on terrain
+    /// with no fauna (Deadland), so a hunt there always comes back empty.
+    pub(super) hunt_items: HashMap<Item, f64>,
     pub(super) last_search_time: Option<Instant>,
+    pub(super) last_hunt_time: Option<Instant>,
 }
 
 impl fmt::Display for MapTile {
@@ -125,6 +129,20 @@ const POI_ITEMS: &[(Poi, Item, f64)] = &[
     (Poi::Ruins, Item::ElectronicToy, 0.1),
 ];
 
+/// What a *hunt* on a terrain can bring back, with the base probability per
+/// hunt. Only Meadow and Forest carry game; Deadland has none, so a hunt there
+/// comes back empty — the same way a search of barren ground turns up nothing.
+const HUNT_ITEMS: &[(TerrainType, Item, f64)] = &[
+    (TerrainType::Meadow, Item::Meat, 0.45),
+    (TerrainType::Meadow, Item::Hide, 0.35),
+    (TerrainType::Meadow, Item::Bone, 0.30),
+    (TerrainType::Meadow, Item::Fur, 0.10),
+    (TerrainType::Forest, Item::Meat, 0.50),
+    (TerrainType::Forest, Item::Hide, 0.25),
+    (TerrainType::Forest, Item::Bone, 0.35),
+    (TerrainType::Forest, Item::Fur, 0.35),
+];
+
 /// Everything a tile can yield on a search: its terrain's items plus its POI's,
 /// each tagged with where it came from. A POI entry overrides a terrain entry
 /// for the same item (there are none today).
@@ -142,6 +160,16 @@ fn tile_items(terrain: TerrainType, poi: Option<Poi>) -> HashMap<Item, (f64, Fou
     items
 }
 
+/// What a hunt on this terrain can bring back: `item → base probability`.
+/// Empty for terrain with no game.
+fn tile_hunt_items(terrain: TerrainType) -> HashMap<Item, f64> {
+    HUNT_ITEMS
+        .iter()
+        .filter(|&&(t, _, _)| t == terrain)
+        .map(|&(_, item, probability)| (item, probability))
+        .collect()
+}
+
 impl MapTile {
     /// A tile with terrain but no POI — a convenience for tests; real tiles are
     /// built through [`with_terrain_and_poi`](Self::with_terrain_and_poi).
@@ -155,7 +183,9 @@ impl MapTile {
             terrain_type,
             poi,
             items: tile_items(terrain_type, poi),
+            hunt_items: tile_hunt_items(terrain_type),
             last_search_time: None,
+            last_hunt_time: None,
         }
     }
 
@@ -169,6 +199,19 @@ impl MapTile {
                 rng.random_range(0.0..1.0) < adjust_probability(base, self.last_search_time)
             })
             .map(|(&item, &(_, source))| (item, source))
+            .collect()
+    }
+
+    /// Rolls each of this tile's huntable items against its probability
+    /// (decayed by how recently the tile was hunted). Mirrors
+    /// [`roll_found_items`](Self::roll_found_items).
+    pub(super) fn roll_hunted_items(&self, rng: &mut impl rand::Rng) -> Vec<Item> {
+        self.hunt_items
+            .iter()
+            .filter(|&(_, &base)| {
+                rng.random_range(0.0..1.0) < adjust_probability(base, self.last_hunt_time)
+            })
+            .map(|(&item, _)| item)
             .collect()
     }
 }
@@ -247,6 +290,12 @@ impl Map {
             tile.last_search_time = Some(Instant::now());
         }
     }
+
+    pub fn update_tile_last_hunt_time(&mut self, pos: (i32, i32)) {
+        if let Some(tile) = self.get_tile_mut(pos) {
+            tile.last_hunt_time = Some(Instant::now());
+        }
+    }
 }
 
 impl super::SaveState for Map {
@@ -303,11 +352,11 @@ fn scatter_pois(size: usize, rng: &mut impl rand::Rng) -> Vec<Vec<Option<Poi>>> 
     pois
 }
 
-/// Scales `base_probability` down while the tile was searched recently
-/// (within [`DECAY_WINDOW_SECS`]), so re-searching the same spot right away
-/// rarely pays off.
-fn adjust_probability(base_probability: f64, last_search_time: Option<Instant>) -> f64 {
-    let time_elapsed = last_search_time.map_or(f64::INFINITY, |t| t.elapsed().as_secs_f64());
+/// Scales `base_probability` down while the tile was worked recently (searched
+/// or hunted, within [`DECAY_WINDOW_SECS`]), so going back to the same spot
+/// right away rarely pays off.
+fn adjust_probability(base_probability: f64, last_used: Option<Instant>) -> f64 {
+    let time_elapsed = last_used.map_or(f64::INFINITY, |t| t.elapsed().as_secs_f64());
 
     if time_elapsed < DECAY_WINDOW_SECS {
         base_probability * (time_elapsed / DECAY_WINDOW_SECS)
@@ -442,6 +491,41 @@ mod tests {
             tile.items.get(&Item::Stone).map(|&(_, s)| s),
             Some(FoundIn::Poi(Poi::Cave))
         );
+    }
+
+    #[test]
+    fn hunt_items_are_the_terrains_fauna_and_deadland_has_none() {
+        let meadow: std::collections::HashSet<Item> = MapTile::with_terrain(TerrainType::Meadow)
+            .hunt_items
+            .into_keys()
+            .collect();
+        assert_eq!(
+            meadow,
+            [Item::Meat, Item::Hide, Item::Bone, Item::Fur]
+                .into_iter()
+                .collect()
+        );
+        assert!(
+            MapTile::with_terrain(TerrainType::Deadland)
+                .hunt_items
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn roll_hunted_items_returns_everything_at_full_odds_and_nothing_when_barren() {
+        let mut sure = MapTile::with_terrain(TerrainType::Forest);
+        for p in sure.hunt_items.values_mut() {
+            *p = 1.0;
+        }
+        let bag: std::collections::HashSet<Item> = sure
+            .roll_hunted_items(&mut rand::rng())
+            .into_iter()
+            .collect();
+        assert_eq!(bag, sure.hunt_items.keys().copied().collect());
+
+        let barren = MapTile::with_terrain(TerrainType::Deadland);
+        assert!(barren.roll_hunted_items(&mut rand::rng()).is_empty());
     }
 
     #[test]

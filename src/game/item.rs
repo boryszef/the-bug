@@ -27,4 +27,8 @@ pub enum Item {
     RustyMetal,
     MetalKnife,
     ElectronicToy,
+    Meat,
+    Bone,
+    Hide,
+    Fur,
 }

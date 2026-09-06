@@ -22,6 +22,7 @@ The Events pane shows recent things that have happened, newest first.
 |---|---|---|
 | Waking up | General | `You wake up and decide to go for a walk.` |
 | Searching a tile | General | `You find a Branch in the Forest.` |
+| Hunting a tile | Crafting | `Hunt: 1 Meat + 1 Hide.` / `Hunt: the quarry got away.` / `You need an Arrow to hunt.` |
 | Crafting | Crafting | `You craft a Cord.` / `You don't have enough Vine to craft a Cord.` |
 | Experimenting | Experiment | see below |
 | **Walking** | — | *not logged* |

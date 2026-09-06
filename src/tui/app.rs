@@ -160,6 +160,7 @@ impl App {
     fn handle_map_key(&mut self, code: KeyCode) {
         match code {
             KeyCode::Char('s') => self.game.search(),
+            KeyCode::Char('h') => self.game.hunt(),
             KeyCode::Left => self.game.walk(Direction::West),
             KeyCode::Right => self.game.walk(Direction::East),
             KeyCode::Up => self.game.walk(Direction::North),
@@ -334,13 +335,15 @@ fn render_events(game: &Game, area: Rect, buf: &mut Buffer, lang: Language) {
 fn event_color(kind: &EventKind) -> Option<Color> {
     match kind {
         EventKind::Awoke => None,
-        EventKind::Found { .. } => Some(Color::Green),
+        EventKind::Found { .. } | EventKind::Hunted { .. } => Some(Color::Green),
         EventKind::QuestAccepted { .. } | EventKind::QuestCompleted { .. } => Some(Color::Magenta),
         EventKind::UnknownRecipe { .. }
         | EventKind::CraftShortage { .. }
         | EventKind::CraftMissingTool { .. }
         | EventKind::Crafted { .. }
-        | EventKind::Disassembled { .. } => Some(Color::Yellow),
+        | EventKind::Disassembled { .. }
+        | EventKind::HuntMissed
+        | EventKind::HuntUnprepared { .. } => Some(Color::Yellow),
         EventKind::ExperimentShortage { .. }
         | EventKind::ExperimentFailed { .. }
         | EventKind::Experimented { .. } => Some(Color::Cyan),

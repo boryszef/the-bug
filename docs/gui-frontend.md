@@ -55,10 +55,11 @@ through `viewmodel`/`game`.
   no predefined maps or road/river tiles yet — see `docs/gui-map.md`. The
   other four tabs keep the placeholder heading.
 - Map tab controls (`MapView::ui` → `Option<MapCommand>`): a row of
-  `←`/`↑`/`↓`/`→` buttons and a **Search** button above the grid, plus the
-  arrow keys and `s` as accelerators (read in `map.rs`, not `App`). All
-  produce a `MapCommand::{Walk, Search}` that `App::ui` applies via
-  `Game::walk` / `Game::search`. The arrows are drawn in the Monospace font
+  `←`/`↑`/`↓`/`→` buttons and **Search** / **Hunt** buttons above the grid,
+  plus the arrow keys and `s` / `h` as accelerators (read in `map.rs`, not
+  `App`). All produce a `MapCommand::{Walk, Search, Hunt}` that `App::ui`
+  applies via `Game::walk` / `Game::search` / `Game::hunt`. The arrows are
+  drawn in the Monospace font
   (`RichText::monospace`) — egui's default proportional font has no arrow
   coverage, but bundled Hack does. The view stays where the user panned it —
   it does not recentre on the player.
@@ -102,7 +103,7 @@ list as further gui work lands (see `TODO.md`).
   `render_events`; the tab/quit toolbar; the hint bar (`hint_text`); the
   per-`Panel` render arms in `App::ui`.
 - `src/gui/map.rs` — `MapView` (pan/zoom + `egui::Painter` tile grid), the
-  `←↑↓→` + Search controls, `MapCommand`, arrow/`s` key accelerators.
+  `←↑↓→` + Search + Hunt controls, `MapCommand`, arrow/`s`/`h` key accelerators.
 - `src/gui/{experiment,craft,disassemble,quests}.rs` — one `render` per tab.
 - `src/i18n/locales/{en,pl}/main.ftl` — `action-*` / `gui-hint*` gui strings.
 - `src/viewmodel/map.rs` — `TileView`, `tile_views`, `terrain_rgb`

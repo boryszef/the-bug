@@ -190,6 +190,48 @@ impl Game {
         self.map.update_tile_last_search_time(coords);
     }
 
+    /// Hunts the player's current tile: needs a Wooden Bow held (kept) and
+    /// spends one Arrow, then rolls the tile's game. Like `search` there's no
+    /// terrain gate — a tile with no fauna just comes back empty. Counts as one
+    /// hunt toward an open quest whether or not it brought anything back.
+    pub fn hunt(&mut self) {
+        let coords = self.player.coordinates;
+        if self.map.get_tile(coords).is_none() {
+            return;
+        }
+        if !self.player.has_item(Item::WoodenBow) {
+            self.log(EventKind::HuntUnprepared {
+                missing: Item::WoodenBow,
+            });
+            return;
+        }
+        if !self.player.has_item(Item::Arrow) {
+            self.log(EventKind::HuntUnprepared {
+                missing: Item::Arrow,
+            });
+            return;
+        }
+        self.player.spend(Item::Arrow, 1);
+
+        let bag = self
+            .map
+            .get_tile(coords)
+            .expect("checked above")
+            .roll_hunted_items(&mut rand::rng());
+        if bag.is_empty() {
+            self.log(EventKind::HuntMissed);
+        } else {
+            for &item in &bag {
+                self.player.add_to_inventory(item, 1);
+            }
+            self.log(EventKind::Hunted {
+                items: bag.iter().map(|&item| (item, 1)).collect(),
+            });
+        }
+        self.map.update_tile_last_hunt_time(coords);
+        self.note_quest_event(EventTypeID::Hunt);
+    }
+
     pub fn craft(&mut self, recipe_name: &str) {
         let Some(recipe) = self.player.find_known_recipe(recipe_name) else {
             self.log(EventKind::UnknownRecipe {
@@ -621,13 +663,11 @@ mod tests {
         let mut game = Game::default();
         let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
         game.map.tiles[ty][tx] = MapTile {
-            terrain_type: TerrainType::Forest,
-            poi: Some(Poi::Cave),
             items: HashMap::from([
                 (Item::Stick, (1.0, FoundIn::Terrain(TerrainType::Forest))),
                 (Item::Stone, (1.0, FoundIn::Poi(Poi::Cave))),
             ]),
-            last_search_time: None,
+            ..MapTile::with_terrain_and_poi(TerrainType::Forest, Some(Poi::Cave))
         };
         let before = game.events().len();
 
@@ -646,6 +686,81 @@ mod tests {
             .collect();
         assert!(sources.contains(&FoundIn::Terrain(TerrainType::Forest)));
         assert!(sources.contains(&FoundIn::Poi(Poi::Cave)));
+    }
+
+    /// Puts the player on a Meadow tile whose game is a sure thing (every
+    /// probability forced to `1.0`) and hands them a bow, so a hunt's outcome
+    /// turns only on whether they have an arrow.
+    fn armed_on_a_meadow() -> Game {
+        let mut game = Game::default();
+        let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
+        let mut tile = MapTile::with_terrain(TerrainType::Meadow);
+        for probability in tile.hunt_items.values_mut() {
+            *probability = 1.0;
+        }
+        game.map.tiles[ty][tx] = tile;
+        game.player.inventory.insert(Item::WoodenBow, 1);
+        game
+    }
+
+    #[test]
+    fn hunt_without_a_bow_logs_unprepared_and_spends_nothing() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Arrow, 3);
+
+        game.hunt();
+
+        assert_eq!(
+            last_event(&game).kind(),
+            &EventKind::HuntUnprepared {
+                missing: Item::WoodenBow
+            }
+        );
+        assert_eq!(game.player.inventory.get(&Item::Arrow), Some(&3));
+    }
+
+    #[test]
+    fn hunt_without_arrows_logs_unprepared() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::WoodenBow, 1);
+
+        game.hunt();
+
+        assert_eq!(
+            last_event(&game).kind(),
+            &EventKind::HuntUnprepared {
+                missing: Item::Arrow
+            }
+        );
+    }
+
+    #[test]
+    fn a_successful_hunt_spends_one_arrow_keeps_the_bow_and_logs_the_haul() {
+        let mut game = armed_on_a_meadow();
+        game.player.inventory.insert(Item::Arrow, 2);
+
+        game.hunt();
+
+        assert_eq!(game.player.inventory.get(&Item::Arrow), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::WoodenBow), Some(&1));
+        for item in [Item::Meat, Item::Hide, Item::Bone, Item::Fur] {
+            assert_eq!(game.player.inventory.get(&item), Some(&1), "{item:?}");
+        }
+        assert!(matches!(last_event(&game).kind(), EventKind::Hunted { .. }));
+    }
+
+    #[test]
+    fn a_hunt_that_catches_nothing_still_spends_the_arrow_and_logs_a_miss() {
+        let mut game = Game::default();
+        let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
+        game.map.tiles[ty][tx] = MapTile::with_terrain(TerrainType::Deadland);
+        game.player.inventory.insert(Item::WoodenBow, 1);
+        game.player.inventory.insert(Item::Arrow, 1);
+
+        game.hunt();
+
+        assert_eq!(game.player.inventory.get(&Item::Arrow), None);
+        assert_eq!(last_event(&game).kind(), &EventKind::HuntMissed);
     }
 
     #[test]

@@ -10,13 +10,13 @@
   * Players "bag" should have a limited size, when full, the player should take their findings to the village and deposit them in the storage
 * EPIC: the story
   * add more quests
-  * items should become enhancers and can be used in the game: bow allows to hunt, axe allows to chop wood, metal detector improves the odds of finding metal-containing items, arrows are needed for hunting and get spent during the process of hunting
-  * implement hunting: player needs a bow and arrows. Hunting is possible on meadows and in the forest; it is activated by pressing `[h]` and uses one arrow each time. Hunting, like searching, gives some items with certain probability: meat, bone, hide, fur.
+  * items should become enhancers and can be used in the game: axe allows to chop wood, metal detector improves the odds of finding metal-containing items (bow→hunt / arrows-spent done)
 
 ## DONE
 
 * EPIC: the story
   * name of the quest should refer to the part of the story it tells, not the product or task
+  * implement hunting: `h` on the Map tab, needs a bow held + spends an arrow, yields meat/bone/hide/fur on meadow/forest (docs/hunting.md)
 * BUG: "Znajdujesz Plastikowa Butelka" -> "Znajdujesz Plastikową Butelkę" (accusative)
 * BUG: arrow glyph in the event text does not render in egui (box instead of arrow)
 * craft menu should show what items are missing for a recipe, eg. Coil: 10/2 Copper Wire, 0/1 Plastic Bottle (meaning "have/need item")

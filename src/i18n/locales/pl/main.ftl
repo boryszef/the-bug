@@ -23,6 +23,9 @@ event-experimented = Eksperyment: { $items } -> { $output }{ $newly_learned ->
    *[no] {""}
 }
 event-disassembled = Rozbierasz { $item }, odzyskując { $recovered }.
+event-hunted = Polowanie: { $items }.
+event-hunt-missed = Polowanie: zwierzyna uciekła.
+event-hunt-unprepared = Potrzebujesz { $missing }, aby polować.
 
 ## Item names (nominative), with a `.genitive` attribute (singular), a
 ## `.genitive-plural` attribute — the latter is what the "not enough X"
@@ -134,6 +137,22 @@ item-steel-bolt = Stalowy Nit
     .genitive = stalowego nitu
     .genitive-plural = stalowych nitów
     .accusative = stalowy nit
+item-meat = Mięso
+    .genitive = mięsa
+    .genitive-plural = mięsa
+    .accusative = Mięso
+item-bone = Kość
+    .genitive = kości
+    .genitive-plural = kości
+    .accusative = Kość
+item-hide = Skóra
+    .genitive = skóry
+    .genitive-plural = skór
+    .accusative = Skórę
+item-fur = Futro
+    .genitive = futra
+    .genitive-plural = futer
+    .accusative = Futro
 
 ## Terrain names (nominative), with a `.locative` attribute (the full
 ## prepositional phrase, e.g. "w lesie" for "in the Forest") used by
@@ -211,7 +230,7 @@ quests-completed = Ukończone: { $names }
 
 ## Footer key hints, one per panel.
 
-footer-map = ←↑↓→ ruch   s szukaj   [ ] panel   q wyjście
+footer-map = ←↑↓→ ruch   s szukaj   h poluj   [ ] panel   q wyjście
 footer-experiment = ↑↓ ruch   ←→ dodaj/usuń   Tab zmień kolumnę   e uruchom   [ ] panel   q wyjście
 footer-craft = ↑↓ ruch   Enter wytwórz   [ ] panel   q wyjście
 footer-disassemble = ↑↓ ruch   Enter rozłóż   [ ] panel   q wyjście
@@ -223,5 +242,6 @@ action-quit = Wyjście (q)
 action-experiment = Eksperymentuj
 action-accept = Przyjmij
 action-search = Szukaj (s)
+action-hunt = Poluj (h)
 gui-hint = [ ] zmiana kart   q wyjście
 gui-hint-map = przeciągnij, aby przesunąć   przewiń, aby przybliżyć

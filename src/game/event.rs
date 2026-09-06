@@ -47,6 +47,13 @@ pub enum EventKind {
     /// Took `item` apart, recovering the consumables of the recipe it decomposes
     /// into.
     Disassembled { item: Item },
+    /// Came back from a hunt with `items` (one of each).
+    Hunted { items: Vec<(Item, u32)> },
+    /// Loosed an arrow on a hunt but brought nothing back — bad luck, or a
+    /// tile with no game (deadland).
+    HuntMissed,
+    /// Tried to hunt without the gear: `missing` is the Wooden Bow or an Arrow.
+    HuntUnprepared { missing: Item },
 }
 
 /// One entry in the event log: what happened, and how far into the session

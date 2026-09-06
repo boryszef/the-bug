@@ -22,8 +22,9 @@ overlays on top of a fixed Map view.
   whichever panel is active, replacing the old Help popup and the `?` key
   entirely (there is no help screen/panel anymore — the footer *is* help).
 - `q` quits immediately, from any panel.
-- Movement (arrow keys) and search (`s`) only respond while the Map panel
-  is active — arrows are needed for list navigation on the other panels.
+- Movement (arrow keys), search (`s`) and hunt (`h`) only respond while the
+  Map panel is active — arrows are needed for list navigation on the other
+  panels.
 - Craft/Disassemble/Experiment keep their exact existing interaction
   (cursor movement, Experiment's `Tab`-based Available/Selected column
   focus, confirm keys) unchanged — only *how* they're framed on screen

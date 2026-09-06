@@ -155,6 +155,7 @@ impl eframe::App for App {
                 match command {
                     Some(MapCommand::Walk(dir)) => self.game.walk(dir),
                     Some(MapCommand::Search) => self.game.search(),
+                    Some(MapCommand::Hunt) => self.game.hunt(),
                     None => {}
                 }
             }
@@ -282,7 +283,7 @@ fn render_events(game: &Game, lang: Language, ui: &mut Ui) {
 fn event_color(kind: &EventKind) -> Option<Color32> {
     match kind {
         EventKind::Awoke => None,
-        EventKind::Found { .. } => Some(Color32::GREEN),
+        EventKind::Found { .. } | EventKind::Hunted { .. } => Some(Color32::GREEN),
         EventKind::QuestAccepted { .. } | EventKind::QuestCompleted { .. } => {
             Some(Color32::MAGENTA)
         }
@@ -290,7 +291,9 @@ fn event_color(kind: &EventKind) -> Option<Color32> {
         | EventKind::CraftShortage { .. }
         | EventKind::CraftMissingTool { .. }
         | EventKind::Crafted { .. }
-        | EventKind::Disassembled { .. } => Some(Color32::YELLOW),
+        | EventKind::Disassembled { .. }
+        | EventKind::HuntMissed
+        | EventKind::HuntUnprepared { .. } => Some(Color32::YELLOW),
         EventKind::ExperimentShortage { .. }
         | EventKind::ExperimentFailed { .. }
         | EventKind::Experimented { .. } => Some(Color32::CYAN),
