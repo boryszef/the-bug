@@ -22,8 +22,8 @@ const MEADOW_PERCENT: f64 = 100.0 * 30.0 / 90.0;
 const FOREST_PERCENT: f64 = 100.0 * 20.0 / 90.0;
 /// POI density as a fraction of the tile count (kept from the old scatter
 /// weights): the count scales with the map so density stays constant by level.
-const CAVE_FRACTION: f64 = 0.07;
-const RUINS_FRACTION: f64 = 0.03;
+const CAVE_FRACTION: f64 = 0.05;
+const RUINS_FRACTION: f64 = 0.02;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum Direction {
@@ -122,6 +122,7 @@ const POI_ITEMS: &[(Poi, Item, f64)] = &[
     (Poi::Ruins, Item::CopperWire, 0.2),
     (Poi::Ruins, Item::PlasticBottle, 0.2),
     (Poi::Ruins, Item::Umbrella, 0.2),
+    (Poi::Ruins, Item::ElectronicToy, 0.1),
 ];
 
 /// Everything a tile can yield on a search: its terrain's items plus its POI's,
