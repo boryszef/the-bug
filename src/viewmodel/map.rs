@@ -29,17 +29,36 @@ pub struct TileView {
 /// share one descriptor.
 #[cfg(feature = "gui")]
 pub fn tile_views(map: &Map) -> impl Iterator<Item = TileView> + '_ {
-    world_tiles(map).map(move |((wx, wy), tile)| TileView {
-        world: (wx, wy),
+    world_tiles(map).map(move |(world, tile)| tile_view(map, world, tile))
+}
+
+/// The [`TileView`] for the tile at `world`, or `None` if that coordinate is
+/// off the map. Used to name the terrain / POI the player is standing on.
+#[cfg(feature = "gui")]
+pub fn tile_at(map: &Map, world: (i32, i32)) -> Option<TileView> {
+    map.get_tile(world).map(|tile| tile_view(map, world, tile))
+}
+
+#[cfg(feature = "gui")]
+fn tile_view(map: &Map, world: (i32, i32), tile: &MapTile) -> TileView {
+    TileView {
+        world,
         terrain: tile.terrain_type,
         poi: tile.poi,
-        neighbours: [
-            map.get_tile((wx, wy + 1)).map(|t| t.terrain_type), // North
-            map.get_tile((wx + 1, wy)).map(|t| t.terrain_type), // East
-            map.get_tile((wx, wy - 1)).map(|t| t.terrain_type), // South
-            map.get_tile((wx - 1, wy)).map(|t| t.terrain_type), // West
-        ],
-    })
+        neighbours: neighbours(map, world),
+    }
+}
+
+/// Terrain of the four orthogonally-adjacent tiles — `[N, E, S, W]` in world
+/// space, `None` past the map edge.
+#[cfg(feature = "gui")]
+fn neighbours(map: &Map, (wx, wy): (i32, i32)) -> [Option<TerrainType>; 4] {
+    [
+        map.get_tile((wx, wy + 1)).map(|t| t.terrain_type), // North
+        map.get_tile((wx + 1, wy)).map(|t| t.terrain_type), // East
+        map.get_tile((wx, wy - 1)).map(|t| t.terrain_type), // South
+        map.get_tile((wx - 1, wy)).map(|t| t.terrain_type), // West
+    ]
 }
 
 /// The fill colour for a terrain type, as raw `(r, g, b)` so the palette
@@ -112,6 +131,24 @@ mod tests {
             .expect("a tile at the origin");
 
         assert_eq!(origin.poi, Some(Poi::Village));
+    }
+
+    #[cfg(feature = "gui")]
+    #[test]
+    fn tile_at_returns_the_village_at_the_origin() {
+        let map = Map::new(&Player::default());
+
+        let here = tile_at(&map, (0, 0)).expect("the origin is on the map");
+
+        assert_eq!(here.world, (0, 0));
+        assert_eq!(here.poi, Some(Poi::Village));
+    }
+
+    #[cfg(feature = "gui")]
+    #[test]
+    fn tile_at_is_none_past_the_map_edge() {
+        let map = Map::new(&Player::default());
+        assert!(tile_at(&map, (9999, 9999)).is_none());
     }
 
     #[cfg(feature = "gui")]

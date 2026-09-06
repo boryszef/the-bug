@@ -128,14 +128,14 @@ pub fn event(kind: &EventKind, lang: Language) -> String {
             match source {
                 FoundIn::Terrain(terrain) => {
                     let place = match lang {
-                        Language::English => terrain_name(*terrain, lang),
+                        Language::English => self::terrain(*terrain, lang),
                         Language::Polish => terrain_attr(*terrain, "locative", lang),
                     };
                     fl!(loader, "event-found", item = item, terrain = place)
                 }
                 FoundIn::Poi(poi) => {
                     let place = match lang {
-                        Language::English => poi_name(*poi, lang),
+                        Language::English => self::poi(*poi, lang),
                         Language::Polish => poi_attr(*poi, "locative", lang),
                     };
                     fl!(loader, "event-found-poi", item = item, poi = place)
@@ -308,7 +308,8 @@ fn terrain_id(terrain: TerrainType) -> &'static str {
     }
 }
 
-fn terrain_name(terrain: TerrainType, lang: Language) -> String {
+/// A terrain type's display name in the nominative (e.g. `"Forest"`).
+pub fn terrain(terrain: TerrainType, lang: Language) -> String {
     lang.loader().get(terrain_id(terrain))
 }
 
@@ -326,7 +327,8 @@ fn poi_id(poi: Poi) -> &'static str {
     }
 }
 
-fn poi_name(poi: Poi, lang: Language) -> String {
+/// A point of interest's display name in the nominative (e.g. `"Cave"`).
+pub fn poi(poi: Poi, lang: Language) -> String {
     lang.loader().get(poi_id(poi))
 }
 

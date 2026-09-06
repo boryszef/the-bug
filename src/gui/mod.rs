@@ -144,10 +144,12 @@ impl eframe::App for App {
 
         egui::CentralPanel::default().show(ui, |ui| match self.panel {
             Panel::Map => {
+                let here = viewmodel::map::tile_at(&self.game.map, self.game.player.coordinates);
                 let command = self.map_view.ui(
                     ui,
                     viewmodel::map::tile_views(&self.game.map),
                     self.game.player.coordinates,
+                    here,
                     self.language,
                 );
                 match command {

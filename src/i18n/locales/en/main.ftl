@@ -128,6 +128,6 @@ footer-quests = ↑↓ move   Enter accept   [ ] panel   q quit
 action-quit = Quit (q)
 action-experiment = Run experiment
 action-accept = Accept
-action-search = Search
+action-search = Search (s)
 gui-hint = [ ] switch tabs   q quit
 gui-hint-map = drag to pan   scroll to zoom

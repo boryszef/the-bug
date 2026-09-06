@@ -77,6 +77,7 @@ impl MapView {
         ui: &mut Ui,
         tiles: impl Iterator<Item = TileView>,
         player: (i32, i32),
+        current: Option<TileView>,
         lang: Language,
     ) -> Option<MapCommand> {
         let mut command = None;
@@ -99,6 +100,16 @@ impl MapView {
                 command = Some(MapCommand::Search);
             }
         });
+
+        // What the player is standing on, in words.
+        if let Some(tile) = &current {
+            let mut here = i18n::terrain(tile.terrain, lang);
+            if let Some(poi) = tile.poi {
+                here.push_str("  ·  ");
+                here.push_str(&i18n::poi(poi, lang));
+            }
+            ui.label(here);
+        }
 
         let (response, painter) = ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
         let viewport = response.rect;

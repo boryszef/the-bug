@@ -222,6 +222,6 @@ footer-quests = ↑↓ ruch   Enter przyjmij   [ ] panel   q wyjście
 action-quit = Wyjście (q)
 action-experiment = Eksperymentuj
 action-accept = Przyjmij
-action-search = Szukaj
+action-search = Szukaj (s)
 gui-hint = [ ] zmiana kart   q wyjście
 gui-hint-map = przeciągnij, aby przesunąć   przewiń, aby przybliżyć
