@@ -480,7 +480,7 @@ mod tests {
         assert_eq!(game.quest_progress(), (0, QUESTS.len()));
 
         game.player
-            .restore_quest_state(None, 0, vec![QuestID::CraftArrows]);
+            .restore_quest_state(None, 0, vec![QuestID::CraftAxe]);
         assert_eq!(game.quest_progress(), (1, QUESTS.len()));
     }
 
@@ -663,15 +663,24 @@ mod tests {
     // --- Quest system -----------------------------------------------------
 
     const FIXTURE_QUEST: Quest = Quest {
-        id: QuestID::CraftArrows,
+        id: QuestID::CraftAxe,
         dependencies: &[QuestID::ExploreRuins],
         condition: QuestCondition {
-            event: EventTypeID::CraftItem(Item::Arrow),
+            event: EventTypeID::CraftItem(Item::StoneAxe),
             count: 1,
         },
         reward_xp: 7,
         reward_items: &[(Item::Cord, 2)],
     };
+
+    /// A game with `ExploreRuins` already completed, so the axe quest — which
+    /// depends on it — can be accepted.
+    fn game_with_the_axe_quest_unlocked() -> Game {
+        let mut game = Game::default();
+        game.player
+            .restore_quest_state(None, 0, vec![QuestID::ExploreRuins]);
+        game
+    }
 
     #[test]
     fn complete_open_quest_grants_reward_and_resets_quest_state() {
@@ -698,17 +707,17 @@ mod tests {
     #[test]
     fn accept_quest_succeeds_for_an_available_quest() {
         let mut game = Game::default();
-        assert_eq!(game.accept_quest(QuestID::CraftArrows), Ok(()));
-        assert_eq!(game.player.open_quest(), Some(QuestID::CraftArrows));
+        assert_eq!(game.accept_quest(QuestID::ExploreRuins), Ok(()));
+        assert_eq!(game.player.open_quest(), Some(QuestID::ExploreRuins));
         assert_eq!(game.player.quest_progress(), 0);
     }
 
     #[test]
     fn accept_quest_rejects_a_second_concurrent_quest() {
         let mut game = Game::default();
-        game.accept_quest(QuestID::CraftArrows).unwrap();
+        game.accept_quest(QuestID::ExploreRuins).unwrap();
         assert_eq!(
-            game.accept_quest(QuestID::ExploreRuins),
+            game.accept_quest(QuestID::CraftAxe),
             Err(QuestError::AnotherQuestActive)
         );
     }
@@ -717,61 +726,85 @@ mod tests {
     fn accept_quest_rejects_an_already_completed_quest() {
         let mut game = Game::default();
         game.player
-            .restore_quest_state(None, 0, vec![QuestID::CraftArrows]);
+            .restore_quest_state(None, 0, vec![QuestID::CraftAxe]);
         assert_eq!(
-            game.accept_quest(QuestID::CraftArrows),
+            game.accept_quest(QuestID::CraftAxe),
             Err(QuestError::AlreadyCompleted)
         );
     }
 
     #[test]
-    fn available_quests_excludes_the_open_and_completed_quests() {
+    fn accept_quest_rejects_a_quest_with_unmet_dependencies() {
         let mut game = Game::default();
-        assert_eq!(game.available_quests().len(), QUESTS.len());
-
-        game.accept_quest(QuestID::CraftArrows).unwrap();
-        let available: Vec<QuestID> = game.available_quests().iter().map(|q| q.id).collect();
-        assert!(!available.contains(&QuestID::CraftArrows));
+        assert_eq!(
+            game.accept_quest(QuestID::CraftAxe),
+            Err(QuestError::DependenciesNotMet)
+        );
     }
 
     #[test]
-    fn crafting_the_target_item_enough_times_completes_the_quest() {
-        let mut game = Game::default();
-        game.player.grant_recipe("Arrow");
-        game.player.inventory.insert(Item::Stick, 5);
-        game.accept_quest(QuestID::CraftArrows).unwrap();
+    fn available_quests_tracks_open_completed_and_dependencies() {
+        let ids = |game: &Game| -> Vec<QuestID> {
+            game.available_quests().iter().map(|q| q.id).collect()
+        };
 
-        for _ in 0..5 {
-            game.craft("Arrow");
-        }
+        let mut game = Game::default();
+        // only the dependency-free quest is available at the start
+        assert_eq!(ids(&game), [QuestID::ExploreRuins]);
+
+        game.accept_quest(QuestID::ExploreRuins).unwrap();
+        assert!(ids(&game).is_empty(), "the open quest drops off the list");
+
+        game.player
+            .restore_quest_state(None, 0, vec![QuestID::ExploreRuins]);
+        // completing it takes it off the list and unlocks its dependent
+        assert_eq!(ids(&game), [QuestID::CraftAxe]);
+    }
+
+    #[test]
+    fn crafting_the_target_item_completes_the_quest() {
+        let mut game = game_with_the_axe_quest_unlocked();
+        game.player.grant_recipe("Stone Axe");
+        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Stone, 1);
+        game.player.inventory.insert(Item::Cord, 1);
+        game.accept_quest(QuestID::CraftAxe).unwrap();
+
+        game.craft("Stone Axe");
 
         assert_eq!(game.player.open_quest(), None);
-        assert_eq!(game.player.completed_quests(), [QuestID::CraftArrows]);
+        assert_eq!(
+            game.player.completed_quests(),
+            [QuestID::ExploreRuins, QuestID::CraftAxe]
+        );
         assert_eq!(game.player.experience, 20);
     }
 
     #[test]
     fn crafting_a_different_item_does_not_advance_quest_progress() {
-        let mut game = Game::default();
+        let mut game = game_with_the_axe_quest_unlocked();
         game.player.grant_recipe("Cord");
         game.player.inventory.insert(Item::Vine, 2);
-        game.accept_quest(QuestID::CraftArrows).unwrap();
+        game.accept_quest(QuestID::CraftAxe).unwrap();
 
         game.craft("Cord");
 
         assert_eq!(game.player.quest_progress(), 0);
-        assert_eq!(game.player.open_quest(), Some(QuestID::CraftArrows));
+        assert_eq!(game.player.open_quest(), Some(QuestID::CraftAxe));
     }
 
     #[test]
-    fn experimenting_the_target_item_also_advances_quest_progress() {
-        let mut game = Game::default();
+    fn experimenting_the_target_item_also_counts_toward_the_quest() {
+        let mut game = game_with_the_axe_quest_unlocked();
         game.player.inventory.insert(Item::Stick, 1);
-        game.accept_quest(QuestID::CraftArrows).unwrap();
+        game.player.inventory.insert(Item::Stone, 1);
+        game.player.inventory.insert(Item::Cord, 1);
+        game.accept_quest(QuestID::CraftAxe).unwrap();
 
-        game.experiment(&[(Item::Stick, 1)]);
+        game.experiment(&[(Item::Stick, 1), (Item::Stone, 1), (Item::Cord, 1)]);
 
-        assert_eq!(game.player.quest_progress(), 1);
+        // experimenting the target item advances the quest, same as crafting it
+        assert!(game.player.completed_quests().contains(&QuestID::CraftAxe));
     }
 
     #[test]

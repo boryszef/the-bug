@@ -6,7 +6,7 @@ Shown in the Player panel:
 Level: 1
 XP: 25
 Recipes: 2/4
-Inventory: Stick 3, Vine 2
+Inventory: Branch 3, Vine 2
 ```
 
 ## Recipe ratio

@@ -21,7 +21,7 @@ The Events pane shows recent things that have happened, newest first.
 | Action | Category | Example |
 |---|---|---|
 | Waking up | General | `You wake up and decide to go for a walk.` |
-| Searching a tile | General | `You find a Stick in the Forest.` |
+| Searching a tile | General | `You find a Branch in the Forest.` |
 | Crafting | Crafting | `You craft a Cord.` / `You don't have enough Vine to craft a Cord.` |
 | Experimenting | Experiment | see below |
 | **Walking** | — | *not logged* |
@@ -31,7 +31,7 @@ The Events pane shows recent things that have happened, newest first.
 ```
 Experiment: 2 Vine → Cord (new recipe!)
 Experiment: 2 Vine → Cord
-Experiment: 1 Stick + 1 Vine → nothing
+Experiment: 1 Branch + 1 Vine → nothing
 Experiment: 5 Stone → not enough Stone (have 1, need 5)
 ```
 

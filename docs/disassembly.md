@@ -38,7 +38,7 @@ removes one of that item and returns the recipe's inputs to the inventory, then
 logs a precise line under the **Crafting** category (yellow):
 
 ```
-[03:12] You take apart a Stone Axe, recovering 1 Stick + 1 Stone + 1 Cord.
+[03:12] You take apart a Stone Axe, recovering 1 Branch + 1 Stone + 1 Cord.
 ```
 
 Components are rendered by the existing `describe_items`, sorted by `Item`

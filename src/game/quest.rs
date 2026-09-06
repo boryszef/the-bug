@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QuestID {
-    CraftArrows,
+    CraftAxe,
     ExploreRuins,
 }
 
@@ -57,7 +57,7 @@ pub struct Quest {
 
 impl Quest {
     /// Occurrences of the condition's event needed to complete this quest —
-    /// the progress goal (e.g. the `5` in "craft 5 arrows").
+    /// the progress goal (e.g. the `1` in "craft one stone axe").
     pub fn goal(&self) -> u32 {
         self.condition.count
     }
@@ -75,7 +75,7 @@ pub(super) const QUESTS: &[Quest] = &[
         reward_items: &[],
     },
     Quest {
-        id: QuestID::CraftArrows,
+        id: QuestID::CraftAxe,
         dependencies: &[QuestID::ExploreRuins],
         condition: QuestCondition {
             event: EventTypeID::CraftItem(Item::StoneAxe),
@@ -105,10 +105,10 @@ mod tests {
     use super::*;
 
     const FIXTURE_QUEST: Quest = Quest {
-        id: QuestID::CraftArrows,
+        id: QuestID::CraftAxe,
         dependencies: &[QuestID::ExploreRuins],
         condition: QuestCondition {
-            event: EventTypeID::CraftItem(Item::Arrow),
+            event: EventTypeID::CraftItem(Item::StoneAxe),
             count: 1,
         },
         reward_xp: 7,

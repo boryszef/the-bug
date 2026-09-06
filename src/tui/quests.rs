@@ -175,7 +175,7 @@ mod tests {
     fn enter_on_empty_available_list_stays() {
         let mut game = Game::default();
         game.player
-            .restore_quest_state(None, 0, vec![QuestID::CraftArrows, QuestID::ExploreRuins]);
+            .restore_quest_state(None, 0, vec![QuestID::CraftAxe, QuestID::ExploreRuins]);
         let overview = quests::overview(&game);
         let mut panel = Quests::default();
 
@@ -185,7 +185,7 @@ mod tests {
     #[test]
     fn keys_are_ignored_while_a_quest_is_active() {
         let mut game = Game::default();
-        game.accept_quest(QuestID::CraftArrows).unwrap();
+        game.accept_quest(QuestID::ExploreRuins).unwrap();
         let overview = quests::overview(&game);
         let mut panel = Quests::default();
 

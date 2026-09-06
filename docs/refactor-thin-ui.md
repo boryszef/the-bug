@@ -27,7 +27,7 @@ and overlay orchestration.
   for the map glyph. `MapTile: Display` and map rendering use `symbol()`.
 - Game event strings use `{}` (Display) instead of `{:?}` for `Item` /
   `TerrainType`.
-- Player pane shows the inventory as `"Stick 1, Stone 3"` (sorted, Display)
+- Player pane shows the inventory as `"Branch 1, Stone 3"` (sorted, Display)
   instead of the `HashMap` Debug output.
 
 ### Structural move (commit 2)

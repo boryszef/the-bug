@@ -319,7 +319,7 @@ fn poi_attr(poi: Poi, attr: &str, lang: Language) -> String {
 
 pub fn quest_name(id: QuestID, lang: Language) -> String {
     let key = match id {
-        QuestID::CraftArrows => "quest-craft-arrows-name",
+        QuestID::CraftAxe => "quest-craft-axe-name",
         QuestID::ExploreRuins => "quest-explore-ruins-name",
     };
     lang.loader().get(key)
@@ -327,7 +327,7 @@ pub fn quest_name(id: QuestID, lang: Language) -> String {
 
 pub fn quest_description(id: QuestID, lang: Language) -> String {
     let key = match id {
-        QuestID::CraftArrows => "quest-craft-arrows-description",
+        QuestID::CraftAxe => "quest-craft-axe-description",
         QuestID::ExploreRuins => "quest-explore-ruins-description",
     };
     lang.loader().get(key)
@@ -468,10 +468,10 @@ mod tests {
                 source: FoundIn::Poi(Poi::Cave),
             },
             EventKind::QuestAccepted {
-                quest: QuestID::CraftArrows,
+                quest: QuestID::CraftAxe,
             },
             EventKind::QuestCompleted {
-                quest: QuestID::CraftArrows,
+                quest: QuestID::CraftAxe,
             },
             EventKind::UnknownRecipe {
                 recipe: "Widget".to_string(),
@@ -533,7 +533,7 @@ mod tests {
 
     #[test]
     fn quest_text_renders_in_every_language() {
-        for id in [QuestID::CraftArrows, QuestID::ExploreRuins] {
+        for id in [QuestID::CraftAxe, QuestID::ExploreRuins] {
             for lang in [Language::English, Language::Polish] {
                 assert!(!quest_name(id, lang).is_empty());
                 assert!(!quest_description(id, lang).is_empty());

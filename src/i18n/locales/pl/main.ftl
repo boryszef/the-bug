@@ -156,8 +156,8 @@ poi-village = Wieś
 
 ## Quest name/description.
 
-quest-craft-arrows-name = Kłopoty na wschodzie
-quest-craft-arrows-description = Coś znów szykuje się na wschodzie. Od jakiegoś czasu było spokojnie, ale doświadczenie pokazuje, że kłopoty zawsze nadchodzą z tamtej strony. Cokolwiek to jest, lepiej się przygotuj! Idź do lasu, na łąkę i do jaskini, zbierz materiały, a potem poeksperymentuj z nimi i naucz się jak zrobić kamienną siekierę.
+quest-craft-axe-name = Kłopoty na wschodzie
+quest-craft-axe-description = Coś znów szykuje się na wschodzie. Od jakiegoś czasu było spokojnie, ale doświadczenie pokazuje, że kłopoty zawsze nadchodzą z tamtej strony. Cokolwiek to jest, lepiej się przygotuj! Idź do lasu, na łąkę i do jaskini, zbierz materiały, a potem poeksperymentuj z nimi i naucz się jak zrobić kamienną siekierę.
 quest-explore-ruins-name = Cywilizacja Cyfrowa
 quest-explore-ruins-description = Przejezdny podróżny wspomniał o pobliskich ruinach, podobno usianych starymi przedmiotami. Podobno na tych równinach znajdowało się niegdyś kilka wiosek - pozostałości wielkiej cywilizacji sprzed 500 lat — "Cywilizacji Cyfrowej", jak nazywają ją odkrywcy. Powinieneś zobaczyć to na własne oczy.
 

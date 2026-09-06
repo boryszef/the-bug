@@ -362,11 +362,11 @@ mod tests {
     fn open_quest_and_progress_survive_round_trip() {
         let mut game = Game::default();
         game.player
-            .restore_quest_state(Some(QuestID::CraftArrows), 3, vec![]);
+            .restore_quest_state(Some(QuestID::CraftAxe), 3, vec![]);
 
         let restored = roundtrip(&game);
 
-        assert_eq!(restored.player.open_quest(), Some(QuestID::CraftArrows));
+        assert_eq!(restored.player.open_quest(), Some(QuestID::CraftAxe));
         assert_eq!(restored.player.quest_progress(), 3);
     }
 
@@ -374,13 +374,13 @@ mod tests {
     fn completed_quests_survive_round_trip() {
         let mut game = Game::default();
         game.player
-            .restore_quest_state(None, 0, vec![QuestID::CraftArrows, QuestID::ExploreRuins]);
+            .restore_quest_state(None, 0, vec![QuestID::CraftAxe, QuestID::ExploreRuins]);
 
         let restored = roundtrip(&game);
 
         assert_eq!(
             restored.player.completed_quests(),
-            [QuestID::CraftArrows, QuestID::ExploreRuins]
+            [QuestID::CraftAxe, QuestID::ExploreRuins]
         );
     }
 
