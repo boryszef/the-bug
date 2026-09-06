@@ -11,7 +11,8 @@ the experiment popup was built (see `refactor-thin-ui.md`). The crafting backend
 `c` opens a **Craft popup** listing the recipes the player has discovered
 (`Player::known_recipes`). The player scrolls with `↑`/`↓` and confirms with
 `Enter` (or `c`); `Esc`/`q` closes it. The picked recipe name is handed to
-`Game::craft`, which subtracts the inputs, adds the output, and logs the result.
+`Game::craft`, which subtracts the consumables, adds the output, and logs the
+result.
 
 Recipes the player cannot currently afford are shown **dimmed and are not
 selectable**. Whether a recipe is affordable is decided in
@@ -27,8 +28,8 @@ pub fn options(player: &Player) -> Vec<CraftOption>
 
 ## Scope
 
-- `src/game.rs`: `Recipe` made `pub` with `name()` / `inputs()` accessors;
-  `Player::known_recipes()`.
+- `src/game.rs`: `Recipe` made `pub` with `name()` / `consumables()` accessors
+  (`consumables()` was `inputs()` originally); `Player::known_recipes()`.
 - `src/viewmodel/crafting.rs`: `CraftOption`, `options()`.
 - `src/ui/craft.rs`: the overlay (`Craft`, `Outcome`).
 - `src/ui/app.rs`: `craft: Option<Craft>` field, `c` opens it, overlay dispatch
@@ -44,13 +45,16 @@ pub fn options(player: &Player) -> Vec<CraftOption>
 ## Update: show what's missing (later)
 
 The dimmed/enabled state alone didn't tell the player *what* they were short on.
-`CraftOption` now also carries `inputs: Vec<CraftInput { item, have, need }>`
-(with `met()`), still computed in `viewmodel::crafting::options`. The `gui`
-Craft tab keeps one row per recipe — the button, then each input as
-`have/need <item>` at the same text size, met ones muted and short ones in the
-error colour (`Coil  3/2 Copper Wire  0/1 Plastic Bottle`). The `tui` panel
-appends the same list to each row's text
-(`Coil  (3/2 Copper Wire, 0/1 Plastic Bottle)`).
+`CraftOption` now also carries
+`consumables: Vec<CraftConsumable { item, have, need }>` (with `met()`), still
+computed in `viewmodel::crafting::options`. The `gui` Craft tab keeps one row
+per recipe — the button, then each consumable as `have/need <item>` at the same
+text size, met ones muted and short ones in the error colour
+(`Coil  3/2 Copper Wire  0/1 Plastic Bottle`). The `tui` panel appends the same
+list to each row's text (`Coil  (3/2 Copper Wire, 0/1 Plastic Bottle)`).
+
+(`consumables` / `CraftConsumable` were `inputs` / `CraftInput` until recipes
+grew a second, non-consumed item list.)
 
 Paths since the original: `src/game/recipe.rs`, `src/viewmodel/crafting.rs`,
 `src/gui/craft.rs` (the `src/game.rs` / `src/ui/` names above predate the

@@ -223,7 +223,7 @@ pub fn event(kind: &EventKind, lang: Language) -> String {
         ),
         EventKind::Disassembled { item } => {
             let recovered = disassembly_for(*item)
-                .map(|recipe| describe_items(recipe.inputs(), lang))
+                .map(|recipe| describe_items(recipe.consumables(), lang))
                 .unwrap_or_default();
             fl!(
                 loader,

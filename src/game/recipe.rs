@@ -1,12 +1,12 @@
 use super::item::Item;
 
-/// Which way a recipe runs: whether its `inputs` can be assembled into the
+/// Which way a recipe runs: whether its `consumables` can be assembled into the
 /// `output`, taken back apart from it, or both.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum RecipeFlow {
-    /// Build the output from the inputs; it can't be taken back apart.
+    /// Build the output from the consumables; it can't be taken back apart.
     CraftOnly,
-    /// Build it, and also take it apart to recover the inputs.
+    /// Build it, and also take it apart to recover the consumables.
     Both,
     /// Only take it apart — a scavenged object whose parts don't reassemble.
     DisassembleOnly,
@@ -15,7 +15,7 @@ pub enum RecipeFlow {
 #[derive(Copy, Clone, Debug)]
 pub struct Recipe {
     name: &'static str,
-    inputs: &'static [(Item, u32)],
+    consumables: &'static [(Item, u32)],
     output: Item,
     flow: RecipeFlow,
 }
@@ -25,21 +25,22 @@ impl Recipe {
         self.name
     }
 
-    pub fn inputs(&self) -> &'static [(Item, u32)] {
-        self.inputs
+    /// The items consumed when the recipe runs.
+    pub fn consumables(&self) -> &'static [(Item, u32)] {
+        self.consumables
     }
 
     pub fn output(&self) -> Item {
         self.output
     }
 
-    /// Whether the output can be assembled from the inputs (drives crafting and
-    /// experiment discovery).
+    /// Whether the output can be assembled from the consumables (drives crafting
+    /// and experiment discovery).
     pub fn craftable(&self) -> bool {
         matches!(self.flow, RecipeFlow::CraftOnly | RecipeFlow::Both)
     }
 
-    /// Whether the output can be taken apart to recover the inputs (drives
+    /// Whether the output can be taken apart to recover the consumables (drives
     /// disassembly).
     pub fn disassemblable(&self) -> bool {
         matches!(self.flow, RecipeFlow::Both | RecipeFlow::DisassembleOnly)
@@ -55,37 +56,37 @@ impl PartialEq for Recipe {
 pub(super) const RECIPES: &[Recipe] = &[
     Recipe {
         name: "Arrow",
-        inputs: &[(Item::Stick, 1)],
+        consumables: &[(Item::Stick, 1)],
         output: Item::Arrow,
         flow: RecipeFlow::CraftOnly,
     },
     Recipe {
         name: "Wooden Bow",
-        inputs: &[(Item::Stick, 1), (Item::Cord, 1)],
+        consumables: &[(Item::Stick, 1), (Item::Cord, 1)],
         output: Item::WoodenBow,
         flow: RecipeFlow::Both,
     },
     Recipe {
         name: "Cord",
-        inputs: &[(Item::Vine, 2)],
+        consumables: &[(Item::Vine, 2)],
         output: Item::Cord,
         flow: RecipeFlow::CraftOnly,
     },
     Recipe {
         name: "Stone Axe",
-        inputs: &[(Item::Stick, 1), (Item::Stone, 1), (Item::Cord, 1)],
+        consumables: &[(Item::Stick, 1), (Item::Stone, 1), (Item::Cord, 1)],
         output: Item::StoneAxe,
         flow: RecipeFlow::Both,
     },
     Recipe {
         name: "Coil",
-        inputs: &[(Item::CopperWire, 2), (Item::PlasticBottle, 1)],
+        consumables: &[(Item::CopperWire, 2), (Item::PlasticBottle, 1)],
         output: Item::Coil,
         flow: RecipeFlow::CraftOnly,
     },
     Recipe {
         name: "Metal Detector",
-        inputs: &[
+        consumables: &[
             (Item::Coil, 1),
             (Item::Pole, 1),
             (Item::Speaker, 1),
@@ -96,7 +97,7 @@ pub(super) const RECIPES: &[Recipe] = &[
     },
     Recipe {
         name: "Solar Charger",
-        inputs: &[
+        consumables: &[
             (Item::CopperWire, 1),
             (Item::SolarPanel, 1),
             (Item::CircuitBoard, 1),
@@ -106,20 +107,20 @@ pub(super) const RECIPES: &[Recipe] = &[
     },
     Recipe {
         name: "Umbrella",
-        inputs: &[(Item::Fabric, 1), (Item::Pole, 1)],
+        consumables: &[(Item::Fabric, 1), (Item::Pole, 1)],
         output: Item::Umbrella,
         flow: RecipeFlow::DisassembleOnly,
     },
     Recipe {
         name: "Electronic Toy",
-        inputs: &[(Item::Battery, 1), (Item::Speaker, 1)],
+        consumables: &[(Item::Battery, 1), (Item::Speaker, 1)],
         output: Item::ElectronicToy,
         flow: RecipeFlow::DisassembleOnly,
     },
 ];
 
 /// The recipe that produces `output` and can be taken apart, if any. Drives
-/// disassembly: the player recovers that recipe's inputs.
+/// disassembly: the player recovers that recipe's consumables.
 pub(crate) fn disassembly_for(output: Item) -> Option<Recipe> {
     RECIPES
         .iter()
@@ -127,15 +128,15 @@ pub(crate) fn disassembly_for(output: Item) -> Option<Recipe> {
         .copied()
 }
 
-/// The craftable recipe whose inputs are exactly `items` (any order), if any.
-/// Drives experimenting: combining items that happen to match a recipe's
-/// inputs discovers (or reuses) it. Disassemble-only recipes are skipped —
+/// The craftable recipe whose consumables are exactly `items` (any order), if
+/// any. Drives experimenting: combining items that happen to match a recipe's
+/// consumables discovers (or reuses) it. Disassemble-only recipes are skipped —
 /// their outputs are scavenged, not built.
 pub(super) fn find_matching(items: &[(Item, u32)]) -> Option<&'static Recipe> {
     RECIPES.iter().find(|recipe| {
         recipe.craftable()
-            && recipe.inputs.len() == items.len()
-            && recipe.inputs.iter().all(|input| items.contains(input))
+            && recipe.consumables.len() == items.len()
+            && recipe.consumables.iter().all(|input| items.contains(input))
     })
 }
 
@@ -146,7 +147,7 @@ mod tests {
     fn recipe(flow: RecipeFlow) -> Recipe {
         Recipe {
             name: "x",
-            inputs: &[],
+            consumables: &[],
             output: Item::Stick,
             flow,
         }

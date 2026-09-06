@@ -2,15 +2,15 @@
 
 use crate::game::{Item, Player};
 
-/// One of a recipe's inputs, with how many the player has vs. needs.
-pub struct CraftInput {
+/// One of a recipe's consumables, with how many the player has vs. needs.
+pub struct CraftConsumable {
     pub item: Item,
     pub have: u32,
     pub need: u32,
 }
 
-impl CraftInput {
-    /// Whether the player has enough of this input.
+impl CraftConsumable {
+    /// Whether the player has enough of this consumable.
     pub fn met(&self) -> bool {
         self.have >= self.need
     }
@@ -22,9 +22,9 @@ pub struct CraftOption {
     /// key, not display text.
     pub id: &'static str,
     pub output: Item,
-    /// The recipe's inputs with the player's current stock, in recipe order.
-    pub inputs: Vec<CraftInput>,
-    /// The player currently holds every input in the required amount.
+    /// The recipe's consumables with the player's current stock, in recipe order.
+    pub consumables: Vec<CraftConsumable>,
+    /// The player currently holds every consumable in the required amount.
     pub enabled: bool,
 }
 
@@ -34,10 +34,10 @@ pub fn options(player: &Player) -> Vec<CraftOption> {
         .known_recipes()
         .iter()
         .map(|recipe| {
-            let inputs: Vec<CraftInput> = recipe
-                .inputs()
+            let consumables: Vec<CraftConsumable> = recipe
+                .consumables()
                 .iter()
-                .map(|&(item, need)| CraftInput {
+                .map(|&(item, need)| CraftConsumable {
                     item,
                     need,
                     have: player.inventory.get(&item).copied().unwrap_or(0),
@@ -46,8 +46,8 @@ pub fn options(player: &Player) -> Vec<CraftOption> {
             CraftOption {
                 id: recipe.name(),
                 output: recipe.output(),
-                enabled: inputs.iter().all(CraftInput::met),
-                inputs,
+                enabled: consumables.iter().all(CraftConsumable::met),
+                consumables,
             }
         })
         .collect()
@@ -64,7 +64,7 @@ mod tests {
     }
 
     #[test]
-    fn option_is_enabled_only_when_inputs_are_affordable() {
+    fn option_is_enabled_only_when_consumables_are_affordable() {
         let mut game = Game::default();
         game.player.inventory.insert(Item::Vine, 2);
         game.experiment(&[(Item::Vine, 2)]); // discovers "Cord", consumes the Vine
@@ -80,28 +80,28 @@ mod tests {
     }
 
     #[test]
-    fn option_reports_each_input_with_have_and_need() {
+    fn option_reports_each_consumable_with_have_and_need() {
         let mut game = Game::default();
         game.player.inventory.insert(Item::Vine, 2);
         game.experiment(&[(Item::Vine, 2)]); // discovers "Cord" (2x Vine), Vine now 0
         game.player.inventory.insert(Item::Vine, 5);
 
         let opt = options(&game.player).pop().unwrap();
-        assert_eq!(opt.inputs.len(), 1);
-        let vine = &opt.inputs[0];
+        assert_eq!(opt.consumables.len(), 1);
+        let vine = &opt.consumables[0];
         assert_eq!(vine.item, Item::Vine);
         assert_eq!((vine.have, vine.need), (5, 2));
         assert!(vine.met());
     }
 
     #[test]
-    fn a_missing_input_is_reported_as_unmet() {
+    fn a_missing_consumable_is_reported_as_unmet() {
         let mut game = Game::default();
         game.player.inventory.insert(Item::Vine, 2);
         game.experiment(&[(Item::Vine, 2)]); // Vine drops to 0
 
         let opt = options(&game.player).pop().unwrap();
-        let vine = &opt.inputs[0];
+        let vine = &opt.consumables[0];
         assert_eq!((vine.have, vine.need), (0, 2));
         assert!(!vine.met());
         assert!(!opt.enabled);

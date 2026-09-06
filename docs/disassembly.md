@@ -4,7 +4,7 @@
 
 `STORY.md` §10 names "reverse engineering — disassembling an old device reveals
 components" as one of the game's discovery paths, and it was the top backlog
-item. Crafting turns inputs into an output; disassembly is the reverse.
+item. Crafting turns consumables into an output; disassembly is the reverse.
 
 ### Recipe flow (`RecipeFlow`)
 
@@ -34,7 +34,8 @@ a recipe in `Player::known_recipes()` is always craftable, and the
 `d` opens a **Disassemble popup** listing every inventory item that some
 `disassemblable()` recipe produces. The player scrolls with `↑`/`↓` and confirms
 with `Enter` (or `d`); `Esc`/`q` closes it. On confirm, `Game::disassemble`
-removes one of that item and returns the recipe's inputs to the inventory, then
+removes one of that item and returns the recipe's consumables to the inventory,
+then
 logs a precise line under the **Crafting** category (yellow):
 
 ```
@@ -59,7 +60,7 @@ order.
   - `find_matching` gated on `craftable()`.
 - `src/game/mod.rs` `Game::disassemble(&mut self, item: Item)` — no-op if no
   recipe lets `item` be taken apart or the player holds none; otherwise `spend`
-  one and add the inputs back.
+  one and add the consumables back.
 - `src/game/player.rs` — `grant_recipe` refuses non-craftable names;
   `recipe_progress` total = craftable count.
 - `src/viewmodel/disassembly.rs`: `options(player) -> Vec<Item>` — the

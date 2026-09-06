@@ -198,7 +198,7 @@ impl Game {
             return;
         };
 
-        if let Some((item, ..)) = self.player.first_shortage(recipe.inputs()) {
+        if let Some((item, ..)) = self.player.first_shortage(recipe.consumables()) {
             self.log(EventKind::CraftShortage {
                 needed: item,
                 output: recipe.output(),
@@ -206,7 +206,7 @@ impl Game {
             return;
         }
 
-        self.player.spend_all(recipe.inputs());
+        self.player.spend_all(recipe.consumables());
 
         self.grant_item(recipe.output(), 1);
         self.log(EventKind::Crafted {
@@ -251,7 +251,7 @@ impl Game {
         });
     }
 
-    /// Takes one `item` apart, returning the inputs of the recipe it
+    /// Takes one `item` apart, returning the consumables of the recipe it
     /// decomposes into. Does nothing if no recipe lets `item` be taken apart,
     /// or the player is not carrying one.
     pub fn disassemble(&mut self, item: Item) {
@@ -263,7 +263,7 @@ impl Game {
         }
 
         self.player.spend(item, 1);
-        self.player.add_all_to_inventory(recipe.inputs());
+        self.player.add_all_to_inventory(recipe.consumables());
 
         self.log(EventKind::Disassembled { item });
     }
@@ -347,7 +347,7 @@ mod tests {
             }
         );
 
-        // failure: shows the inputs
+        // failure: shows the items tried
         let mut game = Game::default();
         game.player.inventory.insert(Item::Stick, 1);
         game.player.inventory.insert(Item::Vine, 1);
@@ -391,7 +391,7 @@ mod tests {
     }
 
     #[test]
-    fn crafting_removes_exhausted_inputs() {
+    fn crafting_removes_exhausted_consumables() {
         let mut game = Game::default();
         game.player.grant_recipe("Cord");
         game.player.inventory.insert(Item::Vine, 2); // exactly one Cord

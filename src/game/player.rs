@@ -156,8 +156,8 @@ impl Player {
         self.inventory_count(item) > 0
     }
 
-    /// The first input in `items` the player doesn't have enough of, as
-    /// `(item, available, needed)`. `None` if every input is satisfied.
+    /// The first entry in `items` the player doesn't have enough of, as
+    /// `(item, available, needed)`. `None` if every entry is satisfied.
     pub(super) fn first_shortage(&self, items: &[(Item, u32)]) -> Option<(Item, u32, u32)> {
         items.iter().find_map(|&(item, needed)| {
             let available = self.inventory_count(item);
