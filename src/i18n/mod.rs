@@ -118,10 +118,13 @@ pub fn event(kind: &EventKind, lang: Language) -> String {
     match kind {
         EventKind::Awoke => fl!(loader, "event-awoke"),
         EventKind::Found { item, source } => {
-            // English bakes "in the" into the template and takes the place's
-            // plain name; Polish has no separate preposition, so the locative
+            // "You find X in Y". Polish "Znajdujesz" takes its object in the
+            // accusative (X); the place (Y) has no preposition, so the locative
             // case attribute carries the whole phrase (e.g. "w lesie").
-            let item = self::item(*item, lang);
+            let item = match lang {
+                Language::English => self::item(*item, lang),
+                Language::Polish => item_attr(*item, "accusative", lang),
+            };
             match source {
                 FoundIn::Terrain(terrain) => {
                     let place = match lang {
@@ -405,6 +408,18 @@ mod tests {
             Language::Polish,
         );
         assert_eq!(text, "Znajdujesz Kamień w jaskini.");
+    }
+
+    #[test]
+    fn event_renders_found_item_in_the_polish_accusative() {
+        let text = event(
+            &EventKind::Found {
+                item: Item::PlasticBottle,
+                source: FoundIn::Poi(Poi::Ruins),
+            },
+            Language::Polish,
+        );
+        assert_eq!(text, "Znajdujesz Plastikową Butelkę w ruinach.");
     }
 
     #[test]
