@@ -152,8 +152,8 @@ poi-cave = Jaskinia
     .locative = w jaskini
 poi-ruins = Ruiny
     .locative = w ruinach
-poi-village = Wieś
-    .locative = we wsi
+poi-village = Osada
+    .locative = w osadzie
 
 ## Quest name/description.
 
