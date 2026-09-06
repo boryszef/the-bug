@@ -6,9 +6,9 @@
 
 use std::ops::RangeInclusive;
 
-use eframe::egui::{Color32, Key, Pos2, Rect, RichText, Sense, Ui, Vec2};
+use eframe::egui::{Color32, Key, Painter, Pos2, Rect, RichText, Sense, Shape, Stroke, Ui, Vec2};
 
-use crate::game::Direction;
+use crate::game::{Direction, TerrainType};
 use crate::i18n::{self, Language};
 use crate::viewmodel::map::{TileView, terrain_rgb};
 
@@ -23,6 +23,14 @@ const SCROLL_ZOOM_RATE: f32 = 0.002;
 /// Player marker radius, as a fraction of the tile size.
 const PLAYER_MARKER_RATIO: f32 = 0.3;
 const PLAYER_MARKER_COLOR: Color32 = Color32::from_rgb(0xff, 0xd0, 0x2f);
+
+/// One dark ink for the point-of-interest icons (Cave, Ruins), legible on both
+/// the cave grey and the ruins tan.
+const POI_ICON_COLOR: Color32 = Color32::from_rgb(0x24, 0x20, 0x1c);
+/// POI icon extent as a fraction of the tile.
+const POI_ICON_RATIO: f32 = 0.6;
+/// Below this tile size the POI icon is skipped — it would just be noise.
+const POI_ICON_MIN_PX: f32 = 12.0;
 
 /// What the Map tab wants `App` to do to `game` after one frame — from an
 /// on-screen button or its keyboard accelerator. Mirrors how the other gui
@@ -109,12 +117,17 @@ impl MapView {
             if !xs.contains(&wx) || !ys.contains(&wy) {
                 continue;
             }
+            let rect = tile_rect(wx, wy, viewport, self.center, self.tile_px);
             let (r, g, b) = terrain_rgb(tile.terrain);
-            painter.rect_filled(
-                tile_rect(wx, wy, viewport, self.center, self.tile_px),
-                0.0,
-                Color32::from_rgb(r, g, b),
-            );
+            painter.rect_filled(rect, 0.0, Color32::from_rgb(r, g, b));
+
+            if self.tile_px >= POI_ICON_MIN_PX {
+                match tile.terrain {
+                    TerrainType::Cave => draw_cave_icon(&painter, rect.center(), self.tile_px),
+                    TerrainType::Ruins => draw_ruins_icon(&painter, rect.center(), self.tile_px),
+                    _ => {}
+                }
+            }
         }
 
         let marker = world_to_screen(
@@ -167,6 +180,52 @@ fn world_to_screen(world: Vec2, viewport: Rect, center: Vec2, tile_px: f32) -> P
 fn tile_rect(wx: i32, wy: i32, viewport: Rect, center: Vec2, tile_px: f32) -> Rect {
     let middle = world_to_screen(Vec2::new(wx as f32, wy as f32), viewport, center, tile_px);
     Rect::from_center_size(middle, Vec2::splat(tile_px))
+}
+
+/// A cave: a small upward wedge (a hill / a cave mouth).
+fn draw_cave_icon(painter: &Painter, center: Pos2, tile_px: f32) {
+    let tri = cave_triangle(center, tile_px * POI_ICON_RATIO);
+    painter.add(Shape::convex_polygon(
+        tri.to_vec(),
+        POI_ICON_COLOR,
+        Stroke::NONE,
+    ));
+}
+
+/// Ruins: a broken skyline of uneven bars.
+fn draw_ruins_icon(painter: &Painter, center: Pos2, tile_px: f32) {
+    for bar in ruins_bars(center, tile_px * POI_ICON_RATIO) {
+        painter.rect_filled(bar, 0.0, POI_ICON_COLOR);
+    }
+}
+
+/// The three corners of the cave wedge — apex up, base along the bottom — for
+/// an icon box `size` on a side centred on `center`.
+fn cave_triangle(center: Pos2, size: f32) -> [Pos2; 3] {
+    let h = size / 2.0;
+    [
+        Pos2::new(center.x, center.y - h),
+        Pos2::new(center.x - h, center.y + h),
+        Pos2::new(center.x + h, center.y + h),
+    ]
+}
+
+/// Four skyline bars — uneven heights, bottoms on a common baseline — for an
+/// icon box `size` on a side centred on `center`.
+fn ruins_bars(center: Pos2, size: f32) -> [Rect; 4] {
+    const HEIGHTS: [f32; 4] = [0.5, 0.95, 0.68, 0.82];
+    let h = size / 2.0;
+    let baseline = center.y + h;
+    let left = center.x - h;
+    let slot = size / 4.0;
+    let bar_w = slot * 0.7;
+    std::array::from_fn(|i| {
+        let x0 = left + slot * i as f32 + (slot - bar_w) / 2.0;
+        Rect::from_min_max(
+            Pos2::new(x0, baseline - size * HEIGHTS[i]),
+            Pos2::new(x0 + bar_w, baseline),
+        )
+    })
 }
 
 /// The inclusive ranges of world tile coordinates (x, then y) that can be at
@@ -246,5 +305,49 @@ mod tests {
         assert_eq!(clamp_tile_px(0.5), MIN_TILE_PX);
         assert_eq!(clamp_tile_px(10_000.0), MAX_TILE_PX);
         assert_eq!(clamp_tile_px(24.0), 24.0);
+    }
+
+    #[test]
+    fn cave_triangle_is_an_upward_wedge_within_the_icon_box() {
+        let c = Pos2::new(100.0, 50.0);
+        let size = 20.0;
+        let [apex, bl, br] = cave_triangle(c, size);
+
+        assert!(apex.y < c.y, "apex above centre");
+        assert!(bl.y > c.y && br.y > c.y, "base below centre");
+        assert!(bl.x < br.x, "base runs left to right");
+        for p in [apex, bl, br] {
+            assert!((p.x - c.x).abs() <= size / 2.0 + 1e-3);
+            assert!((p.y - c.y).abs() <= size / 2.0 + 1e-3);
+        }
+    }
+
+    #[test]
+    fn ruins_bars_are_four_distinct_bars_on_a_common_baseline() {
+        let c = Pos2::new(0.0, 0.0);
+        let size = 24.0;
+        let bars = ruins_bars(c, size);
+
+        let baseline = bars[0].max.y;
+        for b in &bars {
+            assert!((b.max.y - baseline).abs() < 1e-3, "bars share a baseline");
+            assert!(b.min.x >= c.x - size / 2.0 - 1e-3 && b.max.x <= c.x + size / 2.0 + 1e-3);
+            assert!(
+                b.min.y >= c.y - size / 2.0 - 1e-3,
+                "bar stays in the icon box"
+            );
+        }
+        for w in bars.windows(2) {
+            assert!(
+                w[0].max.x <= w[1].min.x + 1e-3,
+                "bars left to right, no overlap"
+            );
+        }
+        let heights: Vec<f32> = bars.iter().map(Rect::height).collect();
+        for i in 0..heights.len() {
+            for j in (i + 1)..heights.len() {
+                assert!((heights[i] - heights[j]).abs() > 1e-3, "bar heights differ");
+            }
+        }
     }
 }
