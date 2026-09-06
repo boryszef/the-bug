@@ -12,8 +12,11 @@ Inventory: Stick 3, Vine 2
 ## Recipe ratio
 
 `Recipes: known/total` — `known` is how many recipes the player has discovered
-(`Player::known_recipes()`), `total` is how many exist in the game (`RECIPES`).
-Read via `Game::recipe_progress() -> (usize, usize)`.
+(`Player::known_recipes()`), `total` is how many **craftable** recipes exist
+(`RECIPES` filtered by `Recipe::craftable()`). Disassemble-only recipes
+(`docs/disassembly.md`) are decompositions, not recipes to discover, so they're
+left out of the total — 100% stays reachable. Read via
+`Game::recipe_progress() -> (usize, usize)`.
 
 ## Experience points
 

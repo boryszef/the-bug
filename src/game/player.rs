@@ -43,9 +43,12 @@ impl Player {
         &self.recipes
     }
 
-    /// `(recipes discovered, recipes that exist)`.
+    /// `(recipes discovered, craftable recipes that exist)`. Disassemble-only
+    /// recipes are decompositions, not recipes to discover, so they're left
+    /// out of the total.
     pub fn recipe_progress(&self) -> (usize, usize) {
-        (self.known_recipes().len(), RECIPES.len())
+        let total = RECIPES.iter().filter(|r| r.craftable()).count();
+        (self.known_recipes().len(), total)
     }
 
     /// The known recipe named `name`, if any.
@@ -182,17 +185,18 @@ impl Player {
         self.add_all_to_inventory(items);
     }
 
-    /// Marks the recipe with the given name as known (used when loading a save).
-    /// Returns `false` for an unrecognised name, which the caller can ignore.
+    /// Marks the craftable recipe with the given name as known (used when
+    /// loading a save). Returns `false` for an unrecognised or non-craftable
+    /// name, which the caller can ignore — a known recipe is always craftable.
     pub(crate) fn grant_recipe(&mut self, name: &str) -> bool {
         match RECIPES.iter().find(|recipe| recipe.name() == name).copied() {
-            Some(recipe) => {
+            Some(recipe) if recipe.craftable() => {
                 if !self.recipes.contains(&recipe) {
                     self.recipes.push(recipe);
                 }
                 true
             }
-            None => false,
+            _ => false,
         }
     }
 

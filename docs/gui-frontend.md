@@ -74,8 +74,8 @@ through `viewmodel`/`game`.
     click-to-move item buttons plus a run button; holds an `ItemSelection`.
   - **Craft** (`craft.rs`): a button per known recipe, disabled when its
     inputs aren't affordable (`viewmodel::crafting::CraftOption::enabled`).
-  - **Disassemble** (`disassemble.rs`): a button per carried item some
-    reversible recipe produces (`viewmodel::disassembly::options`).
+  - **Disassemble** (`disassemble.rs`): a button per carried item that can be
+    taken apart (`viewmodel::disassembly::options`).
   - **Quests** (`quests.rs`): active quest progress + description; available
     quests as collapsing sections (description + Accept button), or the
     blocked/empty message; the completed-quests line.

@@ -15,7 +15,7 @@ use i18n_embed::{
 use i18n_embed_fl::fl;
 use rust_embed::RustEmbed;
 
-use crate::game::{EventKind, FoundIn, Item, Poi, QuestID, TerrainType, reversible_recipe_for};
+use crate::game::{EventKind, FoundIn, Item, Poi, QuestID, TerrainType, disassembly_for};
 
 #[derive(RustEmbed)]
 #[folder = "src/i18n/locales/"]
@@ -222,7 +222,7 @@ pub fn event(kind: &EventKind, lang: Language) -> String {
             newly_learned = if *newly_learned { "yes" } else { "no" }
         ),
         EventKind::Disassembled { item } => {
-            let recovered = reversible_recipe_for(*item)
+            let recovered = disassembly_for(*item)
                 .map(|recipe| describe_items(recipe.inputs(), lang))
                 .unwrap_or_default();
             fl!(

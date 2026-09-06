@@ -10,7 +10,7 @@ pub use item::Item;
 pub use map::{Direction, FoundIn, Map, MapTile, Poi, TerrainType};
 pub use player::Player;
 pub use quest::{Quest, QuestError, QuestID};
-pub(crate) use recipe::reversible_recipe_for;
+pub(crate) use recipe::disassembly_for;
 
 use quest::{EventTypeID, QUESTS, dependencies_met, quest_for};
 use recipe::find_matching;
@@ -251,11 +251,11 @@ impl Game {
         });
     }
 
-    /// Takes one `item` apart, returning the inputs of the reversible recipe
-    /// that makes it. Does nothing if no reversible recipe produces `item` or
-    /// the player is not carrying one.
+    /// Takes one `item` apart, returning the inputs of the recipe it
+    /// decomposes into. Does nothing if no recipe lets `item` be taken apart,
+    /// or the player is not carrying one.
     pub fn disassemble(&mut self, item: Item) {
-        let Some(recipe) = reversible_recipe_for(item) else {
+        let Some(recipe) = disassembly_for(item) else {
             return;
         };
         if !self.player.has_item(item) {
@@ -460,9 +460,14 @@ mod tests {
     }
 
     #[test]
-    fn recipe_progress_reports_known_and_total() {
+    fn recipe_progress_reports_known_and_craftable_total() {
         let mut game = Game::default();
-        assert_eq!(game.player.recipe_progress(), (0, RECIPES.len()));
+        let craftable = RECIPES.iter().filter(|r| r.craftable()).count();
+        assert!(
+            craftable < RECIPES.len(),
+            "some recipes are disassemble-only"
+        );
+        assert_eq!(game.player.recipe_progress(), (0, craftable));
 
         game.player.inventory.insert(Item::Vine, 2);
         game.experiment(&[(Item::Vine, 2)]);
@@ -569,9 +574,9 @@ mod tests {
     }
 
     #[test]
-    fn disassemble_ignores_irreversible_recipes() {
+    fn disassemble_ignores_craft_only_recipes() {
         let mut game = Game::default();
-        game.player.inventory.insert(Item::Arrow, 1); // Arrow recipe is not reversible
+        game.player.inventory.insert(Item::Arrow, 1); // the Arrow recipe is craft-only
         let before = game.events().len();
 
         game.disassemble(Item::Arrow);
@@ -601,6 +606,45 @@ mod tests {
         game.disassemble(Item::StoneAxe);
 
         assert_eq!(game.player.inventory.get(&Item::Stick), Some(&3));
+    }
+
+    #[test]
+    fn disassemble_a_scavenged_object_returns_its_parts() {
+        // The Umbrella recipe is disassemble-only — you can take a found one
+        // apart, and that is the only way to get Fabric and Pole.
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Umbrella, 1);
+
+        game.disassemble(Item::Umbrella);
+
+        assert_eq!(game.player.inventory.get(&Item::Umbrella), None);
+        assert_eq!(game.player.inventory.get(&Item::Fabric), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::Pole), Some(&1));
+    }
+
+    #[test]
+    fn a_disassemble_only_recipe_cannot_be_experimented_into_existence() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Battery, 1);
+        game.player.inventory.insert(Item::Speaker, 1);
+
+        game.experiment(&[(Item::Battery, 1), (Item::Speaker, 1)]);
+
+        assert_eq!(
+            last_event(&game).kind(),
+            &EventKind::ExperimentFailed {
+                items: vec![(Item::Battery, 1), (Item::Speaker, 1)],
+            }
+        );
+        assert_eq!(game.player.inventory.get(&Item::ElectronicToy), None);
+        assert!(
+            game.player
+                .known_recipes()
+                .iter()
+                .all(|r| r.output() != Item::ElectronicToy)
+        );
+        // experiment still consumes the inputs, like any failed experiment
+        assert!(game.player.inventory.is_empty());
     }
 
     #[test]

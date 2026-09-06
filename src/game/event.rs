@@ -41,7 +41,7 @@ pub enum EventKind {
         output: Item,
         newly_learned: bool,
     },
-    /// Took `item` apart, recovering its reversible recipe's inputs.
+    /// Took `item` apart, recovering the inputs of the recipe it decomposes into.
     Disassembled { item: Item },
 }
 

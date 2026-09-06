@@ -50,7 +50,7 @@ Verification is running the app.
 - Empty state: `craft-empty`.
 
 ### Disassemble (`src/gui/disassemble.rs`)
-- A button per carried item that some reversible recipe produces
+- A button per carried item that can be taken apart
   (`viewmodel::disassembly::options`). Click → `Game::disassemble`.
 - Empty state: `disassemble-empty`.
 

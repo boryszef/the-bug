@@ -1,5 +1,5 @@
-//! The Disassemble tab: a button per carried item that some reversible
-//! recipe produces. Mirrors `tui::disassemble`, mouse-driven — no cursor.
+//! The Disassemble tab: a button per carried item that can be taken apart.
+//! Mirrors `tui::disassemble`, mouse-driven — no cursor.
 
 use eframe::egui::{self, Ui};
 
