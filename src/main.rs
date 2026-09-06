@@ -2,6 +2,7 @@ mod game;
 #[cfg(feature = "gui")]
 mod gui;
 mod i18n;
+mod mapgen;
 mod save;
 #[cfg(feature = "tui")]
 mod tui;

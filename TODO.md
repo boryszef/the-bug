@@ -5,12 +5,12 @@
 * implement roads and rivers
 * make tiles more interesting - minimum would be a symbol representing the terrain (glyph) like in the TUI version
 * craft menu should show what items are missing for a recipe
-* map should not be random and certain terrain types should be clustered together (e.g. deadland, forest, mountains) — dev tool `tools/mapgen` authors candidate grids (docs/mapgen.md); still need to pick one, bundle it, and replace `Map::new`
 * crafting/experimenting/disassembly should only be possible at the village
 * Players "bag" should have a limited size, when full, the player should take their findings to the village and deposit them in the storage
 
 ## DONE
 
+* generate the map with the mapgen clustering algorithm, moved in-crate to `src/mapgen/` and tuned by consts in `src/game/map.rs` (affinity 0.75); standalone `tools/mapgen` retired (docs/mapgen.md)
 * front end chosen at build time: `gui` (default) / `tui` (legacy, frozen) Cargo features, mutually exclusive; `--gui` flag removed (docs/adr/0002)
 * create alternative egui/eframe UI (map + movement + Experiment/Craft/Disassemble/Quests panels — parity with the tui; see docs/gui-frontend.md)
 * implement the quest system: one quest unlocks other quests, completing a quest awards XP and items, quests also tell the story of the game world

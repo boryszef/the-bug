@@ -11,6 +11,25 @@ const MAP_MIN_SIZE: u32 = 21;
 const MAP_PER_LEVEL_INCREMENT: u32 = 2;
 const DECAY_WINDOW_SECS: f64 = 60.0;
 
+/// How strongly terrain clumps: `0.0` confetti .. `1.0` one blob per terrain.
+/// See `docs/mapgen.md`.
+const MAP_AFFINITY: f64 = 0.75;
+/// Cluster shares, keeping the old 40:30:20 Deadland:Meadow:Forest ratio,
+/// renormalised so the generator's "must sum to 100" holds.
+const DEADLAND_PERCENT: f64 = 100.0 * 40.0 / 90.0;
+const MEADOW_PERCENT: f64 = 100.0 * 30.0 / 90.0;
+const FOREST_PERCENT: f64 = 100.0 * 20.0 / 90.0;
+/// Scatter terrain as a fraction of the tile count (kept from the old per-tile
+/// weights): the count scales with the map so density stays constant by level.
+const CAVE_FRACTION: f64 = 0.07;
+const RUINS_FRACTION: f64 = 0.03;
+/// How many times to re-roll the RNG before giving up. The generator's clean
+/// pre-melt layout check fails whenever a scatter tile splits a terrain slice,
+/// which — with scatter at 10% of the map — is roughly a third of attempts; a
+/// generous cap makes exhausting it (a panic) practically impossible while the
+/// expected cost stays under two tries.
+const MAPGEN_ATTEMPTS: usize = 32;
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum Direction {
     North,
@@ -54,28 +73,6 @@ impl TerrainType {
     }
 }
 
-const RANDOM_TERRAIN_TYPES: &[(TerrainType, u32)] = &[
-    (TerrainType::Meadow, 30),
-    (TerrainType::Forest, 20),
-    (TerrainType::Deadland, 40),
-    (TerrainType::Cave, 7),
-    (TerrainType::Ruins, 3),
-];
-
-fn choose_weighted<T: Copy>(choices: &[(T, u32)], rng: &mut impl rand::Rng) -> T {
-    let total: u32 = choices.iter().map(|(_, weight)| weight).sum();
-    let mut n = rng.random_range(0..total);
-
-    for &(value, weight) in choices {
-        if n < weight {
-            return value;
-        }
-        n -= weight;
-    }
-
-    unreachable!()
-}
-
 #[derive(Debug)]
 pub struct MapTile {
     pub terrain_type: TerrainType,
@@ -115,10 +112,6 @@ impl MapTile {
         }
     }
 
-    fn new() -> MapTile {
-        Self::with_terrain(choose_weighted(RANDOM_TERRAIN_TYPES, &mut rand::rng()))
-    }
-
     /// Rolls each of this tile's items against its search probability
     /// (decayed by how recently the tile was searched), returning what's
     /// found.
@@ -141,27 +134,30 @@ pub struct Map {
 
 impl Map {
     pub fn new(player: &Player) -> Map {
-        let size = MAP_MIN_SIZE + player.level * MAP_PER_LEVEL_INCREMENT;
-        let middle = (size / 2, size / 2);
+        let size = (MAP_MIN_SIZE + player.level * MAP_PER_LEVEL_INCREMENT) as usize;
+        let scatter_count = |fraction: f64| (fraction * (size * size) as f64).round() as u32;
 
-        let tiles: Vec<Vec<MapTile>> = (0..size)
-            .map(|y| {
-                (0..size)
-                    .map(|x| {
-                        if (x, y) == middle {
-                            MapTile::with_terrain(TerrainType::Village)
-                        } else {
-                            MapTile::new()
-                        }
-                    })
-                    .collect()
-            })
-            .collect();
+        let spec = crate::mapgen::Spec {
+            size,
+            clusters: vec![
+                (TerrainType::Deadland, DEADLAND_PERCENT),
+                (TerrainType::Meadow, MEADOW_PERCENT),
+                (TerrainType::Forest, FOREST_PERCENT),
+            ],
+            scatter: vec![
+                (TerrainType::Cave, scatter_count(CAVE_FRACTION)),
+                (TerrainType::Ruins, scatter_count(RUINS_FRACTION)),
+            ],
+            affinity: MAP_AFFINITY,
+        };
 
-        Map {
-            tiles,
-            half: (size / 2) as i32,
+        let mut rng = rand::rng();
+        for _ in 0..MAPGEN_ATTEMPTS {
+            if let Ok(grid) = crate::mapgen::generate(&spec, &mut rng) {
+                return Map::from_terrain(grid);
+            }
         }
+        panic!("map generation failed with a hardcoded spec");
     }
 
     /// Rebuilds a map from a saved terrain grid. Tile items are recomputed
@@ -324,5 +320,53 @@ mod tests {
         let last_old = Instant::now() - Duration::from_secs(120);
         let p_old = adjust_probability(base, Some(last_old));
         assert!((p_old - base).abs() < f64::EPSILON);
+    }
+
+    fn terrain_grid(map: &Map) -> Vec<Vec<TerrainType>> {
+        map.tiles
+            .iter()
+            .map(|row| row.iter().map(|tile| tile.terrain_type).collect())
+            .collect()
+    }
+
+    #[test]
+    fn new_map_size_tracks_the_player_level() {
+        for level in [1, 3, 7] {
+            let mut player = Player::default();
+            player.level = level;
+            let map = Map::new(&player);
+            let expected = (MAP_MIN_SIZE + level * MAP_PER_LEVEL_INCREMENT) as usize;
+            assert_eq!(map.tiles.len(), expected);
+            assert!(map.tiles.iter().all(|row| row.len() == expected));
+            assert_eq!(
+                map.get_tile((0, 0)).unwrap().terrain_type,
+                TerrainType::Village
+            );
+        }
+    }
+
+    #[test]
+    fn new_map_terrain_is_clustered_not_confetti() {
+        // The old per-tile roll left Forest+Meadow+Deadland in ~200 specks
+        // between them; at affinity 0.75 they average well under half that.
+        // Averaged over a few maps so one unlucky melt can't flake the test.
+        let total: usize = (0..5)
+            .map(|_| {
+                let grid = terrain_grid(&Map::new(&Player::default()));
+                [
+                    TerrainType::Forest,
+                    TerrainType::Meadow,
+                    TerrainType::Deadland,
+                ]
+                .into_iter()
+                .map(|t| crate::mapgen::components(&grid, t))
+                .sum::<usize>()
+            })
+            .sum();
+        let average = total / 5;
+        assert!(
+            average < 130,
+            "terrain barely clustered: {average} components on average across Forest+Meadow+Deadland"
+        );
     }
 }

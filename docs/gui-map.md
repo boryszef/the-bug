@@ -104,10 +104,11 @@ a small struct holding only transient UI state, no game data.
 
 ## Follow-on increments (tracked, not in this change)
 
-1. **Predefined map:** load a bundled ASCII grid (reusing
-   `save::terrain_code` / `save::parse_terrain`, entry point
-   `Map::from_terrain`) instead of the random fill. Candidate grids are
-   authored with the `tools/mapgen` dev tool — see `docs/mapgen.md`.
+1. ~~**Predefined map:** load a bundled ASCII grid instead of the random
+   fill.~~ Superseded: the map is still random, but is now built by the
+   in-crate clustering generator `src/mapgen/` (called from `Map::new`),
+   so terrain comes out in contiguous regions rather than per-tile noise —
+   see `docs/mapgen.md`. A hand-authored fixed grid is no longer planned.
 2. **Road / river feature layer:** `feature: Option<Feature>` on `MapTile`;
    `TileView` gains `feature` + a neighbour-derived edge mask computed in
    `viewmodel::map`; procedural stub-drawing in `gui/map.rs` (a segment from

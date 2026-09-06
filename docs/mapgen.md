@@ -1,96 +1,74 @@
-# Dev tool: `tools/mapgen`
+# Map generation: `src/mapgen/`
 
 ## Why
 
-`TODO.md` wants the map to stop being an independent per-tile random roll
-(`Map::new`) and instead have terrain that **clusters** — forests, deadlands
-and meadows in contiguous stretches rather than confetti. `docs/gui-map.md`'s
-follow-on increment #1 (a bundled, predefined map loaded via
-`save::parse_terrain` → `Map::from_terrain`) needs a hand-picked ASCII grid to
-bundle.
+The map used to be per-tile confetti: every non-centre tile in `Map::new` was
+an independent weighted roll, so forests, meadows and deadlands never formed
+contiguous stretches. `src/mapgen/` replaces that with exact terrain
+composition plus affinity-controlled *clustering*, while the map stays random
+(no seed is stored — the generated grid is persisted verbatim in the save, so
+reload is unchanged).
 
-`mapgen` is the authoring tool for that grid. It is a **dev-only** utility:
-not shipped, not part of the `the-bug` crate, run a handful of times to
-generate candidates that a human eyeballs and chooses between. It does not
-touch the game — wiring a chosen grid into `Map::new` is a separate, later
-change.
+This started as a standalone dev tool, `tools/mapgen`, that authored candidate
+grids for a human to eyeball and bundle. Once the game generates its map with
+the algorithm directly there is nothing to author, so the tool was retired and
+its `generator.rs` moved into the crate as `src/mapgen/`. Being in-crate, it
+now uses `game::TerrainType` directly instead of duplicating the six-letter
+terrain table (the thing ADR 0002's `pub(crate)` walls had forced on the
+separate tool).
 
-## Outcome
+## Where the knobs live
 
-```
-cargo mapgen -t Forest=45 -t Meadow=30 -t Deadland=25 -s Cave=8 -s Ruins=4 -a 0.75 --seed 3
-```
+`src/mapgen/` is policy-free — it takes a `Spec` and an RNG. The tuning is in
+`src/game/map.rs`, as consts next to `Map::new`:
 
-prints a grid in the save file's letter codes (`M F C R V .`), one row per
-line, `Village` dead-centre:
+| const | value | meaning |
+|---|---|---|
+| `MAP_AFFINITY` | `0.75` | `0.0` confetti … `1.0` one contiguous block per terrain |
+| `DEADLAND_PERCENT` / `MEADOW_PERCENT` / `FOREST_PERCENT` | `40 : 30 : 20` of 90, renormalised to sum 100 | clustering-terrain shares (the old per-tile weights, kept) |
+| `CAVE_FRACTION` / `RUINS_FRACTION` | `0.07` / `0.03` of the tile count | scatter terrain; the count scales with map size so density is constant per level |
+| `MAPGEN_ATTEMPTS` | `32` | RNG re-rolls before giving up (see "Retry loop") |
 
-| flag | meaning |
-|---|---|
-| `-t, --terrain NAME=PCT` (repeatable, required) | a clustering terrain and its share. `Meadow`, `Forest` or `Deadland`. The percentages must sum to 100. |
-| `-s, --scatter NAME=COUNT` (repeatable) | `Cave` or `Ruins`, an absolute tile count, placed uniformly at random *on top of* the 100 %. Never clustered. |
-| `-a, --affinity FLOAT` (default `0.6`) | `0.0` fully random … `1.0` one contiguous block per clustering terrain. |
-| `--size N` (default `23`) | edge length, odd. Game maps are `21 + 2 * level` (21, 23, 25, …); a non-game size still works but prints a warning. |
-| `--seed U64` | reproducible output (default: OS entropy). |
-| `--json FILE` | also write a minimal `the-bug --load`-able save wrapping the grid, so a candidate can be walked around in the GUI. |
-
-The `cargo mapgen` alias is in `.cargo/config.toml`. Run it **from the repo
-root** and pass its flags directly — the alias already supplies the `--`
-separator, so `cargo mapgen -- --help` breaks; use `cargo mapgen --help`.
-
-### Composition is exact
-
-Scatter counts are placed first, as an exact number of tiles. The remaining
-cells are split between the clustering terrains by largest-remainder rounding,
-so their tile counts always match the requested percentages as closely as
-integers allow, at every affinity. Worked example — `--size 27` is 729 tiles;
-minus 1 village, minus `Cave=8 + Ruins=4` scatter leaves 716 for clusters;
-`45/30/25` → 322 F / 215 M / 179 D.
+`Map::new` builds the `Spec` from these, calls `mapgen::generate`, and hands
+the grid to the existing `Map::from_terrain` (the same entry point save-load
+uses).
 
 ## How it works
 
-`tools/mapgen/src/generator.rs`, in order:
+`src/mapgen/generator.rs`, in order:
 
-1. **Quotas** — largest-remainder rounding turns the percentages into exact
-   per-terrain tile counts over the non-village, non-scatter cells.
+1. **Quotas** — largest-remainder rounding turns the cluster percentages into
+   exact per-terrain tile counts over the non-village, non-scatter cells, so
+   the counts always sum exactly.
 2. **Scatter** — Cave/Ruins cells are sampled uniformly at random and set
    aside; they take no part in clustering, so they stay speckled at any
-   affinity (a few will still touch by chance — that is not clustering).
+   affinity.
 3. **`affinity = 1` layout** — recursive rectilinear bisection ("slice and
    dice") cuts the clustering cells into one contiguous block per terrain,
-   each exactly its quota. A prefix of cells sorted by `(x, y)` is a run of
-   whole columns plus a partial one — always 4-connected — and the axis
-   alternates by depth so blocks come out blocky, not striped.
+   each exactly its quota. The axis alternates by depth so blocks come out
+   blocky, not striped.
 4. **Melt** — for `affinity < 1`, pairs of clustering cells are repeatedly
    swap-tested: a swap that doesn't increase the count of unlike orthogonal
    neighbours is always taken; one that does is taken with a flat probability
    `(1 - affinity)²`. Swaps never change tile counts, so composition stays
-   exact. Near `1.0` only the block edges soften; near `0.0` every swap goes
-   through and the field mixes to uniform (that endpoint is also short-cut to
-   a plain shuffle). The knob is non-linear — clustering stays visible down to
-   roughly `0.4`, then breaks up quickly.
+   exact. The `0.0` endpoint is short-cut to a plain shuffle. The knob is
+   non-linear — clustering stays visible down to roughly `0.4`, then breaks
+   up quickly.
 
-## Self-contained on purpose
+## Retry loop
 
-ADR 0002 rejected splitting `the-bug` into a library plus binaries, so
-`save::`/`game::` code (including `save::terrain_code`) is `pub(crate)` and
-unreachable from a separate crate. `tools/mapgen` therefore re-declares the
-six-letter terrain table in `src/terrain.rs`, with a comment pointing back at
-`src/save.rs`. **If the game's terrain codes change, change both.**
-
-`tools/mapgen` is its own crate (own `Cargo.toml` with an empty `[workspace]`
-table, own `Cargo.lock`), outside the `the-bug` package. The repo-root
-`cargo fmt`/`clippy`/`test` and the default `prek` hooks don't see it; `prek`
-has dedicated `mapgen-fmt` / `mapgen-clippy` hooks that fire only when its
-files change. Run its tests with
-`cargo test --manifest-path tools/mapgen/Cargo.toml`.
-
-Reproducibility is per-`Cargo.lock`: the same `--seed` gives the same map
-until `rand` is updated.
+Between steps 3 and 4 the generator rejects a layout
+(`GenError::CannotPlaceClusters`) if a scatter tile or the village has split a
+terrain block. With scatter at 10% of the map that happens on roughly a third
+of attempts, so `Map::new` re-rolls the RNG up to `MAPGEN_ATTEMPTS` times
+(expected cost: under two tries). The spec is hardcoded and valid, so
+exhausting the cap is a bug — `Map::new` panics rather than shipping a
+degenerate map.
 
 ## Not in scope
 
-- Wiring a generated grid into the game (replacing `Map::new`) — later, per
-  `docs/gui-map.md` #1.
+- A seed stored in the save / reproducible regeneration — the grid itself is
+  persisted, which is all load needs.
 - Roads, rivers, or any `Feature` overlay — `docs/gui-map.md` #2.
 - Biome realism (elevation, moisture, coastlines), non-square maps, terrain
   beyond the existing six kinds.

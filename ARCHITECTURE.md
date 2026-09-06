@@ -30,6 +30,10 @@ belong in a front-end module. See `docs/refactor-thin-ui.md` for the
 refactor that established this (written when there was only `src/ui/`;
 the same rule now applies to both `tui` and `gui`).
 
+`src/mapgen/` sits beside `game`: a policy-free terrain generator that
+`Map::new` calls with a hardcoded `Spec` (`docs/mapgen.md`). It depends on
+`game::TerrainType` and nothing else.
+
 ## The UI is temporary — keep it thin
 
 No front-end module is the product. Concretely:
@@ -136,14 +140,19 @@ shapes and the whole-`Game` glue that doesn't belong to any single type
 
 ## `tools/` holds standalone dev utilities, not part of the game
 
-`tools/<name>/` is a self-contained crate (own `Cargo.toml` + `Cargo.lock`,
-empty `[workspace]` table) that is built and run on its own, never shipped and
-never linked into `the-bug`. Because ADR 0002 rules out a library/binary
-split, these tools cannot reuse crate internals — they re-declare the small
-amount they need (e.g. `tools/mapgen` mirrors `save.rs`'s terrain letters) with
-a comment pointing back. They are outside the root package, so root
-`fmt`/`clippy`/`test` don't cover them; `prek` gets a per-tool hook instead.
-First one: `tools/mapgen` (`docs/mapgen.md`).
+If a future dev-only utility is ever heavy enough to want its own crate,
+`tools/<name>/` is the place: a self-contained crate (own `Cargo.toml` +
+`Cargo.lock`, empty `[workspace]` table), built and run on its own, never
+shipped and never linked into `the-bug`. Because ADR 0002 rules out a
+library/binary split, such a tool cannot reuse crate internals — it would
+re-declare the small amount it needs, with a comment pointing back, and get
+its own `prek` fmt/clippy hooks since root `fmt`/`clippy`/`test` don't reach
+outside the root package.
+
+There is currently no such tool. The first one, `tools/mapgen`, was folded
+back into the crate as `src/mapgen/` once the game generated its map with the
+algorithm directly (`docs/mapgen.md`) — the duplication the split had forced
+(terrain letters) went away with it.
 
 ## Docs record the *why*, not just the *what*
 

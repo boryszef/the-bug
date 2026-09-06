@@ -6,8 +6,3 @@ run-tui = "run --no-default-features --features tui"
 build-tui = "build --no-default-features --features tui"
 test-tui = "test --no-default-features --features tui"
 clippy-tui = "clippy --all-targets --no-default-features --features tui"
-
-# The map-authoring dev tool (docs/mapgen.md). Run from the repo root, and pass
-# its flags directly — the alias already supplies the `--` separator, e.g.
-#   cargo mapgen -t Forest=70 -t Meadow=30 -s Cave=6 -a 0.8 --seed 1
-mapgen = "run --manifest-path tools/mapgen/Cargo.toml --release --"
