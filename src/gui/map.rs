@@ -32,6 +32,14 @@ const POI_ICON_RATIO: f32 = 0.6;
 /// Below this tile size the POI icon is skipped — it would just be noise.
 const POI_ICON_MIN_PX: f32 = 12.0;
 
+/// Wavy-border "trickle": how many teeth of the neighbour's colour reach in
+/// along a shared edge, where along the edge they sit (fraction), how deep
+/// they go (fraction of the tile), and how wide each is (fraction of the tile).
+const TRICKLE_TEETH: usize = 2;
+const TRICKLE_OFFSETS: [f32; TRICKLE_TEETH] = [0.32, 0.68];
+const TRICKLE_DEPTHS: [f32; TRICKLE_TEETH] = [0.22, 0.12];
+const TRICKLE_TOOTH_W: f32 = 0.26;
+
 /// What the Map tab wants `App` to do to `game` after one frame — from an
 /// on-screen button or its keyboard accelerator. Mirrors how the other gui
 /// panels return their action.
@@ -121,6 +129,16 @@ impl MapView {
             let (r, g, b) = terrain_rgb(tile.terrain);
             painter.rect_filled(rect, 0.0, Color32::from_rgb(r, g, b));
 
+            if is_field(tile.terrain) {
+                draw_edge_trickle(
+                    &painter,
+                    rect.center(),
+                    self.tile_px,
+                    tile.terrain,
+                    &tile.neighbours,
+                );
+            }
+
             if self.tile_px >= POI_ICON_MIN_PX {
                 match tile.terrain {
                     TerrainType::Cave => draw_cave_icon(&painter, rect.center(), self.tile_px),
@@ -197,6 +215,66 @@ fn draw_ruins_icon(painter: &Painter, center: Pos2, tile_px: f32) {
     for bar in ruins_bars(center, tile_px * POI_ICON_RATIO) {
         painter.rect_filled(bar, 0.0, POI_ICON_COLOR);
     }
+}
+
+/// The terrains the wavy-border trickle applies to. Mirrors `mapgen`'s private
+/// `is_clustering`; promote to a `TerrainType` method if a third caller appears.
+fn is_field(terrain: TerrainType) -> bool {
+    matches!(
+        terrain,
+        TerrainType::Meadow | TerrainType::Forest | TerrainType::Deadland
+    )
+}
+
+/// For each edge whose neighbour is a *different* field terrain, paints a few
+/// teeth of that neighbour's colour reaching in from the edge, so the border
+/// reads as ragged rather than a straight line. `neighbours` is `[N, E, S, W]`.
+fn draw_edge_trickle(
+    painter: &Painter,
+    center: Pos2,
+    tile_px: f32,
+    own: TerrainType,
+    neighbours: &[Option<TerrainType>; 4],
+) {
+    for (edge, neighbour) in neighbours.iter().enumerate() {
+        let Some(nt) = *neighbour else { continue };
+        if nt == own || !is_field(nt) {
+            continue;
+        }
+        let (r, g, b) = terrain_rgb(nt);
+        for tooth in edge_teeth(center, tile_px, edge) {
+            painter.rect_filled(tooth, 0.0, Color32::from_rgb(r, g, b));
+        }
+    }
+}
+
+/// The teeth reaching in from one edge (`0 = N, 1 = E, 2 = S, 3 = W`) of the
+/// tile centred on `center`. Fixed pattern — just enough to break the line.
+fn edge_teeth(center: Pos2, tile_px: f32, edge: usize) -> [Rect; TRICKLE_TEETH] {
+    let h = tile_px / 2.0;
+    let half_w = tile_px * TRICKLE_TOOTH_W / 2.0;
+    std::array::from_fn(|i| {
+        let along = (TRICKLE_OFFSETS[i] - 0.5) * tile_px;
+        let depth = tile_px * TRICKLE_DEPTHS[i];
+        match edge {
+            0 => Rect::from_min_max(
+                Pos2::new(center.x + along - half_w, center.y - h),
+                Pos2::new(center.x + along + half_w, center.y - h + depth),
+            ),
+            1 => Rect::from_min_max(
+                Pos2::new(center.x + h - depth, center.y + along - half_w),
+                Pos2::new(center.x + h, center.y + along + half_w),
+            ),
+            2 => Rect::from_min_max(
+                Pos2::new(center.x + along - half_w, center.y + h - depth),
+                Pos2::new(center.x + along + half_w, center.y + h),
+            ),
+            _ => Rect::from_min_max(
+                Pos2::new(center.x - h, center.y + along - half_w),
+                Pos2::new(center.x - h + depth, center.y + along + half_w),
+            ),
+        }
+    })
 }
 
 /// The three corners of the cave wedge — apex up, base along the bottom — for
@@ -319,6 +397,67 @@ mod tests {
         for p in [apex, bl, br] {
             assert!((p.x - c.x).abs() <= size / 2.0 + 1e-3);
             assert!((p.y - c.y).abs() <= size / 2.0 + 1e-3);
+        }
+    }
+
+    #[test]
+    fn edge_teeth_reach_in_from_the_named_edge_without_crossing_the_centre() {
+        let c = Pos2::new(0.0, 0.0);
+        let px = 40.0;
+        let h = px / 2.0;
+
+        let north = edge_teeth(c, px, 0);
+        for t in &north {
+            assert!(
+                (t.min.y - (c.y - h)).abs() < 1e-3,
+                "north teeth sit on the top edge"
+            );
+            assert!(
+                t.max.y > t.min.y && t.max.y < c.y,
+                "reach inward, not past centre"
+            );
+            assert!(t.min.x >= c.x - h - 1e-3 && t.max.x <= c.x + h + 1e-3);
+        }
+        for w in north.windows(2) {
+            assert!(
+                w[0].max.x <= w[1].min.x + 1e-3,
+                "teeth don't overlap along the edge"
+            );
+        }
+
+        let east = edge_teeth(c, px, 1);
+        for t in &east {
+            assert!(
+                (t.max.x - (c.x + h)).abs() < 1e-3,
+                "east teeth sit on the right edge"
+            );
+            assert!(
+                t.min.x < t.max.x && t.min.x > c.x,
+                "reach inward from the right"
+            );
+        }
+
+        let west = edge_teeth(c, px, 3);
+        for t in &west {
+            assert!(
+                (t.min.x - (c.x - h)).abs() < 1e-3,
+                "west teeth sit on the left edge"
+            );
+            assert!(t.max.x < c.x, "reach inward from the left");
+        }
+    }
+
+    #[test]
+    fn is_field_is_the_three_clustering_terrains() {
+        for t in [
+            TerrainType::Meadow,
+            TerrainType::Forest,
+            TerrainType::Deadland,
+        ] {
+            assert!(is_field(t));
+        }
+        for t in [TerrainType::Cave, TerrainType::Ruins, TerrainType::Village] {
+            assert!(!is_field(t));
         }
     }
 

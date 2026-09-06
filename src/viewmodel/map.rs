@@ -17,6 +17,9 @@ use crate::game::{Map, MapTile};
 pub struct TileView {
     pub world: (i32, i32),
     pub terrain: TerrainType,
+    /// Terrain of the four orthogonally-adjacent tiles, `None` past the map
+    /// edge. Order: North, East, South, West (world space — North is `+y`).
+    pub neighbours: [Option<TerrainType>; 4],
 }
 
 /// Every tile as a [`TileView`]. Thin adapter over [`world_tiles`] for now;
@@ -24,9 +27,15 @@ pub struct TileView {
 /// share one descriptor.
 #[cfg(feature = "gui")]
 pub fn tile_views(map: &Map) -> impl Iterator<Item = TileView> + '_ {
-    world_tiles(map).map(|(world, tile)| TileView {
-        world,
+    world_tiles(map).map(move |((wx, wy), tile)| TileView {
+        world: (wx, wy),
         terrain: tile.terrain_type,
+        neighbours: [
+            map.get_tile((wx, wy + 1)).map(|t| t.terrain_type), // North
+            map.get_tile((wx + 1, wy)).map(|t| t.terrain_type), // East
+            map.get_tile((wx, wy - 1)).map(|t| t.terrain_type), // South
+            map.get_tile((wx - 1, wy)).map(|t| t.terrain_type), // West
+        ],
     })
 }
 
@@ -101,6 +110,41 @@ mod tests {
             .expect("a tile at the origin");
 
         assert_eq!(origin.terrain, TerrainType::Village);
+    }
+
+    #[cfg(feature = "gui")]
+    #[test]
+    fn tile_views_reports_each_tiles_four_neighbours() {
+        use std::collections::HashMap;
+
+        let map = Map::new(&Player::default());
+        let by_coord: HashMap<(i32, i32), TerrainType> = world_tiles(&map)
+            .map(|(world, tile)| (world, tile.terrain_type))
+            .collect();
+
+        let origin = tile_views(&map).find(|t| t.world == (0, 0)).unwrap();
+        assert_eq!(
+            origin.neighbours,
+            [
+                by_coord.get(&(0, 1)).copied(),
+                by_coord.get(&(1, 0)).copied(),
+                by_coord.get(&(0, -1)).copied(),
+                by_coord.get(&(-1, 0)).copied(),
+            ]
+        );
+    }
+
+    #[cfg(feature = "gui")]
+    #[test]
+    fn tile_views_has_none_neighbours_past_the_map_edge() {
+        let map = Map::new(&Player::default());
+        let h = map.half;
+        // The far (north-east) corner: only West and South are on the map.
+        let corner = tile_views(&map).find(|t| t.world == (h, h)).unwrap();
+        assert_eq!(corner.neighbours[0], None, "North off the map");
+        assert_eq!(corner.neighbours[1], None, "East off the map");
+        assert!(corner.neighbours[2].is_some(), "South on the map");
+        assert!(corner.neighbours[3].is_some(), "West on the map");
     }
 
     #[cfg(feature = "gui")]

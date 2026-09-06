@@ -58,16 +58,15 @@ This is the neighbour-derived data the front end needs but must not compute by
 reaching into `Map` itself — the same principle `docs/gui-map.md` states for
 the future road/river edge mask.
 
-`src/gui/map.rs` change: the tile loop becomes two passes over the collected
-visible tiles — pass 1 all base squares (unchanged), pass 2 the trickle — so a
-neighbour's trickle is never painted over by that neighbour's own square.
-
-For each visible tile whose terrain is a **field** terrain
-(`Meadow`/`Forest`/`Deadland`), for each edge whose neighbour is a *different*
-field terrain, a few small rectangles ("teeth") in the neighbour's
-`terrain_rgb` colour are drawn reaching in from that edge. The tooth pattern
-(count, offsets, depths) is fixed — it only needs to break up the straight
-line, not model anything. `edge_teeth` is a pure, tested helper.
+`src/gui/map.rs` change: after a tile's base square, if the tile is a **field**
+terrain (`Meadow`/`Forest`/`Deadland`), for each edge whose neighbour is a
+*different* field terrain, a few small rectangles ("teeth") in the neighbour's
+`terrain_rgb` colour are drawn reaching **inward** from that edge. The teeth
+stay inside the tile, so no draw-order juggling is needed — the single existing
+tile loop just does one more thing. Both sides of a border grow teeth of the
+other's colour, so the seam interlocks. The tooth pattern (count, offsets,
+depths) is fixed — it only needs to break up the straight line, not model
+anything. `edge_teeth` is a pure, tested helper.
 
 Cave, Ruins and Village tiles are left as clean squares so their icon / colour
 reads clearly.
