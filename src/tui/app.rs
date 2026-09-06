@@ -234,11 +234,7 @@ fn render_map(game: &Game, area: Rect, buf: &mut Buffer, lang: Language) {
         ])
         .paint(|ctx| {
             for ((world_x, world_y), tile) in viewmodel::map::world_tiles(&game.map) {
-                ctx.print(
-                    world_x as f64,
-                    world_y as f64,
-                    tile.terrain_type.symbol().to_string(),
-                );
+                ctx.print(world_x as f64, world_y as f64, tile.to_string());
             }
             ctx.print(
                 player_pos.0 as f64,

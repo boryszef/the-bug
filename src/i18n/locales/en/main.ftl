@@ -6,6 +6,7 @@
 
 event-awoke = You wake up and decide to go for a walk.
 event-found = You find a { $item } in the { $terrain }.
+event-found-poi = You find a { $item } in the { $poi }.
 event-quest-accepted = Quest accepted: { $quest }
 event-quest-completed = Quest complete: { $quest }!
 event-unknown-recipe = You don't know how to craft a { $recipe }.
@@ -46,10 +47,14 @@ item-fabric = Fabric
 
 terrain-meadow = Meadow
 terrain-forest = Forest
-terrain-cave = Cave
-terrain-ruins = Ruins
 terrain-village = Village
 terrain-deadland = Deadland
+
+## Point-of-interest names, src/game/map.rs's Poi.
+
+poi-cave = Cave
+poi-ruins = Ruins
+poi-village = Village
 
 ## Quest name/description, src/game/quest.rs's QUESTS table.
 

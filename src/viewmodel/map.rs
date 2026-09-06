@@ -1,8 +1,8 @@
 //! The map prepared for display: every tile paired with its world coordinates.
 
-#[cfg(feature = "gui")]
-use crate::game::TerrainType;
 use crate::game::{Map, MapTile};
+#[cfg(feature = "gui")]
+use crate::game::{Poi, TerrainType};
 
 /// One tile's data as a renderer needs it: its world coordinates and the
 /// terrain to draw there.
@@ -17,6 +17,8 @@ use crate::game::{Map, MapTile};
 pub struct TileView {
     pub world: (i32, i32),
     pub terrain: TerrainType,
+    /// The point of interest on this tile, if any.
+    pub poi: Option<Poi>,
     /// Terrain of the four orthogonally-adjacent tiles, `None` past the map
     /// edge. Order: North, East, South, West (world space — North is `+y`).
     pub neighbours: [Option<TerrainType>; 4],
@@ -30,6 +32,7 @@ pub fn tile_views(map: &Map) -> impl Iterator<Item = TileView> + '_ {
     world_tiles(map).map(move |((wx, wy), tile)| TileView {
         world: (wx, wy),
         terrain: tile.terrain_type,
+        poi: tile.poi,
         neighbours: [
             map.get_tile((wx, wy + 1)).map(|t| t.terrain_type), // North
             map.get_tile((wx + 1, wy)).map(|t| t.terrain_type), // East
@@ -47,8 +50,6 @@ pub fn terrain_rgb(terrain: TerrainType) -> (u8, u8, u8) {
     match terrain {
         TerrainType::Meadow => (0x7c, 0xb3, 0x42),
         TerrainType::Forest => (0x2f, 0x6d, 0x2f),
-        TerrainType::Cave => (0x6b, 0x6b, 0x6b),
-        TerrainType::Ruins => (0x9a, 0x8a, 0x74),
         TerrainType::Village => (0xc8, 0x8a, 0x3c),
         TerrainType::Deadland => (0x33, 0x30, 0x2b),
     }
@@ -153,8 +154,6 @@ mod tests {
         let colours = [
             terrain_rgb(TerrainType::Meadow),
             terrain_rgb(TerrainType::Forest),
-            terrain_rgb(TerrainType::Cave),
-            terrain_rgb(TerrainType::Ruins),
             terrain_rgb(TerrainType::Village),
             terrain_rgb(TerrainType::Deadland),
         ];

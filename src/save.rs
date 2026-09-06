@@ -24,8 +24,6 @@ pub(crate) fn terrain_code(terrain: TerrainType) -> char {
     match terrain {
         TerrainType::Meadow => 'M',
         TerrainType::Forest => 'F',
-        TerrainType::Cave => 'C',
-        TerrainType::Ruins => 'R',
         TerrainType::Village => 'V',
         TerrainType::Deadland => '.',
     }
@@ -35,8 +33,6 @@ fn terrain_from_code(code: char) -> Option<TerrainType> {
     match code {
         'M' => Some(TerrainType::Meadow),
         'F' => Some(TerrainType::Forest),
-        'C' => Some(TerrainType::Cave),
-        'R' => Some(TerrainType::Ruins),
         'V' => Some(TerrainType::Village),
         '.' => Some(TerrainType::Deadland),
         _ => None,
@@ -430,8 +426,6 @@ mod tests {
         for terrain in [
             TerrainType::Meadow,
             TerrainType::Forest,
-            TerrainType::Cave,
-            TerrainType::Ruins,
             TerrainType::Village,
             TerrainType::Deadland,
         ] {
@@ -450,6 +444,9 @@ mod tests {
     fn pois_survive_a_full_save_round_trip() {
         let mut game = Game::default();
         let side = game.map.tiles.len();
+        for tile in game.map.tiles.iter_mut().flatten() {
+            tile.poi = None;
+        }
         game.map.tiles[0][0].poi = Some(Poi::Cave);
         game.map.tiles[1][2].poi = Some(Poi::Ruins);
         game.map.tiles[side - 1][side - 1].poi = Some(Poi::Village);
@@ -524,7 +521,10 @@ mod tests {
                 "inventory": { "Vine": 9, "Stone": 2 },
                 "recipes": ["Cord"]
             },
-            "map": { "terrain": ["FMC", "M.M", "CMV"] },
+            "map": {
+                "terrain": ["FMF", "M.M", "FMV"],
+                "pois":    ["c..", "...", "..r"]
+            },
             "events": [{ "kind": "Awoke", "elapsed_secs": 4.5 }]
         }"#;
         let mut path = std::env::temp_dir();

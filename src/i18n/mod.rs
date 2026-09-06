@@ -15,7 +15,7 @@ use i18n_embed::{
 use i18n_embed_fl::fl;
 use rust_embed::RustEmbed;
 
-use crate::game::{EventKind, Item, QuestID, TerrainType, reversible_recipe_for};
+use crate::game::{EventKind, FoundIn, Item, Poi, QuestID, TerrainType, reversible_recipe_for};
 
 #[derive(RustEmbed)]
 #[folder = "src/i18n/locales/"]
@@ -117,21 +117,27 @@ pub fn event(kind: &EventKind, lang: Language) -> String {
     let loader = lang.loader();
     match kind {
         EventKind::Awoke => fl!(loader, "event-awoke"),
-        EventKind::Found { item, terrain } => {
-            // English bakes "in the" into the template and takes the
-            // terrain's plain name; Polish has no separate preposition, so
-            // the locative case attribute carries the whole phrase (e.g.
-            // "w lesie").
-            let terrain_arg = match lang {
-                Language::English => terrain_name(*terrain, lang),
-                Language::Polish => terrain_attr(*terrain, "locative", lang),
-            };
-            fl!(
-                loader,
-                "event-found",
-                item = self::item(*item, lang),
-                terrain = terrain_arg
-            )
+        EventKind::Found { item, source } => {
+            // English bakes "in the" into the template and takes the place's
+            // plain name; Polish has no separate preposition, so the locative
+            // case attribute carries the whole phrase (e.g. "w lesie").
+            let item = self::item(*item, lang);
+            match source {
+                FoundIn::Terrain(terrain) => {
+                    let place = match lang {
+                        Language::English => terrain_name(*terrain, lang),
+                        Language::Polish => terrain_attr(*terrain, "locative", lang),
+                    };
+                    fl!(loader, "event-found", item = item, terrain = place)
+                }
+                FoundIn::Poi(poi) => {
+                    let place = match lang {
+                        Language::English => poi_name(*poi, lang),
+                        Language::Polish => poi_attr(*poi, "locative", lang),
+                    };
+                    fl!(loader, "event-found-poi", item = item, poi = place)
+                }
+            }
         }
         EventKind::QuestAccepted { quest } => fl!(
             loader,
@@ -271,8 +277,6 @@ fn terrain_id(terrain: TerrainType) -> &'static str {
     match terrain {
         TerrainType::Meadow => "terrain-meadow",
         TerrainType::Forest => "terrain-forest",
-        TerrainType::Cave => "terrain-cave",
-        TerrainType::Ruins => "terrain-ruins",
         TerrainType::Village => "terrain-village",
         TerrainType::Deadland => "terrain-deadland",
     }
@@ -286,6 +290,24 @@ fn terrain_name(terrain: TerrainType, lang: Language) -> String {
 /// where the target language's `.ftl` defines one.
 fn terrain_attr(terrain: TerrainType, attr: &str, lang: Language) -> String {
     lang.loader().get_attr(terrain_id(terrain), attr)
+}
+
+fn poi_id(poi: Poi) -> &'static str {
+    match poi {
+        Poi::Cave => "poi-cave",
+        Poi::Ruins => "poi-ruins",
+        Poi::Village => "poi-village",
+    }
+}
+
+fn poi_name(poi: Poi, lang: Language) -> String {
+    lang.loader().get(poi_id(poi))
+}
+
+/// A grammatical-case attribute of a POI's name (e.g. `"locative"`), where the
+/// target language's `.ftl` defines one.
+fn poi_attr(poi: Poi, attr: &str, lang: Language) -> String {
+    lang.loader().get_attr(poi_id(poi), attr)
 }
 
 pub fn quest_name(id: QuestID, lang: Language) -> String {
@@ -363,11 +385,11 @@ mod tests {
     }
 
     #[test]
-    fn event_renders_found_in_english() {
+    fn event_renders_found_in_terrain_in_english() {
         let text = event(
             &EventKind::Found {
                 item: Item::Stick,
-                terrain: TerrainType::Forest,
+                source: FoundIn::Terrain(TerrainType::Forest),
             },
             Language::English,
         );
@@ -375,15 +397,15 @@ mod tests {
     }
 
     #[test]
-    fn event_renders_found_in_polish_with_the_locative_case() {
+    fn event_renders_found_in_a_poi_in_polish_with_the_locative_case() {
         let text = event(
             &EventKind::Found {
-                item: Item::Stick,
-                terrain: TerrainType::Forest,
+                item: Item::Stone,
+                source: FoundIn::Poi(Poi::Cave),
             },
             Language::Polish,
         );
-        assert_eq!(text, "Znajdujesz Patyk w lesie.");
+        assert_eq!(text, "Znajdujesz Kamień w jaskini.");
     }
 
     #[test]
@@ -420,7 +442,11 @@ mod tests {
             EventKind::Awoke,
             EventKind::Found {
                 item: Item::Stick,
-                terrain: TerrainType::Forest,
+                source: FoundIn::Terrain(TerrainType::Forest),
+            },
+            EventKind::Found {
+                item: Item::Stone,
+                source: FoundIn::Poi(Poi::Cave),
             },
             EventKind::QuestAccepted {
                 quest: QuestID::CraftArrows,

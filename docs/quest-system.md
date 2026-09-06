@@ -12,8 +12,8 @@ future UI would call.
 ## Design: how completion is verified
 
 Quests declare a single `QuestCondition { event: EventTypeID, count: u32 }`.
-`EventTypeID` names a game action (`CraftItem(Item)`, `VisitTerrain(TerrainType)`
-today). Instead of replaying a stored event history, `Game` fires the relevant
+`EventTypeID` names a game action (`CraftItem(Item)`, `VisitTerrain(TerrainType)`,
+`VisitPoi(Poi)` today). Instead of replaying a stored event history, `Game` fires the relevant
 `EventTypeID` at the moment the action happens and reacts immediately:
 `Player.quest_progress: u32` increments when the fired event matches the open
 quest's condition, and the quest completes once it reaches `count`. The counter
@@ -25,7 +25,8 @@ This was chosen over storing `EventTypeID` on the existing display `Event`/
 `EventCategory` log (used for the on-screen log and persisted in
 `save.rs::EventState`) because:
 - Walking is deliberately **not** added to that log today (see
-  `docs/event-log.md`), but `VisitTerrain` needs a signal on every step.
+  `docs/event-log.md`), but `VisitTerrain` / `VisitPoi` need a signal on every
+  step.
 - A scan-based "since start" check needs a stored start marker (index or
   timestamp) that must itself survive save/load correctly, on top of the
   existing `started: Instant` reconstruction `Game::from_saved` already does.
@@ -39,8 +40,9 @@ layered on later — not needed for the two quests that exist today.
 - `QuestID` (existing scaffold) — gains `Clone, Copy, PartialEq, Eq, Serialize,
   Deserialize` derives (needed to fix a build break: `Player` derives `Debug`
   and contains `Option<QuestID>`, but `QuestID` didn't derive `Debug`).
-- `EventTypeID` — `CraftItem(Item)`, `VisitTerrain(TerrainType)`. Not persisted;
-  only used transiently to route a game action to the open quest's condition.
+- `EventTypeID` — `CraftItem(Item)`, `VisitTerrain(TerrainType)`,
+  `VisitPoi(Poi)`. Not persisted; only used transiently to route a game action
+  to the open quest's condition. ("Explore the ruins" counts a `VisitPoi`.)
 - `QuestCondition { event: EventTypeID, count: u32 }`.
 - `Quest` (existing scaffold) — gains `condition: QuestCondition`,
   `reward_xp: u32`, `reward_items: &'static [(Item, u32)]`.
@@ -71,8 +73,9 @@ layered on later — not needed for the two quests that exist today.
   through it — those aren't "crafting" and shouldn't silently satisfy a
   craft-count quest.
 - `walk()` fires `EventTypeID::VisitTerrain` for the destination tile after
-  moving. This does not add anything to the visible event log — walking stays
-  unlogged, per `docs/event-log.md`.
+  moving, then `EventTypeID::VisitPoi` if the tile has a POI. This does not add
+  anything to the visible event log — walking stays unlogged, per
+  `docs/event-log.md`.
 
 ## Persistence (`src/save.rs`)
 

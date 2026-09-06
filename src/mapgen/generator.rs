@@ -3,13 +3,11 @@
 //! Pipeline (see `docs/mapgen.md` for the rationale):
 //!
 //! 1. **Quotas** — turn the cluster percentages into exact per-terrain tile
-//!    counts over the non-village, non-scatter cells (largest-remainder
-//!    rounding, so the counts always sum exactly).
-//! 2. **Scatter** — reserve Cave/Ruins cells uniformly at random; they never
-//!    take part in clustering.
-//! 3. **`affinity = 1` layout** — recursive rectilinear bisection slices the
+//!    counts over the non-village cells (largest-remainder rounding, so the
+//!    counts always sum exactly).
+//! 2. **`affinity = 1` layout** — recursive rectilinear bisection slices the
 //!    clustering cells into one contiguous block per terrain.
-//! 4. **Melt** — swap pairs of clustering cells, always taking a swap that
+//! 3. **Melt** — swap pairs of clustering cells, always taking a swap that
 //!    doesn't worsen clustering and taking a worsening one with flat probability
 //!    `(1 - affinity)^2`. This disorders the clean layout toward randomness
 //!    without a temperature to tune. Swaps never change counts, so the
@@ -22,7 +20,7 @@ use std::fmt;
 use rand::RngExt;
 use rand::seq::SliceRandom;
 
-use super::{is_clustering, is_scatter};
+use super::is_clustering;
 use crate::game::TerrainType;
 
 /// Melt iterations, as a multiple of the clustering-cell count. Enough that a
@@ -39,8 +37,6 @@ pub(crate) struct Spec {
     pub(crate) size: usize,
     /// Clustering terrain and its share, as a percentage. Must sum to 100.
     pub(crate) clusters: Vec<(TerrainType, f64)>,
-    /// Scattered terrain and its absolute tile count, on top of the 100%.
-    pub(crate) scatter: Vec<(TerrainType, u32)>,
     /// `0.0` fully random .. `1.0` one contiguous blob per clustering terrain.
     pub(crate) affinity: f64,
 }
@@ -53,7 +49,6 @@ pub(crate) enum GenError {
     TooSmall(usize),
     WrongCategory(TerrainType),
     DuplicateTerrain(TerrainType),
-    ScatterTooLarge { scatter: usize, capacity: usize },
     CannotPlaceClusters,
 }
 
@@ -68,14 +63,9 @@ impl fmt::Display for GenError {
             GenError::TooSmall(n) => write!(f, "size must be at least 5 (got {n})"),
             GenError::WrongCategory(t) => write!(
                 f,
-                "{t:?} cannot be used here (clustering terrain is Meadow/Forest/Deadland, \
-                 scatter is Cave/Ruins)"
+                "{t:?} cannot be a cluster (clustering terrain is Meadow/Forest/Deadland)"
             ),
             GenError::DuplicateTerrain(t) => write!(f, "{t:?} is listed more than once"),
-            GenError::ScatterTooLarge { scatter, capacity } => write!(
-                f,
-                "scatter total {scatter} leaves no room for clusters (capacity {capacity})"
-            ),
             GenError::CannotPlaceClusters => write!(
                 f,
                 "could not grow contiguous clusters; try a lower affinity, fewer \
@@ -104,17 +94,6 @@ impl Spec {
             seen.push(t);
         }
 
-        seen.clear();
-        for &(t, _) in &self.scatter {
-            if !is_scatter(t) {
-                return Err(GenError::WrongCategory(t));
-            }
-            if seen.contains(&t) {
-                return Err(GenError::DuplicateTerrain(t));
-            }
-            seen.push(t);
-        }
-
         let sum: f64 = self.clusters.iter().map(|&(_, p)| p).sum();
         if (sum - 100.0).abs() > 1e-6 {
             return Err(GenError::PercentSum(sum));
@@ -127,19 +106,12 @@ impl Spec {
             return Err(GenError::EvenSize(self.size));
         }
 
-        let capacity = self.size * self.size - 1;
-        let scatter: usize = self.scatter.iter().map(|&(_, n)| n as usize).sum();
-        if scatter >= capacity {
-            return Err(GenError::ScatterTooLarge { scatter, capacity });
-        }
-
         Ok(())
     }
 }
 
-/// Generates a `size x size` grid: `Village` dead-centre, the requested scatter
-/// terrain sprinkled uniformly, the rest filled with the clustering terrain at
-/// exactly its quota.
+/// Generates a `size x size` grid: `Village` dead-centre, every other cell
+/// filled with a clustering terrain at exactly its quota.
 pub(crate) fn generate(
     spec: &Spec,
     rng: &mut impl rand::Rng,
@@ -148,29 +120,19 @@ pub(crate) fn generate(
 
     let size = spec.size;
     let mid = size / 2;
-    let scatter_total: usize = spec.scatter.iter().map(|&(_, n)| n as usize).sum();
-    let cluster_budget = (size * size - 1) - scatter_total;
+    let cluster_budget = size * size - 1;
     let quotas = cluster_quotas(&spec.clusters, cluster_budget);
 
-    // Every non-village cell, shuffled: the front slice becomes scatter, the
-    // rest are the clustering cells `s`.
-    let mut cells: Vec<Cell> = (0..size)
+    // Every non-village cell, shuffled — these are the clustering cells.
+    let mut s_cells: Vec<Cell> = (0..size)
         .flat_map(|y| (0..size).map(move |x| (x, y)))
         .filter(|&c| c != (mid, mid))
         .collect();
-    cells.shuffle(rng);
-    let (scatter_cells, s_cells) = cells.split_at(scatter_total);
+    s_cells.shuffle(rng);
+    let s_cells = &s_cells[..];
 
     let mut grid = vec![vec![TerrainType::Deadland; size]; size];
     grid[mid][mid] = TerrainType::Village;
-
-    let mut placed = 0;
-    for &(terrain, count) in &spec.scatter {
-        for &(x, y) in &scatter_cells[placed..placed + count as usize] {
-            grid[y][x] = terrain;
-        }
-        placed += count as usize;
-    }
 
     if spec.affinity <= EPS {
         let mut bag: Vec<TerrainType> = Vec::with_capacity(s_cells.len());
@@ -195,7 +157,7 @@ pub(crate) fn generate(
         grid[y][x] = terrain;
     }
 
-    // A 1-cell village or a stray scatter tile can, very rarely, split a slice.
+    // The 1-cell village can, very rarely, split a slice.
     if active.iter().any(|&(t, _)| components(&grid, t) != 1) {
         return Err(GenError::CannotPlaceClusters);
     }
@@ -445,7 +407,6 @@ mod tests {
         Spec {
             size,
             clusters: vec![(TerrainType::Forest, 70.0), (TerrainType::Meadow, 30.0)],
-            scatter: vec![(TerrainType::Cave, 6), (TerrainType::Ruins, 4)],
             affinity,
         }
     }
@@ -453,7 +414,7 @@ mod tests {
     #[test]
     fn composition_is_exact() {
         let s = spec(23, 0.5);
-        let budget = 23 * 23 - 1 - 10;
+        let budget = 23 * 23 - 1;
         let quotas = cluster_quotas(&s.clusters, budget);
         let grid = generate(&s, &mut rng()).unwrap();
 
@@ -465,8 +426,6 @@ mod tests {
         assert_eq!(
             count(&grid, TerrainType::Forest)
                 + count(&grid, TerrainType::Meadow)
-                + count(&grid, TerrainType::Cave)
-                + count(&grid, TerrainType::Ruins)
                 + count(&grid, TerrainType::Village),
             23 * 23
         );
@@ -479,32 +438,6 @@ mod tests {
             assert_eq!(grid[11][11], TerrainType::Village);
             assert_eq!(count(&grid, TerrainType::Village), 1);
         }
-    }
-
-    #[test]
-    fn scatter_counts_are_exact() {
-        for affinity in [0.0, 0.5, 1.0] {
-            let grid = generate(&spec(23, affinity), &mut rng()).unwrap();
-            assert_eq!(count(&grid, TerrainType::Cave), 6);
-            assert_eq!(count(&grid, TerrainType::Ruins), 4);
-        }
-    }
-
-    #[test]
-    fn scatter_is_not_clustered() {
-        // At full affinity the clustering terrains are single blobs; the
-        // scatter terrains must still be near-isolated speckles.
-        let mut isolated = 0;
-        let trials = 8;
-        for seed in 0..trials {
-            let grid = generate(&spec(25, 1.0), &mut StdRng::seed_from_u64(seed)).unwrap();
-            if components(&grid, TerrainType::Cave) >= (0.8 * 6.0) as usize
-                && components(&grid, TerrainType::Ruins) >= (0.8 * 4.0) as usize
-            {
-                isolated += 1;
-            }
-        }
-        assert_eq!(isolated, trials, "scatter terrain clustered");
     }
 
     #[test]
@@ -599,7 +532,6 @@ mod tests {
                     (TerrainType::Meadow, 33.0),
                     (TerrainType::Deadland, 33.0),
                 ],
-                scatter: vec![(TerrainType::Cave, 8), (TerrainType::Ruins, 4)],
                 affinity: 1.0,
             };
             assert!(
@@ -617,7 +549,7 @@ mod tests {
         assert!(
             grid.iter()
                 .flatten()
-                .all(|&t| "MFCRV.".contains(crate::save::terrain_code(t)))
+                .all(|&t| "MFV.".contains(crate::save::terrain_code(t)))
         );
     }
 
@@ -657,24 +589,6 @@ mod tests {
             Err(GenError::WrongCategory(TerrainType::Village))
         );
 
-        let cave_cluster = Spec {
-            clusters: vec![(TerrainType::Cave, 100.0)],
-            ..spec(23, 0.5)
-        };
-        assert_eq!(
-            cave_cluster.validate(),
-            Err(GenError::WrongCategory(TerrainType::Cave))
-        );
-
-        let forest_scatter = Spec {
-            scatter: vec![(TerrainType::Forest, 3)],
-            ..spec(23, 0.5)
-        };
-        assert_eq!(
-            forest_scatter.validate(),
-            Err(GenError::WrongCategory(TerrainType::Forest))
-        );
-
         let dupe = Spec {
             clusters: vec![(TerrainType::Forest, 50.0), (TerrainType::Forest, 50.0)],
             ..spec(23, 0.5)
@@ -683,16 +597,6 @@ mod tests {
             dupe.validate(),
             Err(GenError::DuplicateTerrain(TerrainType::Forest))
         );
-
-        let flooded = Spec {
-            size: 5,
-            scatter: vec![(TerrainType::Cave, 24)],
-            ..spec(23, 0.5)
-        };
-        assert!(matches!(
-            flooded.validate(),
-            Err(GenError::ScatterTooLarge { .. })
-        ));
 
         assert!(base.validate().is_ok());
     }

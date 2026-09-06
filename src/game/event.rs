@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::io;
 use std::time::Duration;
 
-use super::{Item, QuestID, TerrainType};
+use super::{FoundIn, Item, QuestID};
 
 /// What happened, described structurally rather than as rendered text —
 /// wording lives entirely in `i18n`. One variant per `Game::log(...)` call
@@ -11,8 +11,9 @@ use super::{Item, QuestID, TerrainType};
 pub enum EventKind {
     /// The game's opening event.
     Awoke,
-    /// Found `item` while searching `terrain`.
-    Found { item: Item, terrain: TerrainType },
+    /// Found `item` while searching a tile, `source` says whether it came from
+    /// the terrain or the tile's POI.
+    Found { item: Item, source: FoundIn },
     /// Accepted `quest` as the open quest.
     QuestAccepted { quest: QuestID },
     /// Completed the open quest.

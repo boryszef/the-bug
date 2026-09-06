@@ -1,5 +1,5 @@
 use super::item::Item;
-use super::map::TerrainType;
+use super::map::{Poi, TerrainType};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -26,6 +26,7 @@ pub enum QuestError {
 pub(super) enum EventTypeID {
     CraftItem(Item),
     VisitTerrain(TerrainType),
+    VisitPoi(Poi),
 }
 
 /// What it takes to complete a quest: `count` occurrences of `event`.
@@ -77,7 +78,7 @@ pub(super) const QUESTS: &[Quest] = &[
         id: QuestID::ExploreRuins,
         dependencies: &[],
         condition: QuestCondition {
-            event: EventTypeID::VisitTerrain(TerrainType::Ruins),
+            event: EventTypeID::VisitPoi(Poi::Ruins),
             count: 1,
         },
         reward_xp: 10,

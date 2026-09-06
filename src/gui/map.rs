@@ -8,7 +8,7 @@ use std::ops::RangeInclusive;
 
 use eframe::egui::{Color32, Key, Painter, Pos2, Rect, RichText, Sense, Shape, Stroke, Ui, Vec2};
 
-use crate::game::{Direction, TerrainType};
+use crate::game::{Direction, Poi, TerrainType};
 use crate::i18n::{self, Language};
 use crate::viewmodel::map::{TileView, terrain_rgb};
 
@@ -24,9 +24,9 @@ const SCROLL_ZOOM_RATE: f32 = 0.002;
 const PLAYER_MARKER_RATIO: f32 = 0.3;
 const PLAYER_MARKER_COLOR: Color32 = Color32::from_rgb(0xff, 0xd0, 0x2f);
 
-/// One dark ink for the point-of-interest icons (Cave, Ruins), legible on both
-/// the cave grey and the ruins tan.
-const POI_ICON_COLOR: Color32 = Color32::from_rgb(0x24, 0x20, 0x1c);
+/// One ink for the point-of-interest icons — a pale bone that reads on any of
+/// the terrain fills a POI can now sit on (dark deadland included).
+const POI_ICON_COLOR: Color32 = Color32::from_rgb(0xe4, 0xdd, 0xcf);
 /// POI icon extent as a fraction of the tile.
 const POI_ICON_RATIO: f32 = 0.6;
 /// Below this tile size the POI icon is skipped — it would just be noise.
@@ -129,7 +129,9 @@ impl MapView {
             let (r, g, b) = terrain_rgb(tile.terrain);
             painter.rect_filled(rect, 0.0, Color32::from_rgb(r, g, b));
 
-            if is_field(tile.terrain) {
+            // A POI tile stays a clean square so its icon reads clearly;
+            // everywhere else the border trickles into its neighbours.
+            if tile.poi.is_none() {
                 draw_edge_trickle(
                     &painter,
                     rect.center(),
@@ -137,13 +139,11 @@ impl MapView {
                     tile.terrain,
                     &tile.neighbours,
                 );
-            }
-
-            if self.tile_px >= POI_ICON_MIN_PX {
-                match tile.terrain {
-                    TerrainType::Cave => draw_cave_icon(&painter, rect.center(), self.tile_px),
-                    TerrainType::Ruins => draw_ruins_icon(&painter, rect.center(), self.tile_px),
-                    _ => {}
+            } else if self.tile_px >= POI_ICON_MIN_PX {
+                match tile.poi {
+                    Some(Poi::Cave) => draw_cave_icon(&painter, rect.center(), self.tile_px),
+                    Some(Poi::Ruins) => draw_ruins_icon(&painter, rect.center(), self.tile_px),
+                    Some(Poi::Village) | None => {}
                 }
             }
         }
@@ -217,18 +217,9 @@ fn draw_ruins_icon(painter: &Painter, center: Pos2, tile_px: f32) {
     }
 }
 
-/// The terrains the wavy-border trickle applies to. Mirrors `mapgen`'s private
-/// `is_clustering`; promote to a `TerrainType` method if a third caller appears.
-fn is_field(terrain: TerrainType) -> bool {
-    matches!(
-        terrain,
-        TerrainType::Meadow | TerrainType::Forest | TerrainType::Deadland
-    )
-}
-
-/// For each edge whose neighbour is a *different* field terrain, paints a few
-/// teeth of that neighbour's colour reaching in from the edge, so the border
-/// reads as ragged rather than a straight line. `neighbours` is `[N, E, S, W]`.
+/// For each edge whose neighbour is a *different* terrain, paints a few teeth
+/// of that neighbour's colour reaching in from the edge, so the border reads as
+/// ragged rather than a straight line. `neighbours` is `[N, E, S, W]`.
 fn draw_edge_trickle(
     painter: &Painter,
     center: Pos2,
@@ -238,7 +229,7 @@ fn draw_edge_trickle(
 ) {
     for (edge, neighbour) in neighbours.iter().enumerate() {
         let Some(nt) = *neighbour else { continue };
-        if nt == own || !is_field(nt) {
+        if nt == own {
             continue;
         }
         let (r, g, b) = terrain_rgb(nt);
@@ -444,20 +435,6 @@ mod tests {
                 "west teeth sit on the left edge"
             );
             assert!(t.max.x < c.x, "reach inward from the left");
-        }
-    }
-
-    #[test]
-    fn is_field_is_the_three_clustering_terrains() {
-        for t in [
-            TerrainType::Meadow,
-            TerrainType::Forest,
-            TerrainType::Deadland,
-        ] {
-            assert!(is_field(t));
-        }
-        for t in [TerrainType::Cave, TerrainType::Ruins, TerrainType::Village] {
-            assert!(!is_field(t));
         }
     }
 

@@ -1,6 +1,7 @@
 use super::item::Item;
 use super::player::Player;
 use rand::RngExt;
+use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -19,16 +20,14 @@ const MAP_AFFINITY: f64 = 0.75;
 const DEADLAND_PERCENT: f64 = 100.0 * 40.0 / 90.0;
 const MEADOW_PERCENT: f64 = 100.0 * 30.0 / 90.0;
 const FOREST_PERCENT: f64 = 100.0 * 20.0 / 90.0;
-/// Scatter terrain as a fraction of the tile count (kept from the old per-tile
+/// POI density as a fraction of the tile count (kept from the old scatter
 /// weights): the count scales with the map so density stays constant by level.
 const CAVE_FRACTION: f64 = 0.07;
 const RUINS_FRACTION: f64 = 0.03;
-/// How many times to re-roll the RNG before giving up. The generator's clean
-/// pre-melt layout check fails whenever a scatter tile splits a terrain slice,
-/// which — with scatter at 10% of the map — is roughly a third of attempts; a
-/// generous cap makes exhausting it (a panic) practically impossible while the
-/// expected cost stays under two tries.
-const MAPGEN_ATTEMPTS: usize = 32;
+/// How many times to re-roll the RNG before giving up. The generator's
+/// pre-melt layout check fails only when the single village cell splits a
+/// terrain slice — rare — so a small cap is plenty; exhausting it is a panic.
+const MAPGEN_ATTEMPTS: usize = 8;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum Direction {
@@ -53,8 +52,6 @@ impl Direction {
 pub enum TerrainType {
     Meadow,
     Forest,
-    Cave,
-    Ruins,
     Village,
     Deadland,
 }
@@ -65,8 +62,6 @@ impl TerrainType {
         match self {
             TerrainType::Meadow => '𖧧',
             TerrainType::Forest => '𖠰',
-            TerrainType::Cave => '🪨',
-            TerrainType::Ruins => '🏙',
             TerrainType::Village => '🛖',
             TerrainType::Deadland => ' ',
         }
@@ -83,35 +78,73 @@ pub enum Poi {
     Village,
 }
 
+impl Poi {
+    /// The single-character glyph used to draw this POI on the map.
+    pub fn symbol(self) -> char {
+        match self {
+            Poi::Cave => '🪨',
+            Poi::Ruins => '🏙',
+            Poi::Village => '🛖',
+        }
+    }
+}
+
+/// Where a searched-up item came from: the tile's terrain, or its POI.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FoundIn {
+    Terrain(TerrainType),
+    Poi(Poi),
+}
+
 #[derive(Debug)]
 pub struct MapTile {
     pub terrain_type: TerrainType,
     pub poi: Option<Poi>,
-    pub(super) items: HashMap<Item, f64>,
+    /// What a search here can turn up: item → (base probability, its source).
+    pub(super) items: HashMap<Item, (f64, FoundIn)>,
     pub(super) last_search_time: Option<Instant>,
 }
 
 impl fmt::Display for MapTile {
+    /// The tile's map glyph: its POI's if it has one, otherwise its terrain's.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.terrain_type.symbol())
+        let glyph = self
+            .poi
+            .map_or_else(|| self.terrain_type.symbol(), Poi::symbol);
+        write!(f, "{glyph}")
     }
 }
 
+/// Items a tile's *terrain* can turn up when searched, with the base
+/// probability per search.
 const TERRAIN_ITEMS: &[(TerrainType, Item, f64)] = &[
     (TerrainType::Forest, Item::Stick, 0.5),
-    (TerrainType::Cave, Item::Stone, 0.3),
     (TerrainType::Meadow, Item::Vine, 0.3),
-    (TerrainType::Ruins, Item::CopperWire, 0.2),
-    (TerrainType::Ruins, Item::PlasticBottle, 0.2),
-    (TerrainType::Ruins, Item::Umbrella, 0.2),
 ];
 
-fn items_for_terrain(terrain: TerrainType) -> HashMap<Item, f64> {
-    TERRAIN_ITEMS
+/// Items a tile's *POI* adds on top of its terrain's.
+const POI_ITEMS: &[(Poi, Item, f64)] = &[
+    (Poi::Cave, Item::Stone, 0.3),
+    (Poi::Ruins, Item::CopperWire, 0.2),
+    (Poi::Ruins, Item::PlasticBottle, 0.2),
+    (Poi::Ruins, Item::Umbrella, 0.2),
+];
+
+/// Everything a tile can yield on a search: its terrain's items plus its POI's,
+/// each tagged with where it came from. A POI entry overrides a terrain entry
+/// for the same item (there are none today).
+fn tile_items(terrain: TerrainType, poi: Option<Poi>) -> HashMap<Item, (f64, FoundIn)> {
+    let mut items: HashMap<Item, (f64, FoundIn)> = TERRAIN_ITEMS
         .iter()
         .filter(|&&(t, _, _)| t == terrain)
-        .map(|&(_, item, probability)| (item, probability))
-        .collect()
+        .map(|&(_, item, probability)| (item, (probability, FoundIn::Terrain(terrain))))
+        .collect();
+    if let Some(poi) = poi {
+        for &(_, item, probability) in POI_ITEMS.iter().filter(|&&(p, _, _)| p == poi) {
+            items.insert(item, (probability, FoundIn::Poi(poi)));
+        }
+    }
+    items
 }
 
 impl MapTile {
@@ -126,21 +159,21 @@ impl MapTile {
         MapTile {
             terrain_type,
             poi,
-            items: items_for_terrain(terrain_type),
+            items: tile_items(terrain_type, poi),
             last_search_time: None,
         }
     }
 
     /// Rolls each of this tile's items against its search probability
     /// (decayed by how recently the tile was searched), returning what's
-    /// found.
-    pub(super) fn roll_found_items(&self, rng: &mut impl rand::Rng) -> Vec<Item> {
+    /// found and where each came from.
+    pub(super) fn roll_found_items(&self, rng: &mut impl rand::Rng) -> Vec<(Item, FoundIn)> {
         self.items
             .iter()
-            .filter(|&(_, &base)| {
+            .filter(|&(_, &(base, _))| {
                 rng.random_range(0.0..1.0) < adjust_probability(base, self.last_search_time)
             })
-            .map(|(&item, _)| item)
+            .map(|(&item, &(_, source))| (item, source))
             .collect()
     }
 }
@@ -154,7 +187,6 @@ pub struct Map {
 impl Map {
     pub fn new(player: &Player) -> Map {
         let size = (MAP_MIN_SIZE + player.level * MAP_PER_LEVEL_INCREMENT) as usize;
-        let scatter_count = |fraction: f64| (fraction * (size * size) as f64).round() as u32;
 
         let spec = crate::mapgen::Spec {
             size,
@@ -163,18 +195,14 @@ impl Map {
                 (TerrainType::Meadow, MEADOW_PERCENT),
                 (TerrainType::Forest, FOREST_PERCENT),
             ],
-            scatter: vec![
-                (TerrainType::Cave, scatter_count(CAVE_FRACTION)),
-                (TerrainType::Ruins, scatter_count(RUINS_FRACTION)),
-            ],
             affinity: MAP_AFFINITY,
         };
 
         let mut rng = rand::rng();
         for _ in 0..MAPGEN_ATTEMPTS {
             if let Ok(grid) = crate::mapgen::generate(&spec, &mut rng) {
-                let n = grid.len();
-                return Map::from_terrain(grid, vec![vec![None; n]; n]);
+                let pois = scatter_pois(grid.len(), &mut rng);
+                return Map::from_terrain(grid, pois);
             }
         }
         panic!("map generation failed with a hardcoded spec");
@@ -256,6 +284,31 @@ impl super::RestoreState for Map {
         let pois = crate::save::parse_pois(&saved.pois, terrain.len(), width)?;
         Ok(Map::from_terrain(terrain, pois))
     }
+}
+
+/// Lays out the map's points of interest as a grid parallel to the terrain
+/// grid: `Cave` and `Ruins` on cells picked uniformly at random, at the same
+/// densities the old scatter terrain used. The centre cell is left clear for
+/// the village.
+fn scatter_pois(size: usize, rng: &mut impl rand::Rng) -> Vec<Vec<Option<Poi>>> {
+    let mid = size / 2;
+    let count = |fraction: f64| (fraction * (size * size) as f64).round() as usize;
+
+    let mut cells: Vec<(usize, usize)> = (0..size)
+        .flat_map(|y| (0..size).map(move |x| (x, y)))
+        .filter(|&c| c != (mid, mid))
+        .collect();
+    cells.shuffle(rng);
+
+    let mut pois = vec![vec![None; size]; size];
+    let (caves, rest) = cells.split_at(count(CAVE_FRACTION));
+    for &(x, y) in caves {
+        pois[y][x] = Some(Poi::Cave);
+    }
+    for &(x, y) in &rest[..count(RUINS_FRACTION)] {
+        pois[y][x] = Some(Poi::Ruins);
+    }
+    pois
 }
 
 /// Scales `base_probability` down while the tile was searched recently
@@ -370,6 +423,39 @@ mod tests {
                 TerrainType::Village
             );
         }
+    }
+
+    #[test]
+    fn new_map_places_poi_overlays_at_the_expected_density() {
+        let map = Map::new(&Player::default());
+        let side = map.tiles.len();
+        let count = |want: Poi| {
+            map.tiles
+                .iter()
+                .flatten()
+                .filter(|t| t.poi == Some(want))
+                .count()
+        };
+        let expect = |frac: f64| (frac * (side * side) as f64).round() as usize;
+
+        assert_eq!(count(Poi::Cave), expect(CAVE_FRACTION));
+        assert_eq!(count(Poi::Ruins), expect(RUINS_FRACTION));
+        // caves/ruins never land on the centre cell.
+        assert_eq!(map.get_tile((0, 0)).unwrap().poi, None);
+    }
+
+    #[test]
+    fn a_poi_tile_yields_its_terrain_items_and_its_poi_items() {
+        // A cave on forest offers Stick (forest) and Stone (cave).
+        let tile = MapTile::with_terrain_and_poi(TerrainType::Forest, Some(Poi::Cave));
+        assert_eq!(
+            tile.items.get(&Item::Stick).map(|&(_, s)| s),
+            Some(FoundIn::Terrain(TerrainType::Forest))
+        );
+        assert_eq!(
+            tile.items.get(&Item::Stone).map(|&(_, s)| s),
+            Some(FoundIn::Poi(Poi::Cave))
+        );
     }
 
     #[test]

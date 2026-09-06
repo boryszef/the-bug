@@ -9,6 +9,7 @@
 
 event-awoke = Budzisz się i postanawiasz zbadać okolicę.
 event-found = Znajdujesz { $item } { $terrain }.
+event-found-poi = Znajdujesz { $item } { $poi }.
 event-quest-accepted = Zadanie przyjęte: { $quest }
 event-quest-completed = Zadanie ukończone: { $quest }!
 event-unknown-recipe = Nie wiesz jak zrobić { $recipe }.
@@ -120,14 +121,19 @@ terrain-meadow = Łąka
     .locative = na łące
 terrain-forest = Las
     .locative = w lesie
-terrain-cave = Jaskinia
-    .locative = w jaskini
-terrain-ruins = Ruiny
-    .locative = w ruinach
 terrain-village = Wieś
     .locative = we wsi
 terrain-deadland = Pustkowie
     .locative = na pustkowiu
+
+## Point-of-interest names (nominative), with the same `.locative` attribute.
+
+poi-cave = Jaskinia
+    .locative = w jaskini
+poi-ruins = Ruiny
+    .locative = w ruinach
+poi-village = Wieś
+    .locative = we wsi
 
 ## Quest name/description.
 

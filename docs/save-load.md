@@ -35,7 +35,13 @@ stays small and editable:
       "F..F....M.F.M.MMM",
       "M.M..F.FMMMM..M.M",
       "...",
-      "MM.MM.M.V.M.MM..F"
+      "MM.MM.M.M.M.MM..F"
+    ],
+    "pois": [
+      "................",
+      ".....c..........",
+      "...",
+      "........v......r"
     ]
   },
   "events": [
@@ -44,18 +50,32 @@ stays small and editable:
 }
 ```
 
-**Terrain codes** (one character per tile, one string per map row):
+**Terrain codes** — the `terrain` grid, one character per tile, one string per
+row:
 
 | code | terrain  |
 |------|----------|
 | `M`  | Meadow   |
 | `F`  | Forest   |
-| `C`  | Cave     |
 | `V`  | Village  |
 | `.`  | Deadland |
 
-The grid's dimensions define the map size (`half = rows / 2`). Rows must all be
-the same length; an unknown code or a ragged grid is rejected.
+**POI codes** — the optional `pois` grid, same shape, one point of interest per
+tile (`docs/map-pois.md`). Absent (or omitted) means no POIs anywhere.
+
+| code       | POI     |
+|------------|---------|
+| `.` or ` ` | none    |
+| `c`        | Cave    |
+| `r`        | Ruins   |
+| `v`        | Village |
+
+The `terrain` grid's dimensions define the map size (`half = rows / 2`); the
+`pois` grid, if present, must match them. Rows must all be the same length; an
+unknown code or a ragged grid is rejected.
+
+Caves and ruins used to be terrain codes `C` / `R`; a save that still uses them
+no longer loads (`docs/map-pois.md` — clean break, no migration).
 
 `version` is the game's semantic version (`CARGO_PKG_VERSION`) at save time.
 Loading a file written by a different version prints a note but still loads;
@@ -66,16 +86,16 @@ hand-made files may omit the field. There is no migration logic yet.
 - **Per-tile search cooldown** (`MapTile.last_search_time`) — a transient ~60 s
   decay timer that needs a wall clock and expires across any real gap. Every
   tile loads as "not recently searched".
-- **Tile item tables** (`MapTile.items`) — recomputed from the terrain, so
-  editing a tile's terrain code also changes what can be found there.
+- **Tile item tables** (`MapTile.items`) — recomputed from the terrain and POI,
+  so editing either grid also changes what can be found there.
 - Unknown recipe names in `recipes` are silently skipped.
 
 ## Editing tips
 
 - Bump `level`, add `"inventory": { "Cord": 5 }`, add `"Stone Axe"` to
   `recipes` to jump ahead.
-- Redraw the `terrain` grid to build a specific map; put `V` somewhere for the
-  village.
+- Redraw the `terrain` grid to build a specific map; add a `pois` grid (same
+  size) with a `v` for the village and `c` / `r` for caves / ruins.
 - `events` can be trimmed to `[]` or a single line for a clean log.
 
 ## Code

@@ -12,16 +12,18 @@ It reads like a spreadsheet — hard square cells, no markers. The `TODO.md`
 2. **Wavy borders** — where two different *field* terrains meet, a little of
    the neighbour's colour trickles across the edge, so a forest/meadow border
    is ragged rather than a ruler-straight line.
-3. **POI as an overlay** — Cave and Ruins stop being `TerrainType` variants and
-   become an overlay on a tile, so a tile can be forest *and* a cave and yield
-   findings from both. *Separate doc when built.*
+3. **POI as an overlay** — ✅ done: Cave and Ruins (and Village) stop being
+   `TerrainType` variants and become an `Option<Poi>` on a tile, so a tile can
+   be forest *and* a cave and yields findings from both. See `docs/map-pois.md`.
 4. **Roads and rivers** — another overlay on tiles, drawn as connected
-   segments (see `docs/gui-map.md` follow-on #2). *Separate doc when built.*
+   segments (see `docs/gui-map.md` follow-on #2). *Separate doc; moved to the
+   end of the EPIC.*
 5. **Bridge POI** — the tile where a road crosses a river becomes a point of
-   interest yielding new salvage (steel bolt, rusty metal). *Separate doc.*
+   interest yielding new salvage (steel bolt, rusty metal). *Separate doc;
+   after 4.*
 
-Increments 1 and 2 are covered here; 3–5 get their own docs. The overlay work
-in 3 is the natural foundation for 4 and 5, so it likely lands first.
+Increments 1 and 2 are covered here; 3 is `docs/map-pois.md`; 4 and 5 come
+last and get their own docs.
 
 ## 1. POI icons (Cave, Ruins)
 

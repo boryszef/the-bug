@@ -26,28 +26,29 @@ separate tool).
 |---|---|---|
 | `MAP_AFFINITY` | `0.75` | `0.0` confetti … `1.0` one contiguous block per terrain |
 | `DEADLAND_PERCENT` / `MEADOW_PERCENT` / `FOREST_PERCENT` | `40 : 30 : 20` of 90, renormalised to sum 100 | clustering-terrain shares (the old per-tile weights, kept) |
-| `CAVE_FRACTION` / `RUINS_FRACTION` | `0.07` / `0.03` of the tile count | scatter terrain; the count scales with map size so density is constant per level |
-| `MAPGEN_ATTEMPTS` | `32` | RNG re-rolls before giving up (see "Retry loop") |
+| `CAVE_FRACTION` / `RUINS_FRACTION` | `0.07` / `0.03` of the tile count | POI density (`docs/map-pois.md`), placed by `Map::new`, not by `mapgen` |
+| `MAPGEN_ATTEMPTS` | `8` | RNG re-rolls before giving up (see "Retry loop") |
 
-`Map::new` builds the `Spec` from these, calls `mapgen::generate`, and hands
-the grid to the existing `Map::from_terrain` (the same entry point save-load
-uses).
+`Map::new` builds the `Spec` from these, calls `mapgen::generate`, sprinkles
+the POI overlay grid (`scatter_pois`), and hands terrain + POIs to the existing
+`Map::from_terrain` (the same entry point save-load uses).
+
+`mapgen` itself only knows about terrain. Caves and ruins used to be a
+`TerrainType` "scatter" category placed here; they are now a `Poi` overlay
+(`docs/map-pois.md`) and this generator no longer has a scatter step.
 
 ## How it works
 
 `src/mapgen/generator.rs`, in order:
 
 1. **Quotas** — largest-remainder rounding turns the cluster percentages into
-   exact per-terrain tile counts over the non-village, non-scatter cells, so
-   the counts always sum exactly.
-2. **Scatter** — Cave/Ruins cells are sampled uniformly at random and set
-   aside; they take no part in clustering, so they stay speckled at any
-   affinity.
-3. **`affinity = 1` layout** — recursive rectilinear bisection ("slice and
+   exact per-terrain tile counts over the non-village cells, so the counts
+   always sum exactly.
+2. **`affinity = 1` layout** — recursive rectilinear bisection ("slice and
    dice") cuts the clustering cells into one contiguous block per terrain,
    each exactly its quota. The axis alternates by depth so blocks come out
    blocky, not striped.
-4. **Melt** — for `affinity < 1`, pairs of clustering cells are repeatedly
+3. **Melt** — for `affinity < 1`, pairs of clustering cells are repeatedly
    swap-tested: a swap that doesn't increase the count of unlike orthogonal
    neighbours is always taken; one that does is taken with a flat probability
    `(1 - affinity)²`. Swaps never change tile counts, so composition stays
@@ -57,18 +58,18 @@ uses).
 
 ## Retry loop
 
-Between steps 3 and 4 the generator rejects a layout
-(`GenError::CannotPlaceClusters`) if a scatter tile or the village has split a
-terrain block. With scatter at 10% of the map that happens on roughly a third
-of attempts, so `Map::new` re-rolls the RNG up to `MAPGEN_ATTEMPTS` times
-(expected cost: under two tries). The spec is hardcoded and valid, so
-exhausting the cap is a bug — `Map::new` panics rather than shipping a
-degenerate map.
+Between the layout and the melt the generator rejects a layout
+(`GenError::CannotPlaceClusters`) if the single village cell has split a
+terrain block. That is rare now that nothing else punches holes in the grid
+(it was ~⅓ of attempts back when scatter terrain did), so `Map::new` re-rolls
+the RNG up to `MAPGEN_ATTEMPTS` times and panics if they all fail — a
+hardcoded, valid spec should never get there.
 
 ## Not in scope
 
 - A seed stored in the save / reproducible regeneration — the grid itself is
   persisted, which is all load needs.
 - Roads, rivers, or any `Feature` overlay — `docs/gui-map.md` #2.
+- Points of interest — a separate `Poi` overlay, see `docs/map-pois.md`.
 - Biome realism (elevation, moisture, coastlines), non-square maps, terrain
-  beyond the existing six kinds.
+  beyond the existing kinds.

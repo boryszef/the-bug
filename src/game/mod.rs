@@ -7,7 +7,7 @@ mod recipe;
 
 pub use event::{Event, EventKind};
 pub use item::Item;
-pub use map::{Direction, Map, MapTile, Poi, TerrainType};
+pub use map::{Direction, FoundIn, Map, MapTile, Poi, TerrainType};
 pub use player::Player;
 pub use quest::{Quest, QuestError, QuestID};
 pub(crate) use recipe::reversible_recipe_for;
@@ -168,7 +168,11 @@ impl Game {
 
         self.player.coordinates = next;
         if let Some(tile) = self.map.get_tile(next) {
-            self.note_quest_event(EventTypeID::VisitTerrain(tile.terrain_type));
+            let (terrain, poi) = (tile.terrain_type, tile.poi);
+            self.note_quest_event(EventTypeID::VisitTerrain(terrain));
+            if let Some(poi) = poi {
+                self.note_quest_event(EventTypeID::VisitPoi(poi));
+            }
         }
     }
 
@@ -177,12 +181,11 @@ impl Game {
         let Some(tile) = self.map.get_tile(coords) else {
             return;
         };
-        let terrain = tile.terrain_type;
         let found = tile.roll_found_items(&mut rand::rng());
 
-        for item in found {
+        for (item, source) in found {
             self.player.add_to_inventory(item, 1);
-            self.log(EventKind::Found { item, terrain });
+            self.log(EventKind::Found { item, source });
         }
         self.map.update_tile_last_search_time(coords);
     }
@@ -506,13 +509,16 @@ mod tests {
     }
 
     #[test]
-    fn search_yields_every_item_a_tile_offers() {
+    fn search_yields_terrain_and_poi_items_and_names_each_source() {
         let mut game = Game::default();
         let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
         game.map.tiles[ty][tx] = MapTile {
             terrain_type: TerrainType::Forest,
-            poi: None,
-            items: HashMap::from([(Item::Stick, 1.0), (Item::Vine, 1.0)]),
+            poi: Some(Poi::Cave),
+            items: HashMap::from([
+                (Item::Stick, (1.0, FoundIn::Terrain(TerrainType::Forest))),
+                (Item::Stone, (1.0, FoundIn::Poi(Poi::Cave))),
+            ]),
             last_search_time: None,
         };
         let before = game.events().len();
@@ -520,8 +526,18 @@ mod tests {
         game.search();
 
         assert_eq!(game.player.inventory.get(&Item::Stick), Some(&1));
-        assert_eq!(game.player.inventory.get(&Item::Vine), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::Stone), Some(&1));
         assert_eq!(game.events().len(), before + 2);
+
+        let sources: Vec<FoundIn> = game.events()[before..]
+            .iter()
+            .filter_map(|e| match e.kind() {
+                EventKind::Found { source, .. } => Some(*source),
+                _ => None,
+            })
+            .collect();
+        assert!(sources.contains(&FoundIn::Terrain(TerrainType::Forest)));
+        assert!(sources.contains(&FoundIn::Poi(Poi::Cave)));
     }
 
     #[test]
@@ -715,11 +731,11 @@ mod tests {
     }
 
     #[test]
-    fn walking_onto_the_target_terrain_completes_the_quest() {
+    fn walking_onto_the_target_poi_completes_the_quest() {
         let mut game = Game::default();
         game.player.coordinates = (0, 0);
         let (tx, ty) = game.map.world_to_tile((0, 1));
-        game.map.tiles[ty][tx] = MapTile::with_terrain(TerrainType::Ruins);
+        game.map.tiles[ty][tx].poi = Some(Poi::Ruins);
         game.accept_quest(QuestID::ExploreRuins).unwrap();
         let events_before = game.events().len();
 
@@ -732,11 +748,11 @@ mod tests {
     }
 
     #[test]
-    fn walking_onto_non_matching_terrain_does_not_advance_progress() {
+    fn walking_onto_a_tile_without_the_target_poi_does_not_advance_progress() {
         let mut game = Game::default();
         game.player.coordinates = (0, 0);
         let (tx, ty) = game.map.world_to_tile((0, 1));
-        game.map.tiles[ty][tx] = MapTile::with_terrain(TerrainType::Meadow);
+        game.map.tiles[ty][tx].poi = None;
         game.accept_quest(QuestID::ExploreRuins).unwrap();
 
         game.walk(Direction::North);
