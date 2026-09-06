@@ -75,7 +75,18 @@ impl Craft {
                 if index == self.cursor {
                     style = style.add_modifier(Modifier::REVERSED);
                 }
-                ListItem::new(i18n::item(option.output, lang)).style(style)
+                let inputs = option
+                    .inputs
+                    .iter()
+                    .map(|i| format!("{}/{} {}", i.have, i.need, i18n::item(i.item, lang)))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let text = if inputs.is_empty() {
+                    i18n::item(option.output, lang)
+                } else {
+                    format!("{}  ({inputs})", i18n::item(option.output, lang))
+                };
+                ListItem::new(text).style(style)
             });
 
             let list = List::new(items)
@@ -99,11 +110,13 @@ mod tests {
             CraftOption {
                 id: "Cord",
                 output: Item::Cord,
+                inputs: vec![],
                 enabled: true,
             },
             CraftOption {
                 id: "Stone Axe",
                 output: Item::StoneAxe,
+                inputs: vec![],
                 enabled: false,
             },
         ]

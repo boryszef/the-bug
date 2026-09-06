@@ -1,7 +1,8 @@
-//! The Craft tab: a button per known recipe, disabled while the player
-//! can't afford its inputs. Mirrors `tui::craft`, mouse-driven — no cursor.
+//! The Craft tab: one row per known recipe — a button, disabled while the
+//! player can't afford its inputs, followed by each input as `have/need`.
+//! Mirrors `tui::craft`, mouse-driven — no cursor.
 
-use eframe::egui::{self, Button, Ui};
+use eframe::egui::{self, Button, RichText, Ui};
 
 use crate::i18n::{self, Language};
 use crate::viewmodel::crafting::CraftOption;
@@ -19,10 +20,28 @@ pub(super) fn render(ui: &mut Ui, options: &[CraftOption], lang: Language) -> Op
     let mut chosen = None;
     egui::ScrollArea::vertical().show(ui, |ui| {
         for option in options {
-            let label = i18n::item(option.output, lang);
-            if ui.add_enabled(option.enabled, Button::new(label)).clicked() {
-                chosen = Some(option.id);
-            }
+            // One row per recipe: the button, then its inputs as `have/need`
+            // at the same text size, met ones muted and short ones in red.
+            ui.horizontal(|ui| {
+                let label = i18n::item(option.output, lang);
+                if ui.add_enabled(option.enabled, Button::new(label)).clicked() {
+                    chosen = Some(option.id);
+                }
+                for input in &option.inputs {
+                    let text = format!(
+                        "{}/{} {}",
+                        input.have,
+                        input.need,
+                        i18n::item(input.item, lang)
+                    );
+                    let colour = if input.met() {
+                        ui.visuals().weak_text_color()
+                    } else {
+                        ui.visuals().error_fg_color
+                    };
+                    ui.label(RichText::new(text).color(colour));
+                }
+            });
         }
     });
     chosen

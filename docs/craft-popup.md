@@ -40,3 +40,18 @@ pub fn options(player: &Player) -> Vec<CraftOption>
 - Merging the `show_help` / `experiment` / `craft` overlay flags into one enum.
 - Skipping disabled rows while navigating (reachable but inert).
 - Any change to recipe discovery, recipe definitions, or `Game::craft`.
+
+## Update: show what's missing (later)
+
+The dimmed/enabled state alone didn't tell the player *what* they were short on.
+`CraftOption` now also carries `inputs: Vec<CraftInput { item, have, need }>`
+(with `met()`), still computed in `viewmodel::crafting::options`. The `gui`
+Craft tab keeps one row per recipe — the button, then each input as
+`have/need <item>` at the same text size, met ones muted and short ones in the
+error colour (`Coil  3/2 Copper Wire  0/1 Plastic Bottle`). The `tui` panel
+appends the same list to each row's text
+(`Coil  (3/2 Copper Wire, 0/1 Plastic Bottle)`).
+
+Paths since the original: `src/game/recipe.rs`, `src/viewmodel/crafting.rs`,
+`src/gui/craft.rs` (the `src/game.rs` / `src/ui/` names above predate the
+module split).
