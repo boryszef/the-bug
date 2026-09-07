@@ -91,6 +91,7 @@ panel-disassemble-title = Disassemble
 panel-items-title = Items
 panel-quests-title = Quests
 panel-active-title = Active
+panel-completed-title = Completed
 
 ## Player panel.
 
@@ -121,6 +122,7 @@ disassemble-hint = ↑↓ move   Enter take apart   Esc cancel
 quests-active-none = No quest accepted.
 quests-active-blocked = Complete your active quest to accept another.
 quests-available-empty = No quests available right now.
+quests-completed-empty = No quests completed yet.
 quests-completed-none = Completed: (none yet)
 quests-completed = Completed: { $names }
 
