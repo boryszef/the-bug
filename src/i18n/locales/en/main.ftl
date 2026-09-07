@@ -24,6 +24,7 @@ event-hunted = Hunt: { $items }.
 event-hunt-missed = Hunt: the quarry got away.
 event-hunt-unprepared = You need a { $missing } to hunt.
 event-bag-full = Your bag is too full to carry the { $item }.
+event-dropped = You drop a { $item }.
 
 ## Item names (nominative), src/game/item.rs's Item.
 

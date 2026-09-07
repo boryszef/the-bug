@@ -312,7 +312,8 @@ fn event_color(kind: &EventKind) -> Option<Color> {
         | EventKind::Disassembled { .. }
         | EventKind::HuntMissed
         | EventKind::HuntUnprepared { .. }
-        | EventKind::BagFull { .. } => Some(Color::Yellow),
+        | EventKind::BagFull { .. }
+        | EventKind::Dropped { .. } => Some(Color::Yellow),
         EventKind::ExperimentShortage { .. }
         | EventKind::ExperimentFailed { .. }
         | EventKind::Experimented { .. } => Some(Color::Cyan),

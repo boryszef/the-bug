@@ -238,7 +238,7 @@ impl Player {
     /// Moves `amount` of `item` from the bag to storage. Storage has no
     /// capacity to check; fails only if the bag doesn't hold `amount`, in
     /// which case nothing moves. Returns whether it happened.
-    #[allow(dead_code)] // wired up by Game::transfer_to_storage (a later commit)
+    #[allow(dead_code)] // wired up by Game::transfer_to_storage's real callers (next commit)
     pub(super) fn transfer_to_storage(&mut self, item: Item, amount: u32) -> bool {
         if self.bag_count(item) < amount {
             return false;
@@ -253,7 +253,7 @@ impl Player {
     /// case nothing moves (storage is only spent once the bag confirms it
     /// fit, so a failed transfer never leaves the item in limbo). Returns
     /// whether it happened.
-    #[allow(dead_code)] // wired up by Game::transfer_to_bag (a later commit)
+    #[allow(dead_code)] // wired up by Game::transfer_to_bag's real callers (next commit)
     pub(super) fn transfer_to_bag(&mut self, item: Item, amount: u32) -> bool {
         if self.inventory_count(item) < amount {
             return false;

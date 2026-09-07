@@ -27,6 +27,7 @@ event-hunted = Polowanie: { $items }.
 event-hunt-missed = Polowanie: zwierzyna uciekła.
 event-hunt-unprepared = Potrzebujesz { $missing }, aby polować.
 event-bag-full = Twoja torba jest zbyt pełna, aby unieść { $item }.
+event-dropped = Wyrzucasz { $item }.
 
 ## Item names (nominative), with a `.genitive` attribute (singular), a
 ## `.genitive-plural` attribute — the latter is what the "not enough X"
