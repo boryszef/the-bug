@@ -78,6 +78,11 @@ Verification is running the app.
 - `src/gui/{experiment,craft,disassemble,quests}.rs` — one `render` per tab.
 - `src/gui/mod.rs` — `mod` declarations, `App::experiment` field, the
   per-`Panel` arms in `App::ui`'s central panel.
+- `src/viewmodel/panel.rs` — the `Panel` enum, `ALL`, and `next`/`prev`
+  cycling. Was duplicated verbatim in `gui::Panel` and `tui::app::Panel`
+  (`docs/code-review-2026-09.md`); extracted since the tab set and its cycling
+  order are UI-agnostic. Each front end keeps only its own label lookup —
+  `title_id` in `src/gui/mod.rs`, the `footer-*` mapping in `src/tui/app.rs`.
 - `src/i18n/locales/{en,pl}/main.ftl` — `action-experiment`, `action-accept`
   (gui-only button labels); existing `*-empty` / `panel-*-title` strings
   reused.

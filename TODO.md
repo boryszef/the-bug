@@ -5,12 +5,16 @@
 * EPIC: improve the map
   * implement roads and rivers
   * implement "bridge" POI - requires intersection of river and road, allows new items (eg. steel bolt, rusty metal)
-* EPIC: reach game mechanics
+* EPIC: more complex game mechanics
   * crafting/experimenting/disassembly should only be possible at the village
   * Players "bag" should have a limited size, when full, the player should take their findings to the village and deposit them in the storage
 * EPIC: the story
   * add more quests
   * items should become enhancers and can be used in the game: axe allows to chop wood, metal detector improves the odds of finding metal-containing items (bow→hunt / arrows-spent done)
+  * BUG: Metal Detector and Solar Charger are permanently uncraftable — their
+    inputs (Microcontroller, Solar Panel, Circuit Board) have no source (no
+    recipe, no terrain/POI search); give them one, most likely in Ruins
+    (docs/code-review-2026-09.md)
 
 ## DONE
 

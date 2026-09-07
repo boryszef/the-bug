@@ -14,7 +14,6 @@
 //!    composition stays exact. The two endpoints (`0.0` = uniform shuffle,
 //!    `1.0` = untouched layout) are handled directly.
 
-use std::collections::HashMap;
 use std::fmt;
 
 use rand::RngExt;
@@ -43,6 +42,7 @@ pub(crate) struct Spec {
 #[derive(Debug, PartialEq)]
 pub(crate) enum GenError {
     EmptyClusters,
+    NegativePercent(TerrainType, f64),
     PercentSum(f64),
     EvenSize(usize),
     TooSmall(usize),
@@ -53,6 +53,9 @@ impl fmt::Display for GenError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             GenError::EmptyClusters => write!(f, "clusters must not be empty"),
+            GenError::NegativePercent(t, pct) => {
+                write!(f, "{t:?}'s share can't be negative (got {pct})")
+            }
             GenError::PercentSum(sum) => {
                 write!(f, "cluster percentages must sum to 100 (got {sum})")
             }
@@ -72,9 +75,16 @@ impl Spec {
         }
 
         let mut seen = Vec::new();
-        for &(t, _) in &self.clusters {
+        for &(t, pct) in &self.clusters {
             if seen.contains(&t) {
                 return Err(GenError::DuplicateTerrain(t));
+            }
+            if pct < 0.0 {
+                // A negative share can still sum to 100 alongside one over
+                // 100 (e.g. `[150.0, -50.0]`), which would otherwise pass
+                // the sum check below and then underflow the largest-
+                // remainder rounding in `cluster_quotas`.
+                return Err(GenError::NegativePercent(t, pct));
             }
             seen.push(t);
         }
@@ -115,11 +125,14 @@ pub(crate) fn generate(
     let mut grid = vec![vec![TerrainType::Deadland; size]; size];
 
     if spec.affinity <= EPS {
+        // `cells` is already a random permutation (shuffled above); pairing
+        // it in fixed order with `bag` (grouped by terrain) already assigns
+        // each cell a uniform random draw from the terrain multiset, so
+        // `bag` itself doesn't need its own shuffle too.
         let mut bag: Vec<TerrainType> = Vec::with_capacity(cells.len());
         for &(terrain, count) in &quotas {
             bag.extend(std::iter::repeat_n(terrain, count));
         }
-        bag.shuffle(rng);
         for (&(x, y), &terrain) in cells.iter().zip(&bag) {
             grid[y][x] = terrain;
         }
@@ -132,11 +145,7 @@ pub(crate) fn generate(
     // nothing that can fail here.
     let active: Vec<(TerrainType, usize)> =
         quotas.iter().copied().filter(|&(_, q)| q > 0).collect();
-    let mut assignment: HashMap<Cell, TerrainType> = HashMap::new();
-    bisect(&mut cells, &active, rng, &mut assignment);
-    for (&(x, y), &terrain) in &assignment {
-        grid[y][x] = terrain;
-    }
+    bisect(&mut cells, &active, rng, &mut grid);
 
     if spec.affinity < 1.0 - EPS {
         melt(&mut grid, &cells, spec.affinity, rng);
@@ -178,20 +187,19 @@ fn cluster_quotas(clusters: &[(TerrainType, f64)], n: usize) -> Vec<(TerrainType
 /// group along an axis at the point that separates the first half of the quota
 /// from the second. A prefix of cells sorted by `(x, y)` is a set of whole
 /// columns plus a partial one — contiguous — and likewise by `(y, x)`, so every
-/// block comes out 4-connected (bar the rare 1-cell village/scatter split, which
-/// the caller checks for). Alternating the axis by recursion depth keeps the
-/// blocks blocky rather than striped.
+/// block comes out 4-connected. Alternating the axis by recursion depth keeps
+/// the blocks blocky rather than striped.
 fn bisect(
     cells: &mut [Cell],
     quotas: &[(TerrainType, usize)],
     rng: &mut impl rand::Rng,
-    out: &mut HashMap<Cell, TerrainType>,
+    grid: &mut [Vec<TerrainType>],
 ) {
     match quotas {
         [] => {}
         [(terrain, _)] => {
-            for &cell in cells.iter() {
-                out.insert(cell, *terrain);
+            for &(x, y) in cells.iter() {
+                grid[y][x] = *terrain;
             }
         }
         _ => {
@@ -217,8 +225,8 @@ fn bisect(
             }
 
             let (left, right) = cells.split_at_mut(left_len);
-            bisect(left, &quotas[..split], rng, out);
-            bisect(right, &quotas[split..], rng, out);
+            bisect(left, &quotas[..split], rng, grid);
+            bisect(right, &quotas[split..], rng, grid);
         }
     }
 }
@@ -327,9 +335,10 @@ pub(crate) fn components(grid: &[Vec<TerrainType>], terrain: TerrainType) -> usi
 
 /// The fraction of orthogonally-adjacent cell pairs whose two ends differ.
 /// Near `0` when clustered, near the mixing probability when random. A test
-/// helper.
+/// helper — used only by this module's own tests, unlike `components` (also
+/// a test helper, but re-exported for `game::map`'s tests too).
 #[cfg(test)]
-pub(crate) fn boundary_ratio(grid: &[Vec<TerrainType>]) -> f64 {
+fn boundary_ratio(grid: &[Vec<TerrainType>]) -> f64 {
     let size = grid.len();
     let (mut unlike, mut total) = (0u64, 0u64);
 
@@ -541,6 +550,16 @@ mod tests {
         assert_eq!(
             dupe.validate(),
             Err(GenError::DuplicateTerrain(TerrainType::Forest))
+        );
+
+        // sums to 100, but only because one share is negative
+        let negative = Spec {
+            clusters: vec![(TerrainType::Forest, 150.0), (TerrainType::Meadow, -50.0)],
+            ..spec(23, 0.5)
+        };
+        assert_eq!(
+            negative.validate(),
+            Err(GenError::NegativePercent(TerrainType::Meadow, -50.0))
         );
 
         assert!(base.validate().is_ok());

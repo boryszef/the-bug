@@ -15,8 +15,13 @@ Inventory: Branch 3, Vine 2
 (`Player::known_recipes()`), `total` is how many **craftable** recipes exist
 (`RECIPES` filtered by `Recipe::craftable()`). Disassemble-only recipes
 (`docs/disassembly.md`) are decompositions, not recipes to discover, so they're
-left out of the total — 100% stays reachable. Read via
-`Game::recipe_progress() -> (usize, usize)`.
+left out of the total. Read via `Game::recipe_progress() -> (usize, usize)`.
+
+100% is **not** currently reachable: Metal Detector needs a Microcontroller
+and Solar Charger needs a Solar Panel and a Circuit Board, and none of the
+three has a source anywhere — no recipe produces one and no terrain/POI
+search yields one. Both recipes are permanently uncraftable while still
+counting toward `total`. See `docs/code-review-2026-09.md`.
 
 ## Experience points
 
@@ -40,9 +45,7 @@ Both `experience` and `crafts_completed` are in the save file
 
 `Game::search()` rolls each item a tile offers independently, so one search can
 yield several different items. This is exercised by
-`search_yields_every_item_a_tile_offers`. In practice each terrain currently
-lists only one item (`TERRAIN_ITEMS`), so a search yields 0 or 1 until a terrain
-gains a second item.
+`search_yields_terrain_and_poi_items_and_names_each_source`.
 
 `Game::hunt()` works the same way over a separate `HUNT_ITEMS` table (Meadow and
 Forest only — Meat / Hide / Bone / Fur, ~0.1–0.5 each), with its own

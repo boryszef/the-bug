@@ -55,6 +55,23 @@ impl ItemSelection {
         }
     }
 
+    /// Trims every picked quantity down to what `inventory` actually holds
+    /// (an item absent from `inventory` counts as zero), dropping any entry
+    /// that reaches zero. The selection is a snapshot from when items were
+    /// picked; call this before trusting it against a live inventory that
+    /// may have shrunk since — e.g. spent by a craft on another tab — so a
+    /// stale pick can never exceed the stock the caller reads it against.
+    pub fn clamp_to(&mut self, inventory: &[(Item, u32)]) {
+        self.picked.retain_mut(|(item, quantity)| {
+            let owned = inventory
+                .iter()
+                .find(|&&(i, _)| i == *item)
+                .map_or(0, |&(_, owned)| owned);
+            *quantity = (*quantity).min(owned);
+            *quantity > 0
+        });
+    }
+
     /// `inventory` with the picked amounts removed (saturating): what can still
     /// be added.
     ///
@@ -126,5 +143,40 @@ mod tests {
         sel.add(Stick, 1);
         assert_eq!(sel.take(), vec![(Stick, 1)]);
         assert!(sel.is_empty());
+    }
+
+    #[test]
+    fn clamp_to_trims_a_quantity_that_now_exceeds_the_stock() {
+        let mut sel = ItemSelection::default();
+        sel.add(Stone, 3);
+        sel.add(Stone, 3);
+        sel.add(Stone, 3); // picked 3 Stone
+
+        sel.clamp_to(&[(Stone, 2)]); // stock dropped to 2 since picking
+
+        assert_eq!(sel.quantity(Stone), 2);
+    }
+
+    #[test]
+    fn clamp_to_drops_an_entry_the_stock_no_longer_has() {
+        let mut sel = ItemSelection::default();
+        sel.add(Stick, 1);
+        sel.add(Stone, 1);
+
+        sel.clamp_to(&[(Stone, 1)]); // Stick is gone from the inventory entirely
+
+        assert_eq!(sel.items(), &[(Stone, 1)]);
+    }
+
+    #[test]
+    fn clamp_to_leaves_a_selection_the_stock_still_covers_untouched() {
+        let mut sel = ItemSelection::default();
+        sel.add(Stick, 1);
+        sel.add(Stone, 5);
+        sel.add(Stone, 5);
+
+        sel.clamp_to(&[(Stick, 1), (Stone, 5)]); // Stone grew, Stick unchanged
+
+        assert_eq!(sel.items(), &[(Stick, 1), (Stone, 2)]);
     }
 }

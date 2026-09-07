@@ -259,10 +259,14 @@ impl Game {
 
         self.player.spend_all(recipe.consumables());
 
-        self.grant_item(recipe.output(), 1);
+        // Logged before `grant_item`, whose `note_quest_event` may log the
+        // quest's own completion line right behind it — the event log reads
+        // newest-first, so the craft has to land first or "Quest complete"
+        // would appear to precede the craft that caused it.
         self.log(EventKind::Crafted {
             output: recipe.output(),
         });
+        self.grant_item(recipe.output(), 1);
 
         self.player.record_successful_craft();
     }
@@ -304,13 +308,13 @@ impl Game {
 
         let newly_learned = self.player.learn_recipe(*recipe);
 
-        self.grant_item(recipe.output(), 1);
-
+        // Logged before `grant_item`, same reasoning as in `craft` above.
         self.log(EventKind::Experimented {
             items: items.to_vec(),
             output: recipe.output(),
             newly_learned,
         });
+        self.grant_item(recipe.output(), 1);
     }
 
     /// Takes one `item` apart, returning the consumables of the recipe it
@@ -1000,6 +1004,40 @@ mod tests {
     }
 
     #[test]
+    fn crafting_the_target_item_logs_the_craft_before_the_quest_completion() {
+        // The log is newest-first, so the cause (`Crafted`) must be pushed
+        // before its effect (`QuestCompleted`) for the pane to read top-down
+        // as "quest complete" above "you craft the axe".
+        let mut game = game_with_the_axe_quest_unlocked();
+        game.player.grant_recipe("Stone Axe");
+        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Stone, 1);
+        game.player.inventory.insert(Item::Cord, 1);
+        game.accept_quest(QuestID::CraftAxe).unwrap();
+
+        game.craft("Stone Axe");
+
+        let kinds: Vec<&EventKind> = game
+            .events()
+            .iter()
+            .rev()
+            .take(2)
+            .map(Event::kind)
+            .collect();
+        assert_eq!(
+            kinds,
+            [
+                &EventKind::QuestCompleted {
+                    quest: QuestID::CraftAxe
+                },
+                &EventKind::Crafted {
+                    output: Item::StoneAxe
+                },
+            ]
+        );
+    }
+
+    #[test]
     fn crafting_a_different_item_does_not_advance_quest_progress() {
         let mut game = game_with_the_axe_quest_unlocked();
         game.player.grant_recipe("Cord");
@@ -1024,6 +1062,38 @@ mod tests {
 
         // experimenting the target item advances the quest, same as crafting it
         assert!(game.player.completed_quests().contains(&QuestID::CraftAxe));
+    }
+
+    #[test]
+    fn experimenting_the_target_item_logs_the_experiment_before_the_quest_completion() {
+        let mut game = game_with_the_axe_quest_unlocked();
+        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Stone, 1);
+        game.player.inventory.insert(Item::Cord, 1);
+        game.accept_quest(QuestID::CraftAxe).unwrap();
+
+        game.experiment(&[(Item::Stick, 1), (Item::Stone, 1), (Item::Cord, 1)]);
+
+        let kinds: Vec<&EventKind> = game
+            .events()
+            .iter()
+            .rev()
+            .take(2)
+            .map(Event::kind)
+            .collect();
+        assert_eq!(
+            kinds,
+            [
+                &EventKind::QuestCompleted {
+                    quest: QuestID::CraftAxe
+                },
+                &EventKind::Experimented {
+                    items: vec![(Item::Stick, 1), (Item::Stone, 1), (Item::Cord, 1)],
+                    output: Item::StoneAxe,
+                    newly_learned: true,
+                },
+            ]
+        );
     }
 
     #[test]

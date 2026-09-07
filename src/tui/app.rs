@@ -14,6 +14,7 @@ use std::io;
 use crate::game::{Direction, EventKind, Game};
 use crate::i18n::{self, Language};
 use crate::viewmodel;
+use crate::viewmodel::panel::Panel;
 
 use super::craft::{self, Craft};
 use super::disassemble::{self, Disassemble};
@@ -23,39 +24,6 @@ use super::quests::{self, Quests};
 // Empirical zoom factors so the map roughly fills its pane.
 const MAP_X_SCALE: f64 = 6.2;
 const MAP_Y_SCALE: f64 = 4.08;
-
-/// Which panel occupies the right side of the screen.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-enum Panel {
-    #[default]
-    Map,
-    Experiment,
-    Craft,
-    Disassemble,
-    Quests,
-}
-
-impl Panel {
-    fn next(self) -> Panel {
-        match self {
-            Panel::Map => Panel::Experiment,
-            Panel::Experiment => Panel::Craft,
-            Panel::Craft => Panel::Disassemble,
-            Panel::Disassemble => Panel::Quests,
-            Panel::Quests => Panel::Map,
-        }
-    }
-
-    fn prev(self) -> Panel {
-        match self {
-            Panel::Map => Panel::Quests,
-            Panel::Experiment => Panel::Map,
-            Panel::Craft => Panel::Experiment,
-            Panel::Disassemble => Panel::Craft,
-            Panel::Quests => Panel::Disassemble,
-        }
-    }
-}
 
 #[derive(Default)]
 pub struct App {
@@ -364,43 +332,4 @@ fn render_footer(panel: Panel, area: Rect, buf: &mut Buffer, lang: Language) {
     Paragraph::new(i18n::ui(id, lang))
         .alignment(Alignment::Center)
         .render(area, buf);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    const ALL: [Panel; 5] = [
-        Panel::Map,
-        Panel::Experiment,
-        Panel::Craft,
-        Panel::Disassemble,
-        Panel::Quests,
-    ];
-
-    #[test]
-    fn next_cycles_through_every_panel_in_order_and_wraps() {
-        assert_eq!(Panel::Map.next(), Panel::Experiment);
-        assert_eq!(Panel::Experiment.next(), Panel::Craft);
-        assert_eq!(Panel::Craft.next(), Panel::Disassemble);
-        assert_eq!(Panel::Disassemble.next(), Panel::Quests);
-        assert_eq!(Panel::Quests.next(), Panel::Map);
-    }
-
-    #[test]
-    fn prev_cycles_through_every_panel_in_reverse_and_wraps() {
-        assert_eq!(Panel::Map.prev(), Panel::Quests);
-        assert_eq!(Panel::Quests.prev(), Panel::Disassemble);
-        assert_eq!(Panel::Disassemble.prev(), Panel::Craft);
-        assert_eq!(Panel::Craft.prev(), Panel::Experiment);
-        assert_eq!(Panel::Experiment.prev(), Panel::Map);
-    }
-
-    #[test]
-    fn next_and_prev_are_inverses_for_every_panel() {
-        for panel in ALL {
-            assert_eq!(panel.next().prev(), panel);
-            assert_eq!(panel.prev().next(), panel);
-        }
-    }
 }
