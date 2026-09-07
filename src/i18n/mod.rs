@@ -298,6 +298,8 @@ fn item_id(item: Item) -> &'static str {
         Item::Bone => "item-bone",
         Item::Hide => "item-hide",
         Item::Fur => "item-fur",
+        Item::Satchel => "item-satchel",
+        Item::BoneNeedle => "item-bone-needle",
     }
 }
 

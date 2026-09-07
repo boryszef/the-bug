@@ -134,6 +134,20 @@ pub(super) const RECIPES: &[Recipe] = &[
         output: Item::ElectronicToy,
         flow: RecipeFlow::DisassembleOnly,
     },
+    Recipe {
+        name: "Bone Needle",
+        consumables: &[(Item::Bone, 1)],
+        tools: &[],
+        output: Item::BoneNeedle,
+        flow: RecipeFlow::CraftOnly,
+    },
+    Recipe {
+        name: "Satchel",
+        consumables: &[(Item::Hide, 1), (Item::Cord, 1)],
+        tools: &[Item::BoneNeedle],
+        output: Item::Satchel,
+        flow: RecipeFlow::Both,
+    },
 ];
 
 /// The recipe that produces `output` and can be taken apart, if any. Drives

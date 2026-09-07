@@ -153,6 +153,14 @@ item-fur = Futro
     .genitive = futra
     .genitive-plural = futer
     .accusative = Futro
+item-satchel = Sakwa
+    .genitive = sakwy
+    .genitive-plural = sakiew
+    .accusative = sakwę
+item-bone-needle = Kościana Igła
+    .genitive = kościanej igły
+    .genitive-plural = kościanych igieł
+    .accusative = kościaną igłę
 
 ## Terrain names (nominative), with a `.locative` attribute (the full
 ## prepositional phrase, e.g. "w lesie" for "in the Forest") used by

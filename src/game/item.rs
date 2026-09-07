@@ -31,6 +31,8 @@ pub enum Item {
     Bone,
     Hide,
     Fur,
+    Satchel,
+    BoneNeedle,
 }
 
 impl Item {
@@ -39,7 +41,7 @@ impl Item {
     /// `i18n`'s tests) that walks the whole enum, so a new variant can't
     /// silently fall out of a hand-maintained sample list.
     #[cfg(test)]
-    pub const ALL: [Item; 29] = [
+    pub const ALL: [Item; 31] = [
         Item::Stick,
         Item::Stone,
         Item::Vine,
@@ -69,5 +71,7 @@ impl Item {
         Item::Bone,
         Item::Hide,
         Item::Fur,
+        Item::Satchel,
+        Item::BoneNeedle,
     ];
 }

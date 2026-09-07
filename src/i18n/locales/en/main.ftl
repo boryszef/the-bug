@@ -55,6 +55,8 @@ item-meat = Meat
 item-bone = Bone
 item-hide = Hide
 item-fur = Fur
+item-satchel = Satchel
+item-bone-needle = Bone Needle
 
 ## Terrain names, src/game/map.rs's TerrainType.
 
