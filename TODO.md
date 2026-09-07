@@ -9,7 +9,6 @@
   * implement roads and rivers
   * implement "bridge" POI - requires intersection of river and road, allows new items (eg. steel bolt, rusty metal)
 * EPIC: more complex game mechanics
-  * Players "bag" should have a limited size, when full, the player should take their findings to the village and deposit them in the storage or drop
   * implement workshops as additional craftable locations alongside the Village (docs/village-crafting.md)
 * EPIC: the story
   * add more quests
@@ -23,6 +22,7 @@
 
 * EPIC: more complex game mechanics
   * crafting/experimenting/disassembly should only be possible at the village — the gui disables the buttons away from it, no event is logged for the refusal (docs/village-crafting.md)
+  * Players "bag" should have a limited size, when full, the player should take their findings to the village and deposit them in the storage or drop — Bag (limited, BAG_CAPACITY=50) split from Storage (unlimited, was the whole inventory); gui Items tab to manage both (docs/bag-and-storage.md)
 * EPIC: the story
   * name of the quest should refer to the part of the story it tells, not the product or task
   * implement hunting: `h` on the Map tab, needs a bow held + spends an arrow, yields meat/bone/hide/fur on meadow/forest (docs/hunting.md)
