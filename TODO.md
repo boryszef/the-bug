@@ -5,7 +5,7 @@
 * EPIC: improve the map
   * implement roads and rivers
   * implement "bridge" POI - requires intersection of river and road, allows new items (eg. steel bolt, rusty metal)
-* EPIC: reach game mechanics
+* EPIC: more complex game mechanics
   * crafting/experimenting/disassembly should only be possible at the village
   * Players "bag" should have a limited size, when full, the player should take their findings to the village and deposit them in the storage
 * EPIC: the story
