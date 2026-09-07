@@ -59,8 +59,13 @@ pub(super) fn render(
             for &(item, quantity) in &overview.bag {
                 columns[0].horizontal(|ui| {
                     ui.label(i18n::item_with_quantity(item, quantity, lang));
-                    // "→": move one unit to storage.
-                    if ui.add_enabled(at_village, Button::new("→")).clicked() {
+                    // "→": move one unit to storage. Monospace, like the
+                    // Map tab's arrows — egui's default proportional font
+                    // has no arrow glyph coverage, but bundled Hack does.
+                    if ui
+                        .add_enabled(at_village, Button::new(RichText::new("→").monospace()))
+                        .clicked()
+                    {
                         outcome = Outcome::TransferToStorage(item);
                     }
                     // "x": drop one unit, allowed anywhere.
@@ -77,8 +82,12 @@ pub(super) fn render(
             for &(item, quantity) in &overview.storage {
                 columns[1].horizontal(|ui| {
                     ui.label(i18n::item_with_quantity(item, quantity, lang));
-                    // "←": move one unit to the bag.
-                    if ui.add_enabled(at_village, Button::new("←")).clicked() {
+                    // "←": move one unit to the bag. Monospace, same reason
+                    // as "→" above.
+                    if ui
+                        .add_enabled(at_village, Button::new(RichText::new("←").monospace()))
+                        .clicked()
+                    {
                         outcome = Outcome::TransferToBag(item);
                     }
                     if ui.add_enabled(at_village, Button::new("x")).clicked() {
