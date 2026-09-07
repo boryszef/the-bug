@@ -217,6 +217,13 @@ player-quest-none = (brak)
 player-inventory = Ekwipunek: { $items }
 player-inventory-empty = (pusto)
 
+## Village-gated actions: the gui disables the Craft/Experiment/Disassemble
+## buttons away from the Village and shows this hint instead — no event is
+## logged (a refusal here is the player's own doing, not something the game
+## did, so it isn't event-log material; see docs/village-crafting.md).
+
+village-required-hint = Musisz być w osadzie, aby to zrobić.
+
 ## Craft panel.
 
 craft-empty = Nie odkryłeś jeszcze żadnych przepisów.

@@ -233,7 +233,30 @@ impl Game {
         self.map.update_tile_last_hunt_time(coords);
     }
 
+    /// Whether the player is somewhere crafting, experimenting, and
+    /// disassembling are allowed — the Village today; a future workshop POI
+    /// extends this without the three methods below (or the gui, which
+    /// disables their buttons using this same query) needing to change.
+    pub fn at_craftable_location(&self) -> bool {
+        matches!(
+            self.map
+                .get_tile(self.player.coordinates)
+                .and_then(|tile| tile.poi),
+            Some(Poi::Village)
+        )
+    }
+
+    /// Crafts a known recipe by name. Does nothing away from the Village (or
+    /// a future workshop) — see
+    /// [`at_craftable_location`](Self::at_craftable_location). Not logged:
+    /// the gui disables the button so this is normally unreachable, and
+    /// being away from the village is the player's own doing, not a result
+    /// the game produced — see docs/village-crafting.md.
     pub fn craft(&mut self, recipe_name: &str) {
+        if !self.at_craftable_location() {
+            return;
+        }
+
         let Some(recipe) = self.player.find_known_recipe(recipe_name) else {
             self.log(EventKind::UnknownRecipe {
                 recipe: recipe_name.to_string(),
@@ -271,8 +294,15 @@ impl Game {
         self.player.record_successful_craft();
     }
 
+    /// Tries the given items as an experiment. Does nothing away from the
+    /// Village (or a future workshop), same as `craft` — see
+    /// [`at_craftable_location`](Self::at_craftable_location).
     pub fn experiment(&mut self, items: &[(Item, u32)]) {
         if items.is_empty() {
+            return;
+        }
+
+        if !self.at_craftable_location() {
             return;
         }
 
@@ -319,8 +349,14 @@ impl Game {
 
     /// Takes one `item` apart, returning the consumables of the recipe it
     /// decomposes into. Does nothing if no recipe lets `item` be taken apart,
-    /// or the player is not carrying one.
+    /// the player is not carrying one, or they're away from the Village (or
+    /// a future workshop) — see
+    /// [`at_craftable_location`](Self::at_craftable_location).
     pub fn disassemble(&mut self, item: Item) {
+        if !self.at_craftable_location() {
+            return;
+        }
+
         let Some(recipe) = disassembly_for(item) else {
             return;
         };
@@ -454,6 +490,70 @@ mod tests {
         let before = game.events().len();
         game.experiment(&[]);
         assert_eq!(game.events().len(), before);
+    }
+
+    // --- Village-gated actions ---------------------------------------------
+    //
+    // Silent no-ops, like `disassemble`'s other two guards (unknown recipe,
+    // item not held): being away from the village is the player's own doing,
+    // not a result the game produced, so nothing is logged for it — the gui
+    // disables the relevant button instead (not unit-tested; see
+    // docs/village-crafting.md). The default player spawns at the world
+    // origin, which is always the Village (`scatter_pois` fixes it there) —
+    // every other craft/experiment/disassemble test above and below
+    // exercises the "at the village" path implicitly. These move the player
+    // away to exercise the no-op.
+
+    #[test]
+    fn craft_away_from_the_village_does_nothing() {
+        let mut game = Game::default();
+        game.player.grant_recipe("Cord");
+        game.player.inventory.insert(Item::Vine, 2);
+        game.player.coordinates = (5, 5);
+        let events_before = game.events().len();
+
+        game.craft("Cord");
+
+        assert_eq!(game.events().len(), events_before);
+        assert_eq!(game.player.inventory.get(&Item::Vine), Some(&2));
+        assert_eq!(game.player.inventory.get(&Item::Cord), None);
+    }
+
+    #[test]
+    fn experiment_away_from_the_village_does_nothing() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Vine, 2);
+        game.player.coordinates = (5, 5);
+        let events_before = game.events().len();
+
+        game.experiment(&[(Item::Vine, 2)]);
+
+        assert_eq!(game.events().len(), events_before);
+        assert_eq!(game.player.inventory.get(&Item::Vine), Some(&2));
+        assert!(game.player.known_recipes().is_empty());
+    }
+
+    #[test]
+    fn disassemble_away_from_the_village_does_nothing() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::StoneAxe, 1);
+        game.player.coordinates = (5, 5);
+        let events_before = game.events().len();
+
+        game.disassemble(Item::StoneAxe);
+
+        assert_eq!(game.events().len(), events_before);
+        assert_eq!(game.player.inventory.get(&Item::StoneAxe), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::Stick), None);
+    }
+
+    #[test]
+    fn at_craftable_location_is_true_at_the_default_spawn_and_false_away_from_it() {
+        let mut game = Game::default();
+        assert!(game.at_craftable_location());
+
+        game.player.coordinates = (5, 5);
+        assert!(!game.at_craftable_location());
     }
 
     #[test]

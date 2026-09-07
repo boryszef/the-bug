@@ -121,21 +121,25 @@ impl eframe::App for App {
             }
             Panel::Experiment => {
                 let inventory = viewmodel::inventory::sorted(&self.game.player);
+                let at_village = self.game.at_craftable_location();
                 if let experiment::Outcome::Run(items) =
-                    self.experiment.render(ui, &inventory, self.language)
+                    self.experiment
+                        .render(ui, &inventory, at_village, self.language)
                 {
                     self.game.experiment(&items);
                 }
             }
             Panel::Craft => {
                 let options = viewmodel::crafting::options(&self.game.player);
-                if let Some(name) = craft::render(ui, &options, self.language) {
+                let at_village = self.game.at_craftable_location();
+                if let Some(name) = craft::render(ui, &options, at_village, self.language) {
                     self.game.craft(name);
                 }
             }
             Panel::Disassemble => {
                 let options = viewmodel::disassembly::options(&self.game.player);
-                if let Some(item) = disassemble::render(ui, &options, self.language) {
+                let at_village = self.game.at_craftable_location();
+                if let Some(item) = disassemble::render(ui, &options, at_village, self.language) {
                     self.game.disassemble(item);
                 }
             }

@@ -2,7 +2,7 @@
 //! recipe. Mirrors `tui::experiment`, but mouse-driven — the only state is
 //! the running [`ItemSelection`]; there is no cursor.
 
-use eframe::egui::{self, Button, Ui};
+use eframe::egui::{self, Button, RichText, Ui};
 
 use crate::game::Item;
 use crate::i18n::{self, Language};
@@ -23,14 +23,26 @@ pub(super) enum Outcome {
 
 impl Experiment {
     /// Draws the two columns and the run button. `inventory` is the player's
-    /// inventory in display order, `(item, owned quantity)`.
+    /// inventory in display order, `(item, owned quantity)`. `at_village`
+    /// disables the Run button (with a hint explaining why) when the player
+    /// isn't standing somewhere experimenting is allowed — picking items
+    /// into the selection is still allowed anywhere, since it has no effect
+    /// on its own.
     pub(super) fn render(
         &mut self,
         ui: &mut Ui,
         inventory: &[(Item, u32)],
+        at_village: bool,
         lang: Language,
     ) -> Outcome {
         ui.heading(i18n::ui("panel-experiment-title", lang));
+
+        if !at_village {
+            ui.label(
+                RichText::new(i18n::ui("village-required-hint", lang))
+                    .color(ui.visuals().error_fg_color),
+            );
+        }
 
         // The selection is a snapshot from whenever items were picked; the
         // inventory may have shrunk since (e.g. a craft on another tab spent
@@ -69,7 +81,7 @@ impl Experiment {
 
             if ui
                 .add_enabled(
-                    !self.selection.is_empty(),
+                    !self.selection.is_empty() && at_village,
                     Button::new(i18n::ui("action-experiment", lang)),
                 )
                 .clicked()
