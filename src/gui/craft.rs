@@ -7,10 +7,24 @@ use eframe::egui::{self, Button, RichText, Ui};
 use crate::i18n::{self, Language};
 use crate::viewmodel::crafting::CraftOption;
 
-/// Draws the recipe list. Returns the recipe name to craft
-/// ([`CraftOption::id`]) if an affordable one was clicked.
-pub(super) fn render(ui: &mut Ui, options: &[CraftOption], lang: Language) -> Option<&'static str> {
+/// Draws the recipe list. `at_village` disables every recipe's button (with
+/// a hint explaining why) when the player isn't standing somewhere crafting
+/// is allowed. Returns the recipe name to craft ([`CraftOption::id`]) if an
+/// affordable one was clicked.
+pub(super) fn render(
+    ui: &mut Ui,
+    options: &[CraftOption],
+    at_village: bool,
+    lang: Language,
+) -> Option<&'static str> {
     ui.heading(i18n::ui("panel-craft-title", lang));
+
+    if !at_village {
+        ui.label(
+            RichText::new(i18n::ui("village-required-hint", lang))
+                .color(ui.visuals().error_fg_color),
+        );
+    }
 
     if options.is_empty() {
         ui.label(i18n::ui("craft-empty", lang));
@@ -25,7 +39,10 @@ pub(super) fn render(ui: &mut Ui, options: &[CraftOption], lang: Language) -> Op
             // size — met/held ones muted, missing ones in red.
             ui.horizontal(|ui| {
                 let label = i18n::item(option.output, lang);
-                if ui.add_enabled(option.enabled, Button::new(label)).clicked() {
+                if ui
+                    .add_enabled(option.enabled && at_village, Button::new(label))
+                    .clicked()
+                {
                     chosen = Some(option.id);
                 }
                 for consumable in &option.consumables {

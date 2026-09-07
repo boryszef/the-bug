@@ -2,12 +2,14 @@
 
 ## TODO
 
+* review events: event should reflect important messages coming from the game, not just reflect user actions - for example: finding an item should trigger an event, but trying to craft outside village should not. Also: a random roll merits a record even if it comes up empty, but only when the attempt had a real cost regardless of outcome (hunting always spends an arrow; searching costs nothing and is freely repeatable, so its silent miss is correct, not a gap) — docs/event-worthiness.md has the full rule and where every current EventKind stands against it
+  * remove the log line for a pure refusal that changes nothing: UnknownRecipe, CraftShortage, CraftMissingTool (from craft() only - the experiment() trigger stays, since it happens after items are already spent), ExperimentShortage, HuntUnprepared
 * EPIC: improve the map
   * implement roads and rivers
   * implement "bridge" POI - requires intersection of river and road, allows new items (eg. steel bolt, rusty metal)
 * EPIC: more complex game mechanics
-  * crafting/experimenting/disassembly should only be possible at the village
-  * Players "bag" should have a limited size, when full, the player should take their findings to the village and deposit them in the storage
+  * Players "bag" should have a limited size, when full, the player should take their findings to the village and deposit them in the storage or drop
+  * implement workshops as additional craftable locations alongside the Village (docs/village-crafting.md)
 * EPIC: the story
   * add more quests
   * items should become enhancers and can be used in the game: axe allows to chop wood, metal detector improves the odds of finding metal-containing items (bow→hunt / arrows-spent done)
@@ -18,6 +20,8 @@
 
 ## DONE
 
+* EPIC: more complex game mechanics
+  * crafting/experimenting/disassembly should only be possible at the village — the gui disables the buttons away from it, no event is logged for the refusal (docs/village-crafting.md)
 * EPIC: the story
   * name of the quest should refer to the part of the story it tells, not the product or task
   * implement hunting: `h` on the Map tab, needs a bow held + spends an arrow, yields meat/bone/hide/fur on meadow/forest (docs/hunting.md)

@@ -25,6 +25,10 @@ The Events pane shows recent things that have happened, newest first.
 
 ## What gets logged
 
+Not every action produces one — see `docs/event-worthiness.md` for the rule
+deciding which do (a player-visible state change, or a costly roll resolved
+even to nothing) and where the current variants stand against it.
+
 What happened is captured structurally as an [`EventKind`](../src/game/event.rs)
 variant — one per `Game::log(...)` call site in `src/game/mod.rs` — and
 rendered into player-facing text entirely by `i18n::event()`
