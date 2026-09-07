@@ -64,6 +64,13 @@ impl Player {
         (self.known_recipes().len(), total)
     }
 
+    /// `(items currently in the bag, the bag's capacity)` — both summed
+    /// across every item type, since `BAG_CAPACITY` is a flat total, not a
+    /// per-item limit.
+    pub fn bag_progress(&self) -> (u32, u32) {
+        (self.bag_total(), BAG_CAPACITY)
+    }
+
     /// The known recipe named `name`, if any.
     pub(super) fn find_known_recipe(&self, name: &str) -> Option<Recipe> {
         self.recipes.iter().find(|r| r.name() == name).copied()

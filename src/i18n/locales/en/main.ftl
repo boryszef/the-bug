@@ -114,6 +114,16 @@ player-inventory-empty = (empty)
 
 village-required-hint = You need to be in the Village to do this.
 
+## Items panel (gui only — the Bag/Inventory split; see
+## docs/bag-and-storage.md). "panel-items-title" above doubles as this
+## tab's heading.
+
+items-bag-title = Bag: { $count }/{ $capacity }
+items-storage-title = Inventory
+items-bag-empty = Your bag is empty.
+items-storage-empty = Storage is empty.
+items-not-in-tui = Not available in this view — use the gui to manage your bag and storage.
+
 ## Craft panel.
 
 craft-empty = You haven't discovered any recipes yet.
@@ -144,6 +154,7 @@ footer-experiment = ↑↓ move   ←→ add/remove   Tab switch column   e run 
 footer-craft = ↑↓ move   Enter craft   [ ] panel   q quit
 footer-disassemble = ↑↓ move   Enter take apart   [ ] panel   q quit
 footer-quests = ↑↓ move   Enter accept   [ ] panel   q quit
+footer-items = [ ] panel   q quit
 
 ## gui-only controls (src/gui/mod.rs's toolbar, panel buttons, hint bar).
 

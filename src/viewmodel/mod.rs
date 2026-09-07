@@ -11,6 +11,10 @@ pub mod crafting;
 pub mod disassembly;
 pub mod events;
 pub mod inventory;
+/// The Items tab (Bag/Inventory split) is `gui`-only — see
+/// `docs/bag-and-storage.md`.
+#[cfg(feature = "gui")]
+pub mod items;
 pub mod map;
 pub mod panel;
 pub mod quests;

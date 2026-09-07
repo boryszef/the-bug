@@ -1,6 +1,7 @@
 mod craft;
 mod disassemble;
 mod experiment;
+mod items;
 mod map;
 mod quests;
 
@@ -50,6 +51,7 @@ fn title_id(panel: Panel) -> &'static str {
         Panel::Experiment => "panel-experiment-title",
         Panel::Craft => "panel-craft-title",
         Panel::Disassemble => "panel-disassemble-title",
+        Panel::Items => "panel-items-title",
         Panel::Quests => "panel-quests-title",
     }
 }
@@ -143,6 +145,25 @@ impl eframe::App for App {
                     self.game.disassemble(item);
                 }
             }
+            Panel::Items => {
+                let overview = viewmodel::items::overview(&self.game.player);
+                let at_village = self.game.at_craftable_location();
+                match items::render(ui, &overview, at_village, self.language) {
+                    items::Outcome::TransferToStorage(item) => {
+                        self.game.transfer_to_storage(item, 1);
+                    }
+                    items::Outcome::TransferToBag(item) => {
+                        self.game.transfer_to_bag(item, 1);
+                    }
+                    items::Outcome::DropFromBag(item) => {
+                        self.game.drop_from_bag(item, 1);
+                    }
+                    items::Outcome::DropFromStorage(item) => {
+                        self.game.drop_from_storage(item, 1);
+                    }
+                    items::Outcome::Idle => {}
+                }
+            }
             Panel::Quests => {
                 let overview = viewmodel::quests::overview(&self.game);
                 if let Some(id) = quests::render(ui, &overview, self.language) {
@@ -178,17 +199,6 @@ fn hint_text(panel: Panel, lang: Language) -> String {
 fn render_player(game: &Game, lang: Language, ui: &mut Ui) {
     ui.heading(i18n::ui("panel-player-title", lang));
 
-    let inventory = viewmodel::inventory::sorted(&game.player);
-    let inventory = if inventory.is_empty() {
-        i18n::ui("player-inventory-empty", lang)
-    } else {
-        inventory
-            .iter()
-            .map(|&(item, quantity)| i18n::item_with_quantity(item, quantity, lang))
-            .collect::<Vec<_>>()
-            .join(", ")
-    };
-
     let (known_recipes, total_recipes) = game.player.recipe_progress();
     let (completed_quests, total_quests) = game.quest_progress();
     let active_quest = match game.player.open_quest() {
@@ -222,11 +232,6 @@ fn render_player(game: &Game, lang: Language, ui: &mut Ui) {
             ("total", (total_quests as u32).into()),
             ("active", active_quest.into()),
         ]),
-    ));
-    ui.label(i18n::ui_args(
-        "player-inventory",
-        lang,
-        HashMap::from([("items", inventory.into())]),
     ));
 }
 
