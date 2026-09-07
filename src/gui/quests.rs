@@ -1,8 +1,8 @@
-//! The Quests tab: the active quest's progress, quests available to accept
-//! (each a collapsing section with its description and an Accept button),
-//! and completed quests. Mirrors `tui::quests`, mouse-driven — no cursor.
-
-use std::collections::HashMap;
+//! The Quests tab: the active quest's progress, quests available to accept,
+//! and completed quests — each of the latter two a collapsing section with
+//! its description, so completed quests read back as the story so far.
+//! Mirrors `tui::quests`'s data, but list-of-collapsing-sections replaces
+//! `tui`'s joined "Completed: A, B, C" line; mouse-driven — no cursor.
 
 use eframe::egui::{self, Ui};
 
@@ -51,24 +51,17 @@ pub(super) fn render(ui: &mut Ui, overview: &Overview, lang: Language) -> Option
         }
 
         ui.separator();
-        ui.label(completed_line(overview, lang));
+        ui.strong(i18n::ui("panel-completed-title", lang));
+        if overview.completed.is_empty() {
+            ui.label(i18n::ui("quests-completed-empty", lang));
+        } else {
+            for quest in &overview.completed {
+                ui.collapsing(i18n::quest_name(quest.id, lang), |ui| {
+                    ui.label(i18n::quest_description(quest.id, lang));
+                });
+            }
+        }
     });
 
     accept
-}
-
-fn completed_line(overview: &Overview, lang: Language) -> String {
-    if overview.completed.is_empty() {
-        return i18n::ui("quests-completed-none", lang);
-    }
-    let names: Vec<String> = overview
-        .completed
-        .iter()
-        .map(|q| i18n::quest_name(q.id, lang))
-        .collect();
-    i18n::ui_args(
-        "quests-completed",
-        lang,
-        HashMap::from([("names", names.join(", ").into())]),
-    )
 }

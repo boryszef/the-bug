@@ -197,6 +197,7 @@ panel-disassemble-title = Rozmontuj
 panel-items-title = Przedmioty
 panel-quests-title = Zadania
 panel-active-title = Aktywne
+panel-completed-title = Ukończone
 
 ## Player panel.
 
@@ -227,6 +228,7 @@ disassemble-hint = ↑↓ ruch   Enter rozłóż   Esc anuluj
 quests-active-none = Nie przyjęto żadnego zadania.
 quests-active-blocked = Ukończ aktywne zadanie, aby przyjąć kolejne.
 quests-available-empty = Brak dostępnych zadań.
+quests-completed-empty = Nie ukończono jeszcze żadnego zadania.
 quests-completed-none = Ukończone: (brak)
 quests-completed = Ukończone: { $names }
 

@@ -61,8 +61,12 @@ Verification is running the app.
   row per available quest — a collapsing section (header = name, body =
   description) with an **Accept** button → `Game::accept_quest`. Empty:
   `quests-available-empty`.
-- **Completed**: `quests-completed` / `quests-completed-none`, same as
-  `tui`.
+- **Completed**: a row per completed quest — a collapsing section (header =
+  name, body = description), same shape as **Available** but with no button,
+  so the descriptions read back as the story so far. Empty:
+  `quests-completed-empty`. `tui` still renders these as one joined
+  "Completed: A, B, C" line (`quests-completed` / `quests-completed-none`) —
+  this diverges from `tui`, which is frozen.
 
 ## What is *not* built here
 
