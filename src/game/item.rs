@@ -32,3 +32,42 @@ pub enum Item {
     Hide,
     Fur,
 }
+
+impl Item {
+    /// Every variant, in declaration order. A test-only helper — used by a
+    /// completeness check (e.g. "every item renders in every language" in
+    /// `i18n`'s tests) that walks the whole enum, so a new variant can't
+    /// silently fall out of a hand-maintained sample list.
+    #[cfg(test)]
+    pub const ALL: [Item; 29] = [
+        Item::Stick,
+        Item::Stone,
+        Item::Vine,
+        Item::Cord,
+        Item::StoneAxe,
+        Item::Arrow,
+        Item::WoodenBow,
+        Item::PlasticBottle,
+        Item::CopperWire,
+        Item::Coil,
+        Item::Pole,
+        Item::Microcontroller,
+        Item::Speaker,
+        Item::MetalDetector,
+        Item::Battery,
+        Item::SolarPanel,
+        Item::SolarCharger,
+        Item::CircuitBoard,
+        Item::Umbrella,
+        Item::Fabric,
+        Item::ElectricMotor,
+        Item::SteelBolt,
+        Item::RustyMetal,
+        Item::MetalKnife,
+        Item::ElectronicToy,
+        Item::Meat,
+        Item::Bone,
+        Item::Hide,
+        Item::Fur,
+    ];
+}

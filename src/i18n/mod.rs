@@ -606,4 +606,41 @@ mod tests {
             }
         }
     }
+
+    /// Every `Item` (via `Item::ALL`, so a new variant can't fall out of a
+    /// hand-maintained sample list the way `EventKind`'s coverage above has
+    /// to rely on), every `TerrainType` and every `Poi` resolves to a
+    /// non-empty Fluent message in both languages — the same safety net
+    /// `every_event_kind_renders_in_every_language` gives `EventKind`, for
+    /// the values that get embedded inside those event messages.
+    #[test]
+    fn every_item_terrain_and_poi_renders_in_every_language() {
+        for lang in [Language::English, Language::Polish] {
+            for &it in &Item::ALL {
+                let text = item(it, lang);
+                assert!(
+                    !text.is_empty() && !text.contains("Unknown localization"),
+                    "{it:?} in {lang:?} rendered {text:?}"
+                );
+            }
+            for t in [
+                TerrainType::Meadow,
+                TerrainType::Forest,
+                TerrainType::Deadland,
+            ] {
+                let text = terrain(t, lang);
+                assert!(
+                    !text.is_empty() && !text.contains("Unknown localization"),
+                    "{t:?} in {lang:?} rendered {text:?}"
+                );
+            }
+            for p in [Poi::Cave, Poi::Ruins, Poi::Village] {
+                let text = poi(p, lang);
+                assert!(
+                    !text.is_empty() && !text.contains("Unknown localization"),
+                    "{p:?} in {lang:?} rendered {text:?}"
+                );
+            }
+        }
+    }
 }
