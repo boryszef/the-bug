@@ -275,9 +275,14 @@ impl Map {
         self.tiles.get(y)?.get(x)
     }
 
-    /// Whether `pos` is within the map's boundary.
+    /// Whether `pos` is within the map's boundary. Defined in terms of
+    /// `get_tile` rather than re-deriving the boundary from `half`, so the
+    /// two can never disagree — a map is always square today, but `half`
+    /// alone doesn't distinguish an odd-sized map (where it's exact) from an
+    /// even-sized one (only reachable via a hand-edited save), where a
+    /// `half`-based check would admit a coordinate `get_tile` then refuses.
     pub(super) fn contains(&self, pos: (i32, i32)) -> bool {
-        pos.0.abs() <= self.half && pos.1.abs() <= self.half
+        self.get_tile(pos).is_some()
     }
 
     fn get_tile_mut(&mut self, pos: (i32, i32)) -> Option<&mut MapTile> {
@@ -400,6 +405,52 @@ mod tests {
         // get_tile should return None for positions outside the boundary
         let outside = (map.half + 1, map.half + 1);
         assert!(map.get_tile(outside).is_none());
+    }
+
+    #[test]
+    fn contains_agrees_with_get_tile_on_an_odd_map() {
+        let map = Map::new(&Player::default());
+        let h = map.half;
+        // one step past the boundary in every direction, plus the boundary
+        // itself and the centre, on both axes
+        for pos in [
+            (-h - 1, 0),
+            (h + 1, 0),
+            (0, -h - 1),
+            (0, h + 1),
+            (-h, -h),
+            (h, h),
+            (0, 0),
+        ] {
+            assert_eq!(map.contains(pos), map.get_tile(pos).is_some(), "at {pos:?}");
+        }
+    }
+
+    /// A `half`-derived `contains` (the old implementation) disagrees with
+    /// `get_tile` on an even-sized grid: `half = size / 2` rounds down, so
+    /// `pos.abs() <= half` admits a coordinate that indexes one past the
+    /// last row/column. Only reachable via a hand-edited save (`Map::new`
+    /// always builds an odd-sized grid), but `contains` must still agree
+    /// with `get_tile` there.
+    #[test]
+    fn contains_agrees_with_get_tile_on_an_even_map() {
+        let terrain = vec![vec![TerrainType::Meadow; 4]; 4];
+        let pois = vec![vec![None; 4]; 4];
+        let map = Map::from_terrain(terrain, pois);
+        assert_eq!(map.half, 2);
+
+        for x in -3..=3 {
+            for y in -3..=3 {
+                assert_eq!(
+                    map.contains((x, y)),
+                    map.get_tile((x, y)).is_some(),
+                    "at ({x}, {y})"
+                );
+            }
+        }
+        // the specific edge case: half itself is one past the last index
+        assert!(!map.contains((2, 0)));
+        assert!(map.contains((1, 0)));
     }
 
     #[test]

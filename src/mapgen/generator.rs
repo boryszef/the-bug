@@ -43,6 +43,7 @@ pub(crate) struct Spec {
 #[derive(Debug, PartialEq)]
 pub(crate) enum GenError {
     EmptyClusters,
+    NegativePercent(TerrainType, f64),
     PercentSum(f64),
     EvenSize(usize),
     TooSmall(usize),
@@ -53,6 +54,9 @@ impl fmt::Display for GenError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             GenError::EmptyClusters => write!(f, "clusters must not be empty"),
+            GenError::NegativePercent(t, pct) => {
+                write!(f, "{t:?}'s share can't be negative (got {pct})")
+            }
             GenError::PercentSum(sum) => {
                 write!(f, "cluster percentages must sum to 100 (got {sum})")
             }
@@ -72,9 +76,16 @@ impl Spec {
         }
 
         let mut seen = Vec::new();
-        for &(t, _) in &self.clusters {
+        for &(t, pct) in &self.clusters {
             if seen.contains(&t) {
                 return Err(GenError::DuplicateTerrain(t));
+            }
+            if pct < 0.0 {
+                // A negative share can still sum to 100 alongside one over
+                // 100 (e.g. `[150.0, -50.0]`), which would otherwise pass
+                // the sum check below and then underflow the largest-
+                // remainder rounding in `cluster_quotas`.
+                return Err(GenError::NegativePercent(t, pct));
             }
             seen.push(t);
         }
@@ -541,6 +552,16 @@ mod tests {
         assert_eq!(
             dupe.validate(),
             Err(GenError::DuplicateTerrain(TerrainType::Forest))
+        );
+
+        // sums to 100, but only because one share is negative
+        let negative = Spec {
+            clusters: vec![(TerrainType::Forest, 150.0), (TerrainType::Meadow, -50.0)],
+            ..spec(23, 0.5)
+        };
+        assert_eq!(
+            negative.validate(),
+            Err(GenError::NegativePercent(TerrainType::Meadow, -50.0))
         );
 
         assert!(base.validate().is_ok());

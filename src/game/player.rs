@@ -116,10 +116,18 @@ impl Player {
 
     /// Removes `amount` of `item` from the inventory, dropping the entry
     /// entirely once it hits zero so exhausted items don't linger. Callers must
-    /// have already checked the player holds enough.
+    /// have already checked the player holds enough — enforced in a debug
+    /// build; a release build saturates at zero instead of wrapping, in case
+    /// a caller's check turns out to have missed a case (e.g. a duplicated
+    /// item in the amount being spent, checked as a whole but spent one
+    /// entry at a time — see `spend_all`).
     pub(super) fn spend(&mut self, item: Item, amount: u32) {
         if let Some(remaining) = self.inventory.get_mut(&item) {
-            *remaining -= amount;
+            debug_assert!(
+                *remaining >= amount,
+                "spend({item:?}, {amount}) exceeds the {remaining} held"
+            );
+            *remaining = remaining.saturating_sub(amount);
             if *remaining == 0 {
                 self.inventory.remove(&item);
             }
