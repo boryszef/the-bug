@@ -12,5 +12,6 @@ pub mod disassembly;
 pub mod events;
 pub mod inventory;
 pub mod map;
+pub mod panel;
 pub mod quests;
 pub mod selection;

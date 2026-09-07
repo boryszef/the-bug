@@ -12,6 +12,7 @@ use crate::game::{EventKind, Game};
 use crate::i18n::{self, Language};
 use crate::save;
 use crate::viewmodel;
+use crate::viewmodel::panel::Panel;
 
 use experiment::Experiment;
 use map::{MapCommand, MapView};
@@ -40,57 +41,16 @@ pub fn run(game: Game, language: Language) -> eframe::Result<()> {
     )
 }
 
-/// Which panel occupies the central area. Mirrors `tui::app::Panel`; only
-/// the tab-switching chrome is built here so far, not the panels' own
-/// content — see docs/gui-frontend.md.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-enum Panel {
-    #[default]
-    Map,
-    Experiment,
-    Craft,
-    Disassemble,
-    Quests,
-}
-
-impl Panel {
-    const ALL: [Panel; 5] = [
-        Panel::Map,
-        Panel::Experiment,
-        Panel::Craft,
-        Panel::Disassemble,
-        Panel::Quests,
-    ];
-
-    fn next(self) -> Panel {
-        match self {
-            Panel::Map => Panel::Experiment,
-            Panel::Experiment => Panel::Craft,
-            Panel::Craft => Panel::Disassemble,
-            Panel::Disassemble => Panel::Quests,
-            Panel::Quests => Panel::Map,
-        }
-    }
-
-    fn prev(self) -> Panel {
-        match self {
-            Panel::Map => Panel::Quests,
-            Panel::Experiment => Panel::Map,
-            Panel::Craft => Panel::Experiment,
-            Panel::Disassemble => Panel::Craft,
-            Panel::Quests => Panel::Disassemble,
-        }
-    }
-
-    /// The `panel-*-title` message id for this tab's button label.
-    fn title_id(self) -> &'static str {
-        match self {
-            Panel::Map => "panel-map-title",
-            Panel::Experiment => "panel-experiment-title",
-            Panel::Craft => "panel-craft-title",
-            Panel::Disassemble => "panel-disassemble-title",
-            Panel::Quests => "panel-quests-title",
-        }
+/// The `panel-*-title` message id for `panel`'s tab button label. The tab
+/// set itself and its cycling order are [`Panel`] (`viewmodel::panel`) — only
+/// this label lookup is the gui's own, see docs/gui-panels.md.
+fn title_id(panel: Panel) -> &'static str {
+    match panel {
+        Panel::Map => "panel-map-title",
+        Panel::Experiment => "panel-experiment-title",
+        Panel::Craft => "panel-craft-title",
+        Panel::Disassemble => "panel-disassemble-title",
+        Panel::Quests => "panel-quests-title",
     }
 }
 
@@ -118,7 +78,7 @@ impl eframe::App for App {
         egui::Panel::top("tabs_and_quit").show(ui, |ui| {
             ui.horizontal(|ui| {
                 for panel in Panel::ALL {
-                    let label = i18n::ui(panel.title_id(), self.language);
+                    let label = i18n::ui(title_id(panel), self.language);
                     if ui.selectable_label(self.panel == panel, label).clicked() {
                         self.panel = panel;
                     }
@@ -297,36 +257,5 @@ fn event_color(kind: &EventKind) -> Option<Color32> {
         EventKind::ExperimentShortage { .. }
         | EventKind::ExperimentFailed { .. }
         | EventKind::Experimented { .. } => Some(Color32::CYAN),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn next_cycles_through_every_panel_in_order_and_wraps() {
-        assert_eq!(Panel::Map.next(), Panel::Experiment);
-        assert_eq!(Panel::Experiment.next(), Panel::Craft);
-        assert_eq!(Panel::Craft.next(), Panel::Disassemble);
-        assert_eq!(Panel::Disassemble.next(), Panel::Quests);
-        assert_eq!(Panel::Quests.next(), Panel::Map);
-    }
-
-    #[test]
-    fn prev_cycles_through_every_panel_in_reverse_and_wraps() {
-        assert_eq!(Panel::Map.prev(), Panel::Quests);
-        assert_eq!(Panel::Quests.prev(), Panel::Disassemble);
-        assert_eq!(Panel::Disassemble.prev(), Panel::Craft);
-        assert_eq!(Panel::Craft.prev(), Panel::Experiment);
-        assert_eq!(Panel::Experiment.prev(), Panel::Map);
-    }
-
-    #[test]
-    fn next_and_prev_are_inverses_for_every_panel() {
-        for panel in Panel::ALL {
-            assert_eq!(panel.next().prev(), panel);
-            assert_eq!(panel.prev().next(), panel);
-        }
     }
 }
