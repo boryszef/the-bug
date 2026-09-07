@@ -2,6 +2,7 @@
 
 ## TODO
 
+* Experiment with 1 Branch and no Stone Axe produces message that reveals the recipe "you need a stone axe to make arrow"
 * review events: event should reflect important messages coming from the game, not just reflect user actions - for example: finding an item should trigger an event, but trying to craft outside village should not. Also: a random roll merits a record even if it comes up empty, but only when the attempt had a real cost regardless of outcome (hunting always spends an arrow; searching costs nothing and is freely repeatable, so its silent miss is correct, not a gap) — docs/event-worthiness.md has the full rule and where every current EventKind stands against it
   * remove the log line for a pure refusal that changes nothing: UnknownRecipe, CraftShortage, CraftMissingTool (from craft() only - the experiment() trigger stays, since it happens after items are already spent), ExperimentShortage, HuntUnprepared
 * EPIC: improve the map
