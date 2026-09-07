@@ -176,6 +176,10 @@ impl Game {
         }
     }
 
+    /// Searches the player's current tile. Each item the roll turns up is
+    /// added to the bag if there's room; one that doesn't fit is lost —
+    /// logged as `BagFull` rather than `Found`, since nothing was actually
+    /// gained (see docs/bag-and-storage.md).
     pub fn search(&mut self) {
         let coords = self.player.coordinates;
         let Some(tile) = self.map.get_tile(coords) else {
@@ -184,51 +188,65 @@ impl Game {
         let found = tile.roll_found_items(&mut rand::rng());
 
         for (item, source) in found {
-            self.player.add_to_inventory(item, 1);
-            self.log(EventKind::Found { item, source });
+            if self.player.add_to_bag(item, 1) {
+                self.log(EventKind::Found { item, source });
+            } else {
+                self.log(EventKind::BagFull { item });
+            }
         }
         self.map.update_tile_last_search_time(coords);
     }
 
-    /// Hunts the player's current tile: needs a Wooden Bow held (kept) and
-    /// spends one Arrow, then rolls the tile's game. Like `search` there's no
-    /// terrain gate — a tile with no fauna just comes back empty. A hunt that
-    /// brings something back counts toward an open quest; a wasted arrow does
-    /// not.
+    /// Hunts the player's current tile: needs a Wooden Bow *and* an Arrow in
+    /// the bag — gear must be carried to be used in the field, unlike a
+    /// craft/experiment tool sitting in storage at the village — spends the
+    /// Arrow, then rolls the tile's game. Like `search` there's no terrain
+    /// gate — a tile with no fauna just comes back empty. Each hit is added
+    /// to the bag if there's room; one that doesn't fit is lost, logged as
+    /// `BagFull` rather than folded into the haul. A hunt that brings back
+    /// at least one *kept* item counts toward an open quest; a wasted arrow,
+    /// or a catch the bag had no room for, does not.
     pub fn hunt(&mut self) {
         let coords = self.player.coordinates;
         if self.map.get_tile(coords).is_none() {
             return;
         }
-        if !self.player.has_item(Item::WoodenBow) {
+        if !self.player.has_item_in_bag(Item::WoodenBow) {
             self.log(EventKind::HuntUnprepared {
                 missing: Item::WoodenBow,
             });
             return;
         }
-        if !self.player.has_item(Item::Arrow) {
+        if !self.player.has_item_in_bag(Item::Arrow) {
             self.log(EventKind::HuntUnprepared {
                 missing: Item::Arrow,
             });
             return;
         }
-        self.player.spend(Item::Arrow, 1);
+        self.player.spend_from_bag(Item::Arrow, 1);
 
-        let bag = self
+        let catch = self
             .map
             .get_tile(coords)
             .expect("checked above")
             .roll_hunted_items(&mut rand::rng());
-        if bag.is_empty() {
+        if catch.is_empty() {
             self.log(EventKind::HuntMissed);
         } else {
-            for &item in &bag {
-                self.player.add_to_inventory(item, 1);
+            let mut gained = Vec::new();
+            for &item in &catch {
+                if self.player.add_to_bag(item, 1) {
+                    gained.push(item);
+                } else {
+                    self.log(EventKind::BagFull { item });
+                }
             }
-            self.log(EventKind::Hunted {
-                items: bag.iter().map(|&item| (item, 1)).collect(),
-            });
-            self.note_quest_event(EventTypeID::Hunt);
+            if !gained.is_empty() {
+                self.log(EventKind::Hunted {
+                    items: gained.iter().map(|&item| (item, 1)).collect(),
+                });
+                self.note_quest_event(EventTypeID::Hunt);
+            }
         }
         self.map.update_tile_last_hunt_time(coords);
     }
@@ -901,8 +919,10 @@ mod tests {
 
         game.search();
 
-        assert_eq!(game.player.inventory.get(&Item::Stick), Some(&1));
-        assert_eq!(game.player.inventory.get(&Item::Stone), Some(&1));
+        // found items go into the bag, not storage
+        assert_eq!(game.player.bag.get(&Item::Stick), Some(&1));
+        assert_eq!(game.player.bag.get(&Item::Stone), Some(&1));
+        assert!(game.player.inventory.is_empty());
         assert_eq!(game.events().len(), before + 2);
 
         let sources: Vec<FoundIn> = game.events()[before..]
@@ -916,9 +936,29 @@ mod tests {
         assert!(sources.contains(&FoundIn::Poi(Poi::Cave)));
     }
 
+    #[test]
+    fn a_full_bag_loses_the_search_find_and_logs_bag_full_instead() {
+        let mut game = Game::default();
+        game.player.bag.insert(Item::Stone, player::BAG_CAPACITY); // no room left
+        let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
+        let mut tile = MapTile::with_terrain(TerrainType::Forest); // yields Stick
+        for (probability, _) in tile.items.values_mut() {
+            *probability = 1.0; // a sure find, not a coin flip
+        }
+        game.map.tiles[ty][tx] = tile;
+
+        game.search();
+
+        assert_eq!(
+            last_event(&game).kind(),
+            &EventKind::BagFull { item: Item::Stick }
+        );
+        assert_eq!(game.player.bag.get(&Item::Stick), None);
+    }
+
     /// Puts the player on a Meadow tile whose game is a sure thing (every
-    /// probability forced to `1.0`) and hands them a bow, so a hunt's outcome
-    /// turns only on whether they have an arrow.
+    /// probability forced to `1.0`) and hands them a bow *in the bag*, so a
+    /// hunt's outcome turns only on whether they carry an arrow too.
     fn armed_on_a_meadow() -> Game {
         let mut game = Game::default();
         let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
@@ -927,14 +967,14 @@ mod tests {
             *probability = 1.0;
         }
         game.map.tiles[ty][tx] = tile;
-        game.player.inventory.insert(Item::WoodenBow, 1);
+        game.player.bag.insert(Item::WoodenBow, 1);
         game
     }
 
     #[test]
     fn hunt_without_a_bow_logs_unprepared_and_spends_nothing() {
         let mut game = Game::default();
-        game.player.inventory.insert(Item::Arrow, 3);
+        game.player.bag.insert(Item::Arrow, 3);
 
         game.hunt();
 
@@ -944,13 +984,13 @@ mod tests {
                 missing: Item::WoodenBow
             }
         );
-        assert_eq!(game.player.inventory.get(&Item::Arrow), Some(&3));
+        assert_eq!(game.player.bag.get(&Item::Arrow), Some(&3));
     }
 
     #[test]
     fn hunt_without_arrows_logs_unprepared() {
         let mut game = Game::default();
-        game.player.inventory.insert(Item::WoodenBow, 1);
+        game.player.bag.insert(Item::WoodenBow, 1);
 
         game.hunt();
 
@@ -963,16 +1003,33 @@ mod tests {
     }
 
     #[test]
-    fn a_successful_hunt_spends_one_arrow_keeps_the_bow_and_logs_the_haul() {
-        let mut game = armed_on_a_meadow();
-        game.player.inventory.insert(Item::Arrow, 2);
+    fn hunt_with_gear_only_in_storage_still_logs_unprepared() {
+        // The bow must be carried, not just owned back at the village.
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::WoodenBow, 1);
+        game.player.inventory.insert(Item::Arrow, 3);
 
         game.hunt();
 
-        assert_eq!(game.player.inventory.get(&Item::Arrow), Some(&1));
-        assert_eq!(game.player.inventory.get(&Item::WoodenBow), Some(&1));
+        assert_eq!(
+            last_event(&game).kind(),
+            &EventKind::HuntUnprepared {
+                missing: Item::WoodenBow
+            }
+        );
+    }
+
+    #[test]
+    fn a_successful_hunt_spends_one_arrow_keeps_the_bow_and_logs_the_haul() {
+        let mut game = armed_on_a_meadow();
+        game.player.bag.insert(Item::Arrow, 2);
+
+        game.hunt();
+
+        assert_eq!(game.player.bag.get(&Item::Arrow), Some(&1));
+        assert_eq!(game.player.bag.get(&Item::WoodenBow), Some(&1));
         for item in [Item::Meat, Item::Hide, Item::Bone, Item::Fur] {
-            assert_eq!(game.player.inventory.get(&item), Some(&1), "{item:?}");
+            assert_eq!(game.player.bag.get(&item), Some(&1), "{item:?}");
         }
         assert!(matches!(last_event(&game).kind(), EventKind::Hunted { .. }));
     }
@@ -982,13 +1039,41 @@ mod tests {
         let mut game = Game::default();
         let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
         game.map.tiles[ty][tx] = MapTile::with_terrain(TerrainType::Deadland);
-        game.player.inventory.insert(Item::WoodenBow, 1);
-        game.player.inventory.insert(Item::Arrow, 1);
+        game.player.bag.insert(Item::WoodenBow, 1);
+        game.player.bag.insert(Item::Arrow, 1);
 
         game.hunt();
 
-        assert_eq!(game.player.inventory.get(&Item::Arrow), None);
+        assert_eq!(game.player.bag.get(&Item::Arrow), None);
         assert_eq!(last_event(&game).kind(), &EventKind::HuntMissed);
+    }
+
+    #[test]
+    fn a_hunt_that_only_partly_fits_logs_bag_full_and_hunted_and_still_counts() {
+        let mut game = armed_on_a_meadow();
+        game.player.bag.insert(Item::Arrow, 1);
+        // room for exactly one more item beyond the bow+arrow already carried
+        let carried = game.player.bag_total();
+        game.player
+            .bag
+            .insert(Item::Stick, player::BAG_CAPACITY - carried - 1);
+
+        game.player
+            .restore_quest_state(None, 0, vec![QuestID::CraftAxe]);
+        game.accept_quest(QuestID::StockUp).unwrap();
+
+        game.hunt();
+
+        let kinds: Vec<&EventKind> = game.events().iter().map(Event::kind).collect();
+        assert!(
+            kinds.iter().any(|k| matches!(k, EventKind::BagFull { .. })),
+            "one catch didn't fit"
+        );
+        assert!(
+            kinds.iter().any(|k| matches!(k, EventKind::Hunted { .. })),
+            "the rest still counted as a haul"
+        );
+        assert_eq!(game.player.quest_progress(), 1);
     }
 
     #[test]
@@ -1328,13 +1413,14 @@ mod tests {
         );
     }
 
-    /// Accepts "Stock Up for Hard Times" and hands the player a bow.
+    /// Accepts "Stock Up for Hard Times" and hands the player a bow — in the
+    /// bag, since hunting gear must be carried.
     fn game_with_the_stock_up_quest_open() -> Game {
         let mut game = Game::default();
         game.player
             .restore_quest_state(None, 0, vec![QuestID::CraftAxe]);
         game.accept_quest(QuestID::StockUp).unwrap();
-        game.player.inventory.insert(Item::WoodenBow, 1);
+        game.player.bag.insert(Item::WoodenBow, 1);
         game
     }
 
@@ -1353,7 +1439,7 @@ mod tests {
     #[test]
     fn five_successful_hunts_complete_the_stock_up_quest() {
         let mut game = game_with_the_stock_up_quest_open();
-        game.player.inventory.insert(Item::Arrow, 5);
+        game.player.bag.insert(Item::Arrow, 5);
 
         for _ in 0..5 {
             sure_hunt(&mut game);
@@ -1367,7 +1453,7 @@ mod tests {
     #[test]
     fn hunts_short_of_the_goal_leave_the_stock_up_quest_open() {
         let mut game = game_with_the_stock_up_quest_open();
-        game.player.inventory.insert(Item::Arrow, 3);
+        game.player.bag.insert(Item::Arrow, 3);
 
         for _ in 0..3 {
             sure_hunt(&mut game);
@@ -1380,7 +1466,7 @@ mod tests {
     #[test]
     fn a_hunt_that_catches_nothing_does_not_count_toward_the_stock_up_quest() {
         let mut game = game_with_the_stock_up_quest_open();
-        game.player.inventory.insert(Item::Arrow, 1);
+        game.player.bag.insert(Item::Arrow, 1);
         // a barren tile: the hunt still spends the arrow, but catches nothing
         let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
         game.map.tiles[ty][tx] = MapTile::with_terrain(TerrainType::Deadland);

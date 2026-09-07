@@ -8,7 +8,6 @@ use std::io;
 /// The bag's total capacity: the sum of every item's quantity in it, across
 /// all item types combined — not a per-item or per-slot limit. See
 /// `docs/bag-and-storage.md`.
-#[allow(dead_code)] // wired up when search/hunt route through the bag (next commit)
 pub(super) const BAG_CAPACITY: u32 = 50;
 
 #[derive(Debug)]
@@ -195,7 +194,6 @@ impl Player {
 
     /// Total items currently in the bag, summed across every item type —
     /// what `BAG_CAPACITY` caps.
-    #[allow(dead_code)] // wired up when search/hunt route through the bag (next commit)
     pub(super) fn bag_total(&self) -> u32 {
         self.bag.values().sum()
     }
@@ -203,7 +201,6 @@ impl Player {
     /// Adds `amount` of `item` to the bag, unless that would push the bag's
     /// total past `BAG_CAPACITY` — all or nothing, nothing is added on
     /// failure. Returns whether it fit.
-    #[allow(dead_code)] // wired up when search/hunt route through the bag (next commit)
     pub(super) fn add_to_bag(&mut self, item: Item, amount: u32) -> bool {
         if self.bag_total() + amount > BAG_CAPACITY {
             return false;
@@ -213,13 +210,11 @@ impl Player {
     }
 
     /// How many of `item` are in the bag.
-    #[allow(dead_code)] // wired up when hunt checks bag-held gear (next commit)
     pub(super) fn bag_count(&self, item: Item) -> u32 {
         self.bag.get(&item).copied().unwrap_or(0)
     }
 
     /// Whether the player is carrying at least one `item` in the bag.
-    #[allow(dead_code)] // wired up when hunt checks bag-held gear (next commit)
     pub(super) fn has_item_in_bag(&self, item: Item) -> bool {
         self.bag_count(item) > 0
     }
@@ -227,7 +222,6 @@ impl Player {
     /// Removes `amount` of `item` from the bag. Mirrors `spend` exactly,
     /// targeting the bag instead of storage — callers must have already
     /// checked the bag holds enough.
-    #[allow(dead_code)] // wired up when hunt spends the bag-held arrow (next commit)
     pub(super) fn spend_from_bag(&mut self, item: Item, amount: u32) {
         if let Some(remaining) = self.bag.get_mut(&item) {
             debug_assert!(

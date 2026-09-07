@@ -264,6 +264,15 @@ pub fn event(kind: &EventKind, lang: Language) -> String {
             };
             fl!(loader, "event-hunt-unprepared", missing = missing_arg)
         }
+        EventKind::BagFull { item } => {
+            // "too full to carry X" wants X in the accusative in Polish
+            // (direct object of "unieść"); English stays nominative.
+            let item_arg = match lang {
+                Language::English => self::item(*item, lang),
+                Language::Polish => item_attr(*item, "accusative", lang),
+            };
+            fl!(loader, "event-bag-full", item = item_arg)
+        }
     }
 }
 
@@ -566,6 +575,7 @@ mod tests {
             EventKind::HuntUnprepared {
                 missing: Item::Arrow,
             },
+            EventKind::BagFull { item: Item::Stick },
         ];
 
         for kind in &samples {
