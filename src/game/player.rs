@@ -140,7 +140,7 @@ impl Player {
     /// build; a release build saturates at zero instead of wrapping, in case
     /// a caller's check turns out to have missed a case (e.g. a duplicated
     /// item in the amount being spent, checked as a whole but spent one
-    /// entry at a time — see `spend_all`).
+    /// entry at a time — see `spend_all_storage_then_bag`).
     pub(super) fn spend(&mut self, item: Item, amount: u32) {
         if let Some(remaining) = self.inventory.get_mut(&item) {
             debug_assert!(
@@ -151,14 +151,6 @@ impl Player {
             if *remaining == 0 {
                 self.inventory.remove(&item);
             }
-        }
-    }
-
-    /// Removes each of `items` from the inventory. Callers must have already
-    /// checked the player holds enough of every one.
-    pub(super) fn spend_all(&mut self, items: &[(Item, u32)]) {
-        for &(item, amount) in items {
-            self.spend(item, amount);
         }
     }
 
@@ -185,18 +177,57 @@ impl Player {
     }
 
     /// The first entry in `items` the player doesn't have enough of, as
-    /// `(item, available, needed)`. `None` if every entry is satisfied.
+    /// `(item, available, needed)` — `available` is storage and the bag
+    /// combined, since craft/experiment/disassemble draw on both (storage
+    /// first, the bag for any remainder — see `spend_storage_then_bag`).
+    /// `None` if every entry is satisfied.
     pub(super) fn first_shortage(&self, items: &[(Item, u32)]) -> Option<(Item, u32, u32)> {
         items.iter().find_map(|&(item, needed)| {
-            let available = self.inventory_count(item);
+            let available = self.combined_count(item);
             (available < needed).then_some((item, available, needed))
         })
     }
 
     /// The first tool in `tools` the player isn't holding. `None` if they hold
-    /// every one (a single unit suffices — tools aren't consumed).
+    /// every one (a single unit suffices — tools aren't consumed). Storage
+    /// only, unlike consumables — a tool stays at the workshop where it's
+    /// used, the same reasoning `docs/village-crafting.md` already gives
+    /// for craft/experiment/disassemble being village-only in the first
+    /// place.
     pub(super) fn first_missing_tool(&self, tools: &[Item]) -> Option<Item> {
         tools.iter().copied().find(|&tool| !self.has_item(tool))
+    }
+
+    /// Combined count of `item` across storage and the bag.
+    pub(super) fn combined_count(&self, item: Item) -> u32 {
+        self.inventory_count(item) + self.bag_count(item)
+    }
+
+    /// Whether the player holds at least one `item`, in storage or the bag
+    /// combined.
+    pub(super) fn has_item_combined(&self, item: Item) -> bool {
+        self.combined_count(item) > 0
+    }
+
+    /// Removes `amount` of `item`, drawing from storage first and the bag
+    /// for any remainder — what craft/experiment/disassemble use, now that
+    /// both pools are available to them. Callers must have already checked
+    /// the combined total covers `amount` (see `first_shortage`/
+    /// `combined_count`).
+    pub(super) fn spend_storage_then_bag(&mut self, item: Item, amount: u32) {
+        let from_storage = amount.min(self.inventory_count(item));
+        self.spend(item, from_storage);
+        let remainder = amount - from_storage;
+        if remainder > 0 {
+            self.spend_from_bag(item, remainder);
+        }
+    }
+
+    /// Removes each of `items`, per `spend_storage_then_bag`.
+    pub(super) fn spend_all_storage_then_bag(&mut self, items: &[(Item, u32)]) {
+        for &(item, amount) in items {
+            self.spend_storage_then_bag(item, amount);
+        }
     }
 
     /// Total items currently in the bag, summed across every item type —

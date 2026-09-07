@@ -122,7 +122,7 @@ impl eframe::App for App {
                 }
             }
             Panel::Experiment => {
-                let inventory = viewmodel::inventory::sorted(&self.game.player);
+                let inventory = viewmodel::inventory::combined_sorted(&self.game.player);
                 let at_village = self.game.at_craftable_location();
                 if let experiment::Outcome::Run(items) =
                     self.experiment

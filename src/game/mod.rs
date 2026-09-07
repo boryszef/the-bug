@@ -264,8 +264,10 @@ impl Game {
         )
     }
 
-    /// Crafts a known recipe by name. Does nothing away from the Village (or
-    /// a future workshop) — see
+    /// Crafts a known recipe by name. Consumables are drawn from storage
+    /// first, the bag for any remainder (`docs/bag-and-storage.md`) — tools
+    /// stay storage-only, a tool is kept at the workshop where it's used.
+    /// Does nothing away from the Village (or a future workshop) — see
     /// [`at_craftable_location`](Self::at_craftable_location). Not logged:
     /// the gui disables the button so this is normally unreachable, and
     /// being away from the village is the player's own doing, not a result
@@ -298,7 +300,7 @@ impl Game {
             return;
         }
 
-        self.player.spend_all(recipe.consumables());
+        self.player.spend_all_storage_then_bag(recipe.consumables());
 
         // Logged before `grant_item`, whose `note_quest_event` may log the
         // quest's own completion line right behind it — the event log reads
@@ -312,8 +314,9 @@ impl Game {
         self.player.record_successful_craft();
     }
 
-    /// Tries the given items as an experiment. Does nothing away from the
-    /// Village (or a future workshop), same as `craft` — see
+    /// Tries the given items as an experiment — drawn from storage first,
+    /// the bag for any remainder, same as `craft`. Does nothing away from
+    /// the Village (or a future workshop), same as `craft` — see
     /// [`at_craftable_location`](Self::at_craftable_location).
     pub fn experiment(&mut self, items: &[(Item, u32)]) {
         if items.is_empty() {
@@ -334,7 +337,7 @@ impl Game {
             return;
         }
 
-        self.player.spend_all(items);
+        self.player.spend_all_storage_then_bag(items);
 
         let Some(recipe) = find_matching(items) else {
             self.log(EventKind::ExperimentFailed {
@@ -366,9 +369,11 @@ impl Game {
     }
 
     /// Takes one `item` apart, returning the consumables of the recipe it
-    /// decomposes into. Does nothing if no recipe lets `item` be taken apart,
-    /// the player is not carrying one, or they're away from the Village (or
-    /// a future workshop) — see
+    /// decomposes into. `item` itself may be held in storage or the bag
+    /// (storage first); the recovered consumables always go to storage.
+    /// Does nothing if no recipe lets `item` be taken apart, the player is
+    /// not carrying one (in either pool), or they're away from the Village
+    /// (or a future workshop) — see
     /// [`at_craftable_location`](Self::at_craftable_location).
     pub fn disassemble(&mut self, item: Item) {
         if !self.at_craftable_location() {
@@ -378,11 +383,11 @@ impl Game {
         let Some(recipe) = disassembly_for(item) else {
             return;
         };
-        if !self.player.has_item(item) {
+        if !self.player.has_item_combined(item) {
             return;
         }
 
-        self.player.spend(item, 1);
+        self.player.spend_storage_then_bag(item, 1);
         self.player.add_all_to_inventory(recipe.consumables());
 
         self.log(EventKind::Disassembled { item });
@@ -748,6 +753,42 @@ mod tests {
         assert_eq!(game.player.bag.get(&Item::Vine), None);
     }
 
+    #[test]
+    fn spend_storage_then_bag_draws_storage_first() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Vine, 3);
+        game.player.add_to_bag(Item::Vine, 5);
+
+        game.player.spend_storage_then_bag(Item::Vine, 3);
+
+        assert_eq!(game.player.inventory.get(&Item::Vine), None);
+        assert_eq!(game.player.bag_count(Item::Vine), 5); // untouched
+    }
+
+    #[test]
+    fn spend_storage_then_bag_spills_the_remainder_into_the_bag() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Vine, 2);
+        game.player.add_to_bag(Item::Vine, 5);
+
+        game.player.spend_storage_then_bag(Item::Vine, 4);
+
+        assert_eq!(game.player.inventory.get(&Item::Vine), None);
+        assert_eq!(game.player.bag_count(Item::Vine), 3); // 5 - (4 - 2)
+    }
+
+    #[test]
+    fn combined_count_and_has_item_combined_sum_both_pools() {
+        let mut game = Game::default();
+        assert!(!game.player.has_item_combined(Item::Vine));
+
+        game.player.inventory.insert(Item::Vine, 2);
+        game.player.add_to_bag(Item::Vine, 3);
+
+        assert_eq!(game.player.combined_count(Item::Vine), 5);
+        assert!(game.player.has_item_combined(Item::Vine));
+    }
+
     // --- Game-level transfer and drop --------------------------------------
     //
     // `Player::transfer_to_storage`/`transfer_to_bag` are already tested for
@@ -883,6 +924,45 @@ mod tests {
         game.experiment(&[(Item::Vine, 2)]);
 
         assert_eq!(game.player.inventory.get(&Item::Vine), None);
+    }
+
+    #[test]
+    fn craft_spends_storage_before_dipping_into_the_bag() {
+        let mut game = Game::default();
+        game.player.grant_recipe("Cord");
+        game.player.inventory.insert(Item::Vine, 1);
+        game.player.bag.insert(Item::Vine, 1); // 2 combined, exactly one Cord
+
+        game.craft("Cord");
+
+        assert_eq!(game.player.inventory.get(&Item::Vine), None);
+        assert_eq!(game.player.bag.get(&Item::Vine), None);
+        assert_eq!(game.player.inventory.get(&Item::Cord), Some(&1));
+    }
+
+    #[test]
+    fn craft_leaves_the_bag_untouched_when_storage_alone_covers_it() {
+        let mut game = Game::default();
+        game.player.grant_recipe("Cord");
+        game.player.inventory.insert(Item::Vine, 2);
+        game.player.bag.insert(Item::Vine, 5); // untouched — storage alone is enough
+
+        game.craft("Cord");
+
+        assert_eq!(game.player.inventory.get(&Item::Vine), None);
+        assert_eq!(game.player.bag.get(&Item::Vine), Some(&5));
+    }
+
+    #[test]
+    fn experiment_spends_storage_before_dipping_into_the_bag() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Vine, 1);
+        game.player.bag.insert(Item::Vine, 1);
+
+        game.experiment(&[(Item::Vine, 2)]);
+
+        assert_eq!(game.player.inventory.get(&Item::Vine), None);
+        assert_eq!(game.player.bag.get(&Item::Vine), None);
     }
 
     #[test]
@@ -1240,6 +1320,21 @@ mod tests {
         game.disassemble(Item::StoneAxe);
 
         assert_eq!(game.player.inventory.get(&Item::StoneAxe), None);
+        assert_eq!(game.player.inventory.get(&Item::Stick), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::Stone), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::Cord), Some(&1));
+    }
+
+    #[test]
+    fn disassemble_can_target_an_item_held_only_in_the_bag() {
+        let mut game = Game::default();
+        game.player.bag.insert(Item::StoneAxe, 1);
+
+        game.disassemble(Item::StoneAxe);
+
+        // recovered components always land in storage, regardless of
+        // where the disassembled item itself came from
+        assert_eq!(game.player.bag.get(&Item::StoneAxe), None);
         assert_eq!(game.player.inventory.get(&Item::Stick), Some(&1));
         assert_eq!(game.player.inventory.get(&Item::Stone), Some(&1));
         assert_eq!(game.player.inventory.get(&Item::Cord), Some(&1));

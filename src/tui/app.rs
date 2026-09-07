@@ -90,7 +90,7 @@ impl App {
         match self.panel {
             Panel::Map => self.handle_map_key(key_event.code),
             Panel::Experiment => {
-                let inventory = viewmodel::inventory::sorted(&self.game.player);
+                let inventory = viewmodel::inventory::combined_sorted(&self.game.player);
                 if let experiment::Outcome::Run(items) =
                     self.experiment.handle_key(key_event.code, &inventory)
                 {
@@ -166,7 +166,7 @@ impl Widget for &App {
             Panel::Experiment => self.experiment.render(
                 columns[1],
                 buf,
-                &viewmodel::inventory::sorted(&self.game.player),
+                &viewmodel::inventory::combined_sorted(&self.game.player),
                 self.language,
             ),
             Panel::Craft => self.craft.render(

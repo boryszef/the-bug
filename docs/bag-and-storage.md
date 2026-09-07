@@ -15,22 +15,27 @@ limit).
 
 ## What goes where
 
-Crafting, experimenting, and disassembling **don't change** — they already
-only run at the Village (`docs/village-crafting.md`), so their consumables,
-tools, and outputs keep using storage exactly as before: a workshop tool or
-a stack of materials sitting at the village isn't something you'd carry in a
-limited travel bag. Quest rewards (`grant_reward`) also keep going to
-storage — a guaranteed milestone reward shouldn't risk being lost to a full
-bag, and no live quest grants items today regardless.
+`search`/`hunt`'s *yields* go to the bag (`Player::add_to_bag`), not
+storage — a search or hunt happens out in the field. `hunt`'s *gear
+prerequisite* moves too: the Wooden Bow and Arrow must be in the bag, not
+storage, since gear has to be carried to be used away from the village.
 
-What changes is `search`/`hunt`'s *yields* — a search or hunt happens out in
-the field, so what it turns up goes into the bag (`Player::add_to_bag`), not
-storage. `hunt`'s *gear prerequisite* moves too: the Wooden Bow and Arrow
-must now be in the bag, not storage, since gear has to be carried to be used
-away from the village — unlike a craft/experiment tool, which stays at the
-workshop where it's used. This is what gives Transfer a real bidirectional
-purpose: gear flows Storage→Bag before a hunting trip, loot flows Bag→Storage
-on return.
+Crafting, experimenting, and disassembling read **both**: a consumable (or,
+for `disassemble`, the item being taken apart) is drawn from storage first,
+the bag for any remainder (`Player::spend_storage_then_bag`) — the recipe's
+required *tools* stay storage-only, though, and so does every *output*
+(a craft/experiment's product, disassembly's recovered components, quest
+rewards via `grant_reward`). The asymmetry is deliberate: these three
+actions only run at the Village (`docs/village-crafting.md`) in the first
+place, so it's natural for them to reach into whatever the player happens to
+be carrying *in addition to* the village's stockpile — but a tool is kept at
+the workshop where it's used regardless, and a guaranteed reward or a fresh
+result shouldn't land somewhere capacity-limited by accident (or risk being
+lost to a full bag, in the reward's case). This is what gives Transfer a
+real bidirectional purpose beyond just capacity management: gear flows
+Storage→Bag before a hunting trip, loot flows Bag→Storage on return — and a
+material picked up mid-expedition can be spent on the spot once the player's
+back at the village, without a manual transfer first.
 
 ## The Player API
 
@@ -38,6 +43,12 @@ on return.
   if the bag's total would exceed `BAG_CAPACITY`.
 - `bag_count`/`has_item_in_bag` and `spend_from_bag` mirror the existing
   `inventory_count`/`has_item`/`spend` exactly, scoped to the bag.
+- `combined_count`/`has_item_combined` — storage and the bag summed, what
+  craft/experiment/disassemble check against (`first_shortage` now reports
+  this combined figure too).
+- `spend_storage_then_bag(item, amount)` / `spend_all_storage_then_bag(items)`
+  — what craft/experiment/disassemble spend with: as much as possible from
+  storage, the remainder (if any) from the bag.
 - `transfer_to_storage(item, amount) -> bool` / `transfer_to_bag(item,
   amount) -> bool` — move between the two pools. `transfer_to_bag` tries
   `add_to_bag` (capacity-checked) *before* spending from storage, so a
@@ -86,6 +97,11 @@ its quantity, and:
 - Bag: a "→" button (transfer to storage) and an "x" (drop one).
 - Inventory: a "←" button (transfer to bag) and an "x" (drop one).
 
+The arrow glyphs are drawn in the monospace font (`RichText::monospace`),
+the same fix the Map tab's `←↑↓→` buttons already needed — egui's default
+proportional font has no arrow coverage, only the bundled Hack (Monospace)
+does.
+
 Transfer (both directions) and the Inventory "x" are enabled only at the
 Village (`at_village`, same pattern as Craft/Experiment/Disassemble); the
 Bag "x" is always enabled. Both move exactly one unit per click, matching
@@ -108,18 +124,30 @@ compiling — not a feature build.
 
 - `src/game/player.rs` — `BAG_CAPACITY`, `Player.bag`, `bag_total`,
   `add_to_bag`, `bag_count`, `has_item_in_bag`, `spend_from_bag`,
-  `transfer_to_storage`, `transfer_to_bag`, `bag_progress`.
+  `combined_count`, `has_item_combined`, `spend_storage_then_bag`,
+  `spend_all_storage_then_bag`, `transfer_to_storage`, `transfer_to_bag`,
+  `bag_progress`. `spend_all` (the old storage-only loop) is gone — its
+  only two callers now use `spend_all_storage_then_bag`.
 - `src/save.rs` — `PlayerState.bag`, `#[serde(default)]` so an old save
   loads with an empty bag.
 - `src/game/mod.rs` — `search`/`hunt` route through the bag; `hunt`'s gear
-  check; `Game::transfer_to_storage`/`transfer_to_bag`/`drop_from_bag`/`drop_from_storage`.
+  check; `craft`/`experiment`/`disassemble` check and spend the combined
+  pool; `Game::transfer_to_storage`/`transfer_to_bag`/`drop_from_bag`/`drop_from_storage`.
 - `src/game/event.rs` + `src/i18n/mod.rs` + both `.ftl`s — `BagFull`,
   `Dropped`.
+- `src/viewmodel/inventory.rs` — `combined_sorted` (new; `sorted` is
+  unchanged, still storage-only — the Items tab's storage column and
+  `tui`'s Player-panel line both need that, not the combined view).
+- `src/viewmodel/crafting.rs` — `CraftConsumable.have` is now combined;
+  `CraftTool.present` stays storage-only, matching `first_missing_tool`.
+- `src/viewmodel/disassembly.rs` — `options` now built from
+  `combined_sorted`, so an item held only in the bag still shows up.
 - `src/viewmodel/items.rs` (new, `gui`-only) — `Overview { bag,
   bag_progress, storage }`.
 - `src/gui/items.rs` (new), `src/gui/mod.rs` — the tab, its wiring, the
-  Player panel's inventory-line removal.
-- `src/tui/app.rs` — the three placeholder arms.
+  Player panel's inventory-line removal. The Experiment tab's "Available"
+  list (both front ends) also switched to `combined_sorted`.
+- `src/tui/app.rs` — the three placeholder `Panel::Items` arms.
 
 ## Out of scope
 
