@@ -32,6 +32,12 @@ impl Experiment {
     ) -> Outcome {
         ui.heading(i18n::ui("panel-experiment-title", lang));
 
+        // The selection is a snapshot from whenever items were picked; the
+        // inventory may have shrunk since (e.g. a craft on another tab spent
+        // an item this selection counted on), so it's trimmed to the live
+        // stock before `owned - picked` is computed below.
+        self.selection.clamp_to(inventory);
+
         let mut outcome = Outcome::Idle;
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.columns(2, |columns| {
@@ -48,6 +54,8 @@ impl Experiment {
                 }
 
                 columns[1].strong(i18n::ui("panel-selected-title", lang));
+                // Cloned rather than borrowed: `decrement_at` below needs
+                // `&mut self.selection` while this loop is still iterating.
                 for (index, &(item, quantity)) in self.selection.items().to_vec().iter().enumerate()
                 {
                     let label = i18n::item_with_quantity(item, quantity, lang);

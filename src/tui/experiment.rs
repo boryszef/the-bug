@@ -42,6 +42,15 @@ impl Experiment {
     /// Feeds one key to the overlay. `inventory` is the player's inventory in
     /// display order: `(item, owned quantity)`.
     pub(super) fn handle_key(&mut self, key: KeyCode, inventory: &[(Item, u32)]) -> Outcome {
+        // The selection is a snapshot from whenever items were picked; the
+        // inventory may have shrunk since (e.g. a craft on another tab spent
+        // an item this selection counted on). Unlike the gui, nothing here
+        // underflows on a stale pick — `available()` below already
+        // saturates — but left unclamped the "Selected" column would keep
+        // showing a quantity the player no longer has, only to have `e` log
+        // a shortage instead of running. Clamping here keeps it honest.
+        self.selection.clamp_to(inventory);
+
         match key {
             KeyCode::Esc | KeyCode::Char('q') => return Outcome::Cancel,
             KeyCode::Char('e') => return Outcome::Run(self.selection.take()),
