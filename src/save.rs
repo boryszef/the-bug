@@ -80,6 +80,10 @@ pub(crate) struct PlayerState {
     pub(crate) crafts_completed: u32,
     pub(crate) coordinates: (i32, i32),
     pub(crate) inventory: HashMap<Item, u32>,
+    /// The bag's contents. Absent in older / hand-made saves — then the
+    /// player starts with an empty bag.
+    #[serde(default)]
+    pub(crate) bag: HashMap<Item, u32>,
     pub(crate) recipes: Vec<String>,
     #[serde(default)]
     pub(crate) open_quest: Option<QuestID>,
@@ -278,6 +282,29 @@ mod tests {
             .map(|r| r.name())
             .collect();
         assert_eq!(recipes, ["Cord"]);
+    }
+
+    #[test]
+    fn bag_survives_round_trip() {
+        let mut game = Game::default();
+        game.player.bag.insert(Item::Vine, 4);
+        game.player.bag.insert(Item::Stick, 1);
+
+        let restored = roundtrip(&game);
+
+        assert_eq!(restored.player.bag.get(&Item::Vine), Some(&4));
+        assert_eq!(restored.player.bag.get(&Item::Stick), Some(&1));
+    }
+
+    #[test]
+    fn player_without_a_bag_field_defaults_to_an_empty_bag() {
+        let json = r#"{
+            "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
+            "map": { "terrain": ["M"] },
+            "events": []
+        }"#;
+        let game = restore(serde_json::from_str(json).unwrap()).unwrap();
+        assert!(game.player.bag.is_empty());
     }
 
     #[test]

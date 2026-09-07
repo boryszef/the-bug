@@ -5,6 +5,12 @@ use super::recipe::{RECIPES, Recipe};
 use std::collections::HashMap;
 use std::io;
 
+/// The bag's total capacity: the sum of every item's quantity in it, across
+/// all item types combined — not a per-item or per-slot limit. See
+/// `docs/bag-and-storage.md`.
+#[allow(dead_code)] // wired up when search/hunt route through the bag (next commit)
+pub(super) const BAG_CAPACITY: u32 = 50;
+
 #[derive(Debug)]
 pub struct Player {
     pub level: u32,
@@ -12,7 +18,14 @@ pub struct Player {
     /// Successful crafts so far — every tenth grants a point of experience.
     pub crafts_completed: u32,
     pub coordinates: (i32, i32),
+    /// The unlimited village Storage — everything crafting, experimenting,
+    /// disassembling, and quest rewards use, exactly as this field always
+    /// has. See `docs/bag-and-storage.md` for why it's split from `bag`.
     pub inventory: HashMap<Item, u32>,
+    /// The limited pool the player actually carries — what `search`/`hunt`
+    /// fill, and what hunting gear must be in to be usable. Capped at
+    /// `BAG_CAPACITY` (a total across every item type, not a per-item cap).
+    pub bag: HashMap<Item, u32>,
     recipes: Vec<Recipe>,
     open_quest: Option<QuestID>,
     /// Occurrences of the open quest's condition seen since it was accepted.
@@ -29,6 +42,7 @@ impl Default for Player {
             crafts_completed: 0,
             coordinates: (0, 0),
             inventory: HashMap::new(),
+            bag: HashMap::new(),
             recipes: Vec::new(),
             open_quest: None,
             quest_progress: 0,
@@ -179,6 +193,84 @@ impl Player {
         tools.iter().copied().find(|&tool| !self.has_item(tool))
     }
 
+    /// Total items currently in the bag, summed across every item type —
+    /// what `BAG_CAPACITY` caps.
+    #[allow(dead_code)] // wired up when search/hunt route through the bag (next commit)
+    pub(super) fn bag_total(&self) -> u32 {
+        self.bag.values().sum()
+    }
+
+    /// Adds `amount` of `item` to the bag, unless that would push the bag's
+    /// total past `BAG_CAPACITY` — all or nothing, nothing is added on
+    /// failure. Returns whether it fit.
+    #[allow(dead_code)] // wired up when search/hunt route through the bag (next commit)
+    pub(super) fn add_to_bag(&mut self, item: Item, amount: u32) -> bool {
+        if self.bag_total() + amount > BAG_CAPACITY {
+            return false;
+        }
+        *self.bag.entry(item).or_insert(0) += amount;
+        true
+    }
+
+    /// How many of `item` are in the bag.
+    #[allow(dead_code)] // wired up when hunt checks bag-held gear (next commit)
+    pub(super) fn bag_count(&self, item: Item) -> u32 {
+        self.bag.get(&item).copied().unwrap_or(0)
+    }
+
+    /// Whether the player is carrying at least one `item` in the bag.
+    #[allow(dead_code)] // wired up when hunt checks bag-held gear (next commit)
+    pub(super) fn has_item_in_bag(&self, item: Item) -> bool {
+        self.bag_count(item) > 0
+    }
+
+    /// Removes `amount` of `item` from the bag. Mirrors `spend` exactly,
+    /// targeting the bag instead of storage — callers must have already
+    /// checked the bag holds enough.
+    #[allow(dead_code)] // wired up when hunt spends the bag-held arrow (next commit)
+    pub(super) fn spend_from_bag(&mut self, item: Item, amount: u32) {
+        if let Some(remaining) = self.bag.get_mut(&item) {
+            debug_assert!(
+                *remaining >= amount,
+                "spend_from_bag({item:?}, {amount}) exceeds the {remaining} held"
+            );
+            *remaining = remaining.saturating_sub(amount);
+            if *remaining == 0 {
+                self.bag.remove(&item);
+            }
+        }
+    }
+
+    /// Moves `amount` of `item` from the bag to storage. Storage has no
+    /// capacity to check; fails only if the bag doesn't hold `amount`, in
+    /// which case nothing moves. Returns whether it happened.
+    #[allow(dead_code)] // wired up by Game::transfer_to_storage (a later commit)
+    pub(super) fn transfer_to_storage(&mut self, item: Item, amount: u32) -> bool {
+        if self.bag_count(item) < amount {
+            return false;
+        }
+        self.spend_from_bag(item, amount);
+        self.add_to_inventory(item, amount);
+        true
+    }
+
+    /// Moves `amount` of `item` from storage to the bag. Fails if storage
+    /// doesn't hold `amount`, or if the bag has no room for it — in either
+    /// case nothing moves (storage is only spent once the bag confirms it
+    /// fit, so a failed transfer never leaves the item in limbo). Returns
+    /// whether it happened.
+    #[allow(dead_code)] // wired up by Game::transfer_to_bag (a later commit)
+    pub(super) fn transfer_to_bag(&mut self, item: Item, amount: u32) -> bool {
+        if self.inventory_count(item) < amount {
+            return false;
+        }
+        if !self.add_to_bag(item, amount) {
+            return false;
+        }
+        self.spend(item, amount);
+        true
+    }
+
     /// Adds `amount` to the player's experience.
     pub(super) fn add_experience(&mut self, amount: u32) {
         self.experience += amount;
@@ -236,6 +328,7 @@ impl super::SaveState for Player {
             crafts_completed: self.crafts_completed,
             coordinates: self.coordinates,
             inventory: self.inventory.clone(),
+            bag: self.bag.clone(),
             recipes: self
                 .known_recipes()
                 .iter()
@@ -258,6 +351,7 @@ impl super::RestoreState for Player {
             crafts_completed: saved.crafts_completed,
             coordinates: saved.coordinates,
             inventory: saved.inventory,
+            bag: saved.bag,
             ..Player::default()
         };
         for name in &saved.recipes {

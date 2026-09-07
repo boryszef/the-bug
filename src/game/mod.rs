@@ -556,6 +556,129 @@ mod tests {
         assert!(!game.at_craftable_location());
     }
 
+    // --- Bag and storage ---------------------------------------------------
+    //
+    // `Player.inventory` is the unlimited village Storage (unchanged in
+    // role — every craft/experiment/disassemble/quest-reward test in this
+    // file already exercises it). `Player.bag` is new: a capacity-limited
+    // pool the player carries, tested directly here. See
+    // docs/bag-and-storage.md.
+
+    #[test]
+    fn bag_total_sums_every_item_in_the_bag() {
+        let mut game = Game::default();
+        assert_eq!(game.player.bag_total(), 0);
+
+        game.player.add_to_bag(Item::Stick, 3);
+        game.player.add_to_bag(Item::Stone, 2);
+
+        assert_eq!(game.player.bag_total(), 5);
+    }
+
+    #[test]
+    fn add_to_bag_fits_within_capacity() {
+        let mut game = Game::default();
+
+        assert!(game.player.add_to_bag(Item::Stick, player::BAG_CAPACITY));
+
+        assert_eq!(game.player.bag_count(Item::Stick), player::BAG_CAPACITY);
+        assert_eq!(game.player.bag_total(), player::BAG_CAPACITY);
+    }
+
+    #[test]
+    fn add_to_bag_rejects_an_amount_that_would_exceed_capacity() {
+        let mut game = Game::default();
+        game.player
+            .add_to_bag(Item::Stick, player::BAG_CAPACITY - 1);
+
+        // one more than fits: rejected entirely, not partially added
+        assert!(!game.player.add_to_bag(Item::Stone, 2));
+
+        assert_eq!(game.player.bag_count(Item::Stone), 0);
+        assert_eq!(game.player.bag_total(), player::BAG_CAPACITY - 1);
+    }
+
+    #[test]
+    fn has_item_in_bag_and_bag_count_reflect_the_bag_not_storage() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Stick, 5); // storage, not bag
+
+        assert!(!game.player.has_item_in_bag(Item::Stick));
+        assert_eq!(game.player.bag_count(Item::Stick), 0);
+
+        game.player.add_to_bag(Item::Stick, 1);
+
+        assert!(game.player.has_item_in_bag(Item::Stick));
+        assert_eq!(game.player.bag_count(Item::Stick), 1);
+    }
+
+    #[test]
+    fn transfer_to_storage_moves_items_from_bag_to_storage() {
+        let mut game = Game::default();
+        game.player.add_to_bag(Item::Vine, 5);
+
+        assert!(game.player.transfer_to_storage(Item::Vine, 3));
+
+        assert_eq!(game.player.bag_count(Item::Vine), 2);
+        assert_eq!(game.player.inventory.get(&Item::Vine), Some(&3));
+    }
+
+    #[test]
+    fn transfer_to_storage_fails_without_enough_in_the_bag() {
+        let mut game = Game::default();
+        game.player.add_to_bag(Item::Vine, 1);
+
+        assert!(!game.player.transfer_to_storage(Item::Vine, 2));
+
+        assert_eq!(game.player.bag_count(Item::Vine), 1);
+        assert!(game.player.inventory.is_empty());
+    }
+
+    #[test]
+    fn transfer_to_bag_moves_items_from_storage_to_bag() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Vine, 5);
+
+        assert!(game.player.transfer_to_bag(Item::Vine, 3));
+
+        assert_eq!(game.player.inventory.get(&Item::Vine), Some(&2));
+        assert_eq!(game.player.bag_count(Item::Vine), 3);
+    }
+
+    #[test]
+    fn transfer_to_bag_fails_without_enough_in_storage() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Vine, 1);
+
+        assert!(!game.player.transfer_to_bag(Item::Vine, 2));
+
+        assert_eq!(game.player.inventory.get(&Item::Vine), Some(&1));
+        assert!(game.player.bag.is_empty());
+    }
+
+    #[test]
+    fn transfer_to_bag_fails_when_the_bag_has_no_room_and_leaves_storage_untouched() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Vine, 5);
+        game.player.add_to_bag(Item::Stick, player::BAG_CAPACITY); // bag full
+
+        assert!(!game.player.transfer_to_bag(Item::Vine, 1));
+
+        // storage untouched — nothing left in limbo
+        assert_eq!(game.player.inventory.get(&Item::Vine), Some(&5));
+        assert_eq!(game.player.bag_count(Item::Vine), 0);
+    }
+
+    #[test]
+    fn spend_from_bag_removes_exhausted_entries() {
+        let mut game = Game::default();
+        game.player.add_to_bag(Item::Vine, 2);
+
+        game.player.spend_from_bag(Item::Vine, 2);
+
+        assert_eq!(game.player.bag.get(&Item::Vine), None);
+    }
+
     #[test]
     fn crafting_removes_exhausted_consumables() {
         let mut game = Game::default();
