@@ -50,7 +50,13 @@ pub fn options(player: &Player) -> Vec<CraftOption> {
                 .map(|&(item, need)| CraftConsumable {
                     item,
                     need,
-                    have: player.inventory.get(&item).copied().unwrap_or(0),
+                    // Storage and the bag combined — craft/experiment now
+                    // draw on either (storage first, the bag for any
+                    // remainder). Tools, below, stay storage-only: a tool
+                    // is kept at the workshop where it's used, unlike a
+                    // consumable.
+                    have: player.inventory.get(&item).copied().unwrap_or(0)
+                        + player.bag.get(&item).copied().unwrap_or(0),
                 })
                 .collect();
             let tools: Vec<CraftTool> = recipe
@@ -125,6 +131,21 @@ mod tests {
         assert_eq!((vine.have, vine.need), (0, 2));
         assert!(!vine.met());
         assert!(!opt.enabled);
+    }
+
+    #[test]
+    fn a_consumable_split_across_storage_and_the_bag_still_counts_combined() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Vine, 2);
+        game.experiment(&[(Item::Vine, 2)]); // discovers "Cord" (2x Vine), Vine now 0
+        game.player.inventory.insert(Item::Vine, 1);
+        game.player.bag.insert(Item::Vine, 1);
+
+        let opt = options(&game.player).pop().unwrap();
+        let vine = &opt.consumables[0];
+        assert_eq!((vine.have, vine.need), (2, 2));
+        assert!(vine.met());
+        assert!(opt.enabled);
     }
 
     #[test]

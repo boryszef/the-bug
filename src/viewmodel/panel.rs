@@ -15,15 +15,17 @@ pub enum Panel {
     Experiment,
     Craft,
     Disassemble,
+    Items,
     Quests,
 }
 
 impl Panel {
-    pub const ALL: [Panel; 5] = [
+    pub const ALL: [Panel; 6] = [
         Panel::Map,
         Panel::Experiment,
         Panel::Craft,
         Panel::Disassemble,
+        Panel::Items,
         Panel::Quests,
     ];
 
@@ -55,14 +57,16 @@ mod tests {
         assert_eq!(Panel::Map.next(), Panel::Experiment);
         assert_eq!(Panel::Experiment.next(), Panel::Craft);
         assert_eq!(Panel::Craft.next(), Panel::Disassemble);
-        assert_eq!(Panel::Disassemble.next(), Panel::Quests);
+        assert_eq!(Panel::Disassemble.next(), Panel::Items);
+        assert_eq!(Panel::Items.next(), Panel::Quests);
         assert_eq!(Panel::Quests.next(), Panel::Map);
     }
 
     #[test]
     fn prev_cycles_through_every_panel_in_reverse_and_wraps() {
         assert_eq!(Panel::Map.prev(), Panel::Quests);
-        assert_eq!(Panel::Quests.prev(), Panel::Disassemble);
+        assert_eq!(Panel::Quests.prev(), Panel::Items);
+        assert_eq!(Panel::Items.prev(), Panel::Disassemble);
         assert_eq!(Panel::Disassemble.prev(), Panel::Craft);
         assert_eq!(Panel::Craft.prev(), Panel::Experiment);
         assert_eq!(Panel::Experiment.prev(), Panel::Map);

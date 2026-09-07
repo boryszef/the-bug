@@ -26,6 +26,8 @@ event-disassembled = Rozbierasz { $item }, odzyskując { $recovered }.
 event-hunted = Polowanie: { $items }.
 event-hunt-missed = Polowanie: zwierzyna uciekła.
 event-hunt-unprepared = Potrzebujesz { $missing }, aby polować.
+event-bag-full = Twoja torba jest zbyt pełna, aby unieść { $item }.
+event-dropped = Wyrzucasz { $item }.
 
 ## Item names (nominative), with a `.genitive` attribute (singular), a
 ## `.genitive-plural` attribute — the latter is what the "not enough X"
@@ -224,6 +226,16 @@ player-inventory-empty = (pusto)
 
 village-required-hint = Musisz być w osadzie, aby to zrobić.
 
+## Items panel (gui only — the Bag/Inventory split; see
+## docs/bag-and-storage.md). "panel-items-title" above doubles as this
+## tab's heading.
+
+items-bag-title = Torba: { $count }/{ $capacity }
+items-storage-title = Ekwipunek
+items-bag-empty = Twoja torba jest pusta.
+items-storage-empty = Ekwipunek jest pusty.
+items-not-in-tui = Niedostępne w tym widoku — użyj gui, aby zarządzać torbą i ekwipunkiem.
+
 ## Craft panel.
 
 craft-empty = Nie odkryłeś jeszcze żadnych przepisów.
@@ -254,6 +266,7 @@ footer-experiment = ↑↓ ruch   ←→ dodaj/usuń   Tab zmień kolumnę   e u
 footer-craft = ↑↓ ruch   Enter wytwórz   [ ] panel   q wyjście
 footer-disassemble = ↑↓ ruch   Enter rozłóż   [ ] panel   q wyjście
 footer-quests = ↑↓ ruch   Enter przyjmij   [ ] panel   q wyjście
+footer-items = [ ] panel   q wyjście
 
 ## Sterowanie tylko w gui (pasek narzędzi, przyciski paneli, pasek podpowiedzi w src/gui/mod.rs).
 

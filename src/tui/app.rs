@@ -90,7 +90,7 @@ impl App {
         match self.panel {
             Panel::Map => self.handle_map_key(key_event.code),
             Panel::Experiment => {
-                let inventory = viewmodel::inventory::sorted(&self.game.player);
+                let inventory = viewmodel::inventory::combined_sorted(&self.game.player);
                 if let experiment::Outcome::Run(items) =
                     self.experiment.handle_key(key_event.code, &inventory)
                 {
@@ -112,6 +112,11 @@ impl App {
                     self.game.disassemble(item);
                 }
             }
+            // Not built here — the Bag/Inventory split (docs/bag-and-storage.md)
+            // is gui-only, per the frozen tui's established precedent (no
+            // village hint, no button-disabling either). No key does
+            // anything on this tab.
+            Panel::Items => {}
             Panel::Quests => {
                 let overview = viewmodel::quests::overview(&self.game);
                 if let quests::Outcome::Accept(id) =
@@ -161,7 +166,7 @@ impl Widget for &App {
             Panel::Experiment => self.experiment.render(
                 columns[1],
                 buf,
-                &viewmodel::inventory::sorted(&self.game.player),
+                &viewmodel::inventory::combined_sorted(&self.game.player),
                 self.language,
             ),
             Panel::Craft => self.craft.render(
@@ -176,6 +181,15 @@ impl Widget for &App {
                 &viewmodel::disassembly::options(&self.game.player),
                 self.language,
             ),
+            // The Bag/Inventory split (docs/bag-and-storage.md) is gui-only.
+            Panel::Items => {
+                let inner = super::panel_frame(
+                    columns[1],
+                    &i18n::ui("panel-items-title", self.language),
+                    buf,
+                );
+                Paragraph::new(i18n::ui("items-not-in-tui", self.language)).render(inner, buf);
+            }
             Panel::Quests => self.quests.render(
                 columns[1],
                 buf,
@@ -311,7 +325,9 @@ fn event_color(kind: &EventKind) -> Option<Color> {
         | EventKind::Crafted { .. }
         | EventKind::Disassembled { .. }
         | EventKind::HuntMissed
-        | EventKind::HuntUnprepared { .. } => Some(Color::Yellow),
+        | EventKind::HuntUnprepared { .. }
+        | EventKind::BagFull { .. }
+        | EventKind::Dropped { .. } => Some(Color::Yellow),
         EventKind::ExperimentShortage { .. }
         | EventKind::ExperimentFailed { .. }
         | EventKind::Experimented { .. } => Some(Color::Cyan),
@@ -326,6 +342,7 @@ fn render_footer(panel: Panel, area: Rect, buf: &mut Buffer, lang: Language) {
         Panel::Experiment => "footer-experiment",
         Panel::Craft => "footer-craft",
         Panel::Disassemble => "footer-disassemble",
+        Panel::Items => "footer-items",
         Panel::Quests => "footer-quests",
     };
 
