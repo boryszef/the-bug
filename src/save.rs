@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
@@ -66,6 +66,12 @@ struct SaveFile {
     /// The game version that wrote this file. Absent in hand-made files.
     #[serde(default)]
     version: String,
+    /// Total game time when the file was written, in seconds. Restored
+    /// directly so the session clock doesn't snap back to the last event.
+    /// Absent in older / hand-made saves — then it's inferred from the
+    /// events, as it always was.
+    #[serde(default)]
+    elapsed_secs: f64,
     player: PlayerState,
     map: MapState,
     events: Vec<EventState>,
@@ -140,6 +146,7 @@ pub fn load(path: &Path) -> io::Result<Game> {
 fn capture(game: &Game) -> SaveFile {
     SaveFile {
         version: VERSION.to_string(),
+        elapsed_secs: game.elapsed().as_secs_f64(),
         player: game.player.save_state(),
         map: game.map.save_state(),
         events: game.events().iter().map(Event::save_state).collect(),
@@ -155,7 +162,17 @@ fn restore(state: SaveFile) -> io::Result<Game> {
         .map(Event::restore_state)
         .collect::<io::Result<Vec<_>>>()?;
 
-    Ok(Game::from_saved(player, map, events))
+    // The stored game time is the source of truth; fall back to the last
+    // event for saves written before it existed (`elapsed_secs` == 0). A real
+    // save always has `elapsed_secs` >= every event, so the max picks it.
+    let last_event = events
+        .iter()
+        .map(Event::elapsed)
+        .max()
+        .unwrap_or(Duration::ZERO);
+    let elapsed = Duration::from_secs_f64(state.elapsed_secs.max(0.0)).max(last_event);
+
+    Ok(Game::from_saved(player, map, events, elapsed))
 }
 
 /// Parses the terrain rows into a grid, rejecting an empty / ragged grid or an
@@ -305,6 +322,54 @@ mod tests {
         }"#;
         let game = restore(serde_json::from_str(json).unwrap()).unwrap();
         assert!(game.player.bag.is_empty());
+    }
+
+    /// `game.elapsed()` should be within `secs ± 2` of the target — a
+    /// round-trip / load is near-instant, so the clock barely moves.
+    fn assert_elapsed_near(game: &Game, secs: f64) {
+        let got = game.elapsed().as_secs_f64();
+        assert!(
+            (got - secs).abs() < 2.0,
+            "game.elapsed() = {got:.1}s, expected ~{secs:.1}s"
+        );
+    }
+
+    #[test]
+    fn game_time_is_restored_from_the_save_not_inferred_from_the_events() {
+        let json = r#"{
+            "elapsed_secs": 3600.0,
+            "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
+            "map": { "terrain": ["M"] },
+            "events": [{ "kind": "Awoke", "elapsed_secs": 0.0 }]
+        }"#;
+        let game = restore(serde_json::from_str(json).unwrap()).unwrap();
+        assert_elapsed_near(&game, 3600.0);
+    }
+
+    #[test]
+    fn a_save_without_a_game_time_falls_back_to_the_last_event() {
+        let json = r#"{
+            "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
+            "map": { "terrain": ["M"] },
+            "events": [{ "kind": "Awoke", "elapsed_secs": 4.5 }]
+        }"#;
+        let game = restore(serde_json::from_str(json).unwrap()).unwrap();
+        assert_elapsed_near(&game, 4.5);
+    }
+
+    #[test]
+    fn game_time_survives_a_round_trip() {
+        let fresh = Game::default();
+        let game = Game::from_saved(
+            fresh.player,
+            fresh.map,
+            Vec::new(),
+            Duration::from_secs(1000),
+        );
+
+        let restored = roundtrip(&game);
+
+        assert_elapsed_near(&restored, 1000.0);
     }
 
     #[test]

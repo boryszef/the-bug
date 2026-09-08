@@ -8,12 +8,12 @@ as a development knob: hand-edit a save file to set up a scenario, then load it.
 
 ## Behaviour
 
-- **On quit** (`q`): the game is written to `the-bug-save-<unix-seconds>.json`
-  in the current directory. After the TUI exits the path is printed:
-  `Game saved to the-bug-save-1788436884.json`. A save failure prints a warning
-  but does not fail the process (the game already ran).
+- **On quit** (`q`, or closing the window): the game is written to
+  `the-bug-save-<unix-seconds>.json` in the current directory, and the path
+  is printed: `Game saved to the-bug-save-1788436884.json`. A save failure
+  prints a warning but does not fail the process (the game already ran).
 - **On startup**: `the-bug --load <file>` resumes from that file instead of a
-  new game. A missing or invalid file is a hard error (exit 1, no TUI).
+  new game. A missing or invalid file is a hard error (exit 1).
 - `the-bug --help` / `--version` come from clap.
 
 ## What is saved
@@ -24,6 +24,7 @@ stays small and editable:
 ```json
 {
   "version": "0.1.0",
+  "elapsed_secs": 512.4,
   "player": {
     "level": 1,
     "coordinates": [0, 1],
@@ -81,6 +82,15 @@ migration). The village is now a `v` in the `pois` grid.
 Loading a file written by a different version prints a note but still loads;
 hand-made files may omit the field. There is no migration logic yet.
 
+`elapsed_secs` is the total game time (session-relative, carried across
+save/load) when the file was written — `Game::elapsed()`. It's restored
+directly, so reloading no longer snaps the session clock back to the last
+logged event (walking, or just sitting idle, isn't an event, and that time
+used to be lost). A save without the field — older or hand-made — falls back
+to the old behaviour: the time is taken from the latest event. A real save
+always has `elapsed_secs` at least as large as every event, so the loader
+uses `max(elapsed_secs, latest event)` and both cases fall out of that.
+
 ## What is *not* saved (reset on load)
 
 - **Per-tile search cooldown** (`MapTile.last_search_time`) — a transient ~60 s
@@ -101,9 +111,12 @@ hand-made files may omit the field. There is no migration logic yet.
 
 ## Code
 
-- `src/save.rs` — DTOs, `capture` / `restore`, `save` / `load`, terrain codes.
-- `src/game.rs` — `Map::from_terrain`, `Player::grant_recipe`,
-  `Game::from_saved`, `Event::new` (all `pub(crate)`).
-- `src/main.rs` — clap `Cli { load: Option<PathBuf> }`; wraps `App::with_game`
-  and the save-on-exit.
-- `src/ui/app.rs` — `App::with_game` / `App::game`.
+- `src/save.rs` — DTOs, `capture` / `restore`, `save` / `load`, terrain/POI
+  codes, the `elapsed_secs` reconciliation.
+- `src/game/mod.rs` — `Game::from_saved` (takes the restored elapsed),
+  `Game::elapsed` (both `pub(crate)`). `Map::from_terrain` /
+  `Player::grant_recipe` are `pub` (also used by the functional tests);
+  `Player::restore_quest_state` / `Event::new` are `pub(crate)`.
+- `src/main.rs` — clap `Cli { load: Option<PathBuf> }`; on `--load` calls
+  `save::load`, otherwise `Game::default()`.
+- `src/gui/mod.rs` — `App::on_exit` writes the save on window close.

@@ -53,16 +53,18 @@ impl Default for Game {
 }
 
 impl Game {
-    /// Rebuilds a game from saved parts. `started` is placed in the past so that
-    /// events logged after the load stay ordered after the restored ones.
-    pub(crate) fn from_saved(player: Player, map: Map, events: Vec<Event>) -> Game {
-        let latest = events
-            .iter()
-            .map(Event::elapsed)
-            .max()
-            .unwrap_or(Duration::ZERO);
+    /// Rebuilds a game from saved parts. `elapsed` is the game time that was
+    /// stored in the save (`save.rs` reconciles it with the events); `started`
+    /// is placed that far in the past so the session clock — and every event
+    /// logged after the load — continues from where the saved game left off.
+    pub(crate) fn from_saved(
+        player: Player,
+        map: Map,
+        events: Vec<Event>,
+        elapsed: Duration,
+    ) -> Game {
         let started = Instant::now()
-            .checked_sub(latest)
+            .checked_sub(elapsed)
             .unwrap_or_else(Instant::now);
 
         Game {
@@ -76,6 +78,12 @@ impl Game {
     /// The event log, oldest first.
     pub fn events(&self) -> &[Event] {
         &self.events
+    }
+
+    /// Total game time so far — session-relative elapsed time since the game
+    /// began (carried across save/load). Stamped into the save file.
+    pub(crate) fn elapsed(&self) -> Duration {
+        self.started.elapsed()
     }
 
     /// Accepts `id` as the player's open quest. Fails if another quest is

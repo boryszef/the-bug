@@ -78,13 +78,15 @@ newest-first pane, reading as cause-then-effect top-down.
 - `src/viewmodel/events.rs` — `recent()` yields
   `RecentEvent { timestamp, kind }`; `compact()` owns the time format. Colour
   is not decided here.
-- `src/gui/mod.rs` / `src/tui/app.rs` — `render_events` / `event_color()`
-  (one pair per front end, kept in sync by hand).
+- `src/gui/mod.rs` — `render_events` / `event_color()`.
 - `src/save.rs` — `EventState` persists `kind` (the full `EventKind`, not
   pre-rendered text) and `elapsed_secs`. An older save file's `{ category,
   text }` shape is deliberately not migrated — see docs/i18n-plan.md — so it
   fails to load with `io::ErrorKind::InvalidData` rather than being silently
-  reinterpreted.
+  reinterpreted. The session clock itself is now stored top-level as
+  `SaveFile.elapsed_secs` (`docs/save-load.md`) — the events are only a
+  fallback for saves predating it, no longer the source of truth for how far
+  into the game a reload starts.
 
 ## Out of scope (for now)
 
