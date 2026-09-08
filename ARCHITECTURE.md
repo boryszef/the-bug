@@ -21,10 +21,14 @@ Three layers, each only depending on the one below it:
   only (see `docs/adr/0001-ui-framework-egui.md`). It was one of two
   toolkit-selected front ends until `docs/adr/0004-retire-tui-front-end.md`
   deleted the frozen ratatui `src/tui/`; there are now no front-end Cargo
-  features and no `#[cfg]` selection.
+  features and no `#[cfg]` selection. It also builds to `wasm32` (`trunk` /
+  `scripts/build-web.sh`) — `src/main.rs` / `gui::run` `#[cfg]`-split the
+  entry point and runner, native path unchanged
+  (`docs/adr/0005-web-build.md`).
 
 All of the above is a **library crate** (`src/lib.rs`, `the_bug`); `src/main.rs`
-is a thin CLI shim that parses args and hands off to `gui::run`. The split
+is a thin CLI shim that parses args and hands off to `gui::run` (native), or a
+wasm entry point that starts `gui::run_web` on a page canvas. The lib split
 exists so the functional test suite in `tests/` can drive the game through its
 public API — see `docs/adr/0003-library-target-for-functional-tests.md` and
 `docs/functional-tests.md`.

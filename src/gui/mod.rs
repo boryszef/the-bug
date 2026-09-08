@@ -11,6 +11,7 @@ use eframe::egui::{self, Color32, Key, RichText, Ui};
 
 use crate::game::{EventKind, Game};
 use crate::i18n::{self, Language};
+#[cfg(not(target_arch = "wasm32"))]
 use crate::save;
 use crate::viewmodel;
 use crate::viewmodel::panel::Panel;
@@ -18,8 +19,27 @@ use crate::viewmodel::panel::Panel;
 use experiment::Experiment;
 use map::{MapCommand, MapView};
 
+/// The `eframe` app-creator closure, shared by the native and web runners.
+fn app_creator(
+    game: Game,
+    language: Language,
+) -> impl FnOnce(
+    &eframe::CreationContext<'_>,
+) -> eframe::Result<Box<dyn eframe::App>, Box<dyn std::error::Error + Send + Sync>> {
+    move |_cc| {
+        Ok(Box::new(App {
+            game,
+            language,
+            panel: Panel::default(),
+            map_view: MapView::default(),
+            experiment: Experiment::default(),
+        }))
+    }
+}
+
 /// Launches the egui/eframe front end on `game`, blocking until the window
 /// closes. Saves `game` to disk on close (see [`App::on_exit`]).
+#[cfg(not(target_arch = "wasm32"))]
 pub fn run(game: Game, language: Language) -> eframe::Result<()> {
     eframe::run_native(
         "the-bug",
@@ -29,16 +49,25 @@ pub fn run(game: Game, language: Language) -> eframe::Result<()> {
                 .with_min_inner_size([800.0, 600.0]),
             ..Default::default()
         },
-        Box::new(|_cc| {
-            Ok(Box::new(App {
-                game,
-                language,
-                panel: Panel::default(),
-                map_view: MapView::default(),
-                experiment: Experiment::default(),
-            }))
-        }),
+        Box::new(app_creator(game, language)),
     )
+}
+
+/// Starts the front end on `game` inside `canvas`, in the browser. There is
+/// no save-on-exit on the web (see [`App::on_exit`]).
+#[cfg(target_arch = "wasm32")]
+pub async fn run_web(
+    canvas: web_sys::HtmlCanvasElement,
+    game: Game,
+    language: Language,
+) -> Result<(), eframe::wasm_bindgen::JsValue> {
+    eframe::WebRunner::new()
+        .start(
+            canvas,
+            eframe::WebOptions::default(),
+            Box::new(app_creator(game, language)),
+        )
+        .await
 }
 
 /// The `panel-*-title` message id for `panel`'s tab button label. The tab
@@ -180,6 +209,9 @@ impl eframe::App for App {
     }
 
     fn on_exit(&mut self) {
+        // The web build has no filesystem — it starts fresh each visit.
+        // `localStorage` persistence is a follow-up (docs/adr/0005-web-build.md).
+        #[cfg(not(target_arch = "wasm32"))]
         match save::save(&self.game) {
             Ok(path) => println!("Game saved to {}", path.display()),
             Err(e) => eprintln!("Warning: could not save game: {e}"),

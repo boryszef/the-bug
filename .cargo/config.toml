@@ -1,0 +1,4 @@
+# The web build: select getrandom's browser backend for the game's RNG.
+# See docs/adr/0005-web-build.md.
+[target.wasm32-unknown-unknown]
+rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]

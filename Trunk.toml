@@ -1,0 +1,11 @@
+# `trunk serve` (dev) / `trunk build --release` (deploy). Output → dist/.
+# See docs/adr/0005-web-build.md. If `trunk` won't install, scripts/build-web.sh
+# does the same with wasm-bindgen-cli directly.
+
+[build]
+target = "index.html"
+dist = "dist"
+
+[serve]
+port = 8080
+open = false

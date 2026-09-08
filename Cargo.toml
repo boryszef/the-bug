@@ -22,7 +22,9 @@ fluent = "0.17.0"
 i18n-embed = { version = "0.16.0", features = ["fluent-system", "desktop-requester"] }
 i18n-embed-fl = "0.10.1"
 rand = "0.10.2"
-rust-embed = "8.12.0"
+# `debug-embed`: embed the `.ftl` locales in debug builds too (release
+# already does) — a debug wasm build has no filesystem to read them from.
+rust-embed = { version = "8.12.0", features = ["debug-embed"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 unic-langid = "0.9.6"
@@ -33,3 +35,12 @@ web-time = "1.1"
 [dev-dependencies]
 cucumber = "0.23.0"
 pollster = "0.4.0"
+
+# The web build (`trunk build` / `trunk serve`) — see docs/adr/0005-web-build.md.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["Document", "Window", "HtmlCanvasElement"] }
+# `rand`'s RNG (mapgen, search, hunt) needs the browser backend on wasm; also
+# needs `--cfg getrandom_backend="wasm_js"` from .cargo/config.toml.
+getrandom = { version = "0.4", features = ["wasm_js"] }
