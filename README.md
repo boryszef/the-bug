@@ -26,9 +26,11 @@ trunk build --release           # static bundle in dist/
 ```
 
 No `trunk`? `cargo install wasm-bindgen-cli --version <see Cargo.lock>` then
-`./scripts/build-web.sh` and `(cd dist && python3 -m http.server 8080)`. The
-web build has no save/load yet — it starts fresh each visit. See
-`docs/adr/0005-web-build.md`.
+`./scripts/build-web.sh` and `(cd dist && python3 -m http.server 8080)`.
+
+The browser build autosaves to `localStorage` and resumes on the next visit
+(clear the `the-bug-game` key to start over), and picks up the browser
+language (`navigator.language`). See `docs/adr/0005-web-build.md`.
 
 ## Layout
 

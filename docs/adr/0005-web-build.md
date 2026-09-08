@@ -32,18 +32,34 @@ native build; a bundler turns it into a static page.
 - **`src/gui/mod.rs`** — the `App`-creator closure is factored into
   `app_creator()`, shared by `run` (native, `run_native`) and `run_web`
   (wasm, `eframe::WebRunner::start(canvas, WebOptions::default(),
-  app_creator).await`). `App::on_exit`'s `save::save` is
-  `#[cfg(not(wasm))]` — **the web build has no persistence** (fresh game each
-  visit).
+  app_creator).await`). `App::on_exit`'s `save::save` (a save *file*) stays
+  `#[cfg(not(wasm))]`.
+
+### Persistence and language on the web
+
+- **`localStorage`** — the web build autosaves the game as the same JSON the
+  native build writes to disk, under the key `the-bug-game`, via a
+  `#[cfg(wasm)] App::save` (eframe calls it on a 30 s timer, on canvas
+  focus-loss, and on page unload). `app_creator` reads it back on start and
+  resumes that game; a fresh `Game` is only the fallback. A blob that fails
+  to parse (corrupt, or an incompatible older schema) is discarded and a new
+  game starts — a stale entry never bricks the page. `save.rs` grew
+  `to_json`/`from_json` (filesystem-free) for this; `save`/`load` are now
+  thin wrappers on them.
+- **Language** — the wasm `main` reads `navigator.language` (e.g. `"pl-PL"`)
+  and passes it to the existing `i18n::detect`, which already takes the
+  language subtag from a BCP 47 tag. No `$LANG` on the web, so this is the
+  only signal; it still falls back to English.
 
 ### Deps / config
 
 - `web-time` promoted to a direct dep (already in the tree via eframe).
 - `[target.'cfg(target_arch = "wasm32")'.dependencies]`:
   `console_error_panic_hook`, `wasm-bindgen-futures`, `web-sys`
-  (`Document`/`Window`/`HtmlCanvasElement`), and
+  (`Document`/`Window`/`HtmlCanvasElement`/`Navigator`), and
   `getrandom = { version = "0.4", features = ["wasm_js"] }` — `rand`'s RNG
-  (mapgen, search, hunt) needs the browser backend.
+  (mapgen, search, hunt) needs the browser backend. `localStorage` goes
+  through eframe's own `Storage` impl, so no extra feature for it.
 - `.cargo/config.toml` — `[target.wasm32-unknown-unknown] rustflags = ["--cfg",
   "getrandom_backend=\"wasm_js\""]`.
 - `rust-embed` gains `features = ["debug-embed"]` so a **debug** wasm build
@@ -70,7 +86,10 @@ native build; a bundler turns it into a static page.
 
 - Verified: the release wasm bundle runs in headless Chrome — the map
   generates (RNG works), every panel renders, the event log and the
-  "Equipment: n/n" line show, English (no `$LANG` on web).
+  "Equipment: n/n" line show. With `--lang=pl-PL` the UI renders in Polish.
+  Gameplay + reload round-trips through `localStorage` (walk east, reload,
+  the game resumes at the same tile), and a hand-corrupted blob still boots
+  a fresh game.
 - Bundle size: ~10 MB wasm unoptimised, ~4 MB after `wasm-opt -Os` + gzip.
   Debug is ~48 MB — use release for anything shared.
 - The native build, `cargo test`, `cargo clippy --all-targets`, `cargo run`
@@ -83,8 +102,9 @@ native build; a bundler turns it into a static page.
 - **Publishing** — no host chosen. GitHub Pages (needs the repo pushed to
   GitHub + a `trunk build` Actions workflow), itch.io (zip `dist/`), or a
   static host. The repo has no remote yet.
-- **`localStorage` persistence** — either the existing JSON via `web_sys`
-  `local_storage()`, or eframe's `Storage` (different format, touches
-  `App::save`/`load`).
-- `navigator.language` locale detection (English default for now).
+- No in-browser way to clear the save or start over (clear `localStorage`
+  by hand); no export/import of the JSON.
+- On wasm, `eprintln!` (the version-mismatch note, the "ignoring stored
+  game" line) goes nowhere — wiring `web_sys::console` or eframe's
+  `WebLogger` is a follow-up if these ever need to be visible.
 - Touch/mobile layout, PWA/offline, a WebGPU renderer.

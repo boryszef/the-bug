@@ -11,13 +11,16 @@ use eframe::egui::{self, Color32, Key, RichText, Ui};
 
 use crate::game::{EventKind, Game};
 use crate::i18n::{self, Language};
-#[cfg(not(target_arch = "wasm32"))]
 use crate::save;
 use crate::viewmodel;
 use crate::viewmodel::panel::Panel;
 
 use experiment::Experiment;
 use map::{MapCommand, MapView};
+
+/// `localStorage` key the web build autosaves the game JSON under (see
+/// [`App::save`]). Native persistence is a file on disk, not this.
+const GAME_KEY: &str = "the-bug-game";
 
 /// The `eframe` app-creator closure, shared by the native and web runners.
 fn app_creator(
@@ -26,7 +29,23 @@ fn app_creator(
 ) -> impl FnOnce(
     &eframe::CreationContext<'_>,
 ) -> eframe::Result<Box<dyn eframe::App>, Box<dyn std::error::Error + Send + Sync>> {
-    move |_cc| {
+    move |cc| {
+        // On the web, resume the autosaved game if `localStorage` holds one.
+        // (`cc.storage` is `None` on native without the `persistence`
+        // feature, so this is a no-op there — the game came via `--load`.)
+        // A corrupt or version-incompatible blob is discarded, not fatal.
+        let game = cc
+            .storage
+            .and_then(|storage| storage.get_string(GAME_KEY))
+            .and_then(|json| match save::from_json(&json) {
+                Ok(resumed) => Some(resumed),
+                Err(e) => {
+                    eprintln!("ignoring stored game: {e}");
+                    None
+                }
+            })
+            .unwrap_or(game);
+
         Ok(Box::new(App {
             game,
             language,
@@ -208,9 +227,20 @@ impl eframe::App for App {
         });
     }
 
+    /// Web autosave: `eframe` calls this on a 30 s timer, on canvas
+    /// focus-loss, and on page unload. The game is stored as the same JSON
+    /// the native build writes to disk. Native has no `storage` here (that's
+    /// `on_exit` → a save file) so this is web-only.
+    #[cfg(target_arch = "wasm32")]
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        match save::to_json(&self.game) {
+            Ok(json) => storage.set_string(GAME_KEY, json),
+            Err(e) => eprintln!("could not serialize game for localStorage: {e}"),
+        }
+    }
+
     fn on_exit(&mut self) {
-        // The web build has no filesystem — it starts fresh each visit.
-        // `localStorage` persistence is a follow-up (docs/adr/0005-web-build.md).
+        // The web build persists via `save` (above) into `localStorage`.
         #[cfg(not(target_arch = "wasm32"))]
         match save::save(&self.game) {
             Ok(path) => println!("Game saved to {}", path.display()),

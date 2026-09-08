@@ -457,6 +457,15 @@ mod tests {
     }
 
     #[test]
+    fn detect_reads_a_regional_browser_tag() {
+        // The web build passes `navigator.language` through the `cli_lang`
+        // slot — it's a BCP 47 tag like "pl-PL" / "en-GB", so the region
+        // subtag must not defeat the match.
+        assert_eq!(detect(Some("pl-PL"), |_| None), Language::Polish);
+        assert_eq!(detect(Some("en-GB"), |_| None), Language::English);
+    }
+
+    #[test]
     fn event_renders_found_in_terrain_in_english() {
         let text = event(
             &EventKind::Found {

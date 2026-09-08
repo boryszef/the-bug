@@ -149,6 +149,10 @@ shapes and the whole-`Game` glue that doesn't belong to any single type
 (version stamping, reconstructing `started` from the saved events). See
 `docs/save-load.md`.
 
+The same JSON serves both back ends: native `save`/`load` are a file on
+disk, the web build stores that string in `localStorage` (ADR 0005). The
+filesystem-free half is `to_json`/`from_json`; `save`/`load` wrap them.
+
 ## `tools/` holds standalone dev utilities, not part of the game
 
 If a future dev-only utility is ever heavy enough to want its own crate,

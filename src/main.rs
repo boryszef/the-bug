@@ -104,9 +104,12 @@ fn main() {
 
     console_error_panic_hook::set_once();
 
-    // No `$LANG` on the web — falls back to English. Reading
-    // `navigator.language` is a follow-up.
-    let language = the_bug::i18n::detect(None, |_| None);
+    // No `$LANG` on the web — use the browser's `navigator.language` (a BCP 47
+    // tag like "pl-PL"); `i18n::detect` takes the language subtag from it.
+    let navigator_lang = web_sys::window().and_then(|w| w.navigator().language());
+    let language = the_bug::i18n::detect(navigator_lang.as_deref(), |_| None);
+    // A fresh game; `gui::app_creator` swaps in the autosaved one from
+    // `localStorage` if there is one.
     let game = the_bug::game::Game::default();
 
     let canvas = web_sys::window()
