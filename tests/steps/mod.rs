@@ -4,6 +4,7 @@
 
 pub mod world;
 
+mod bag_storage;
 mod common;
 mod craft;
 mod disassemble;

@@ -741,73 +741,9 @@ mod tests {
         assert!(game.player.has_item_combined(Item::Vine));
     }
 
-    // --- Game-level transfer and drop --------------------------------------
-    //
-    // `Player::transfer_to_storage`/`transfer_to_bag` are already tested for
-    // correctness above; these exercise `Game`'s thin wrappers — the
-    // village gate on transfers and drop-from-storage, and that
-    // drop-from-bag has none.
-
-    #[test]
-    fn game_transfer_to_storage_requires_the_village() {
-        let mut game = Game::default();
-        game.player.add_to_bag(Item::Vine, 3);
-        game.player.coordinates = (5, 5);
-
-        game.transfer_to_storage(Item::Vine, 3);
-
-        assert_eq!(game.player.bag_count(Item::Vine), 3);
-        assert!(game.player.inventory.is_empty());
-    }
-
-    #[test]
-    fn game_transfer_to_storage_moves_items_at_the_village() {
-        let mut game = Game::default();
-        game.player.add_to_bag(Item::Vine, 3);
-
-        game.transfer_to_storage(Item::Vine, 3);
-
-        assert_eq!(game.player.bag_count(Item::Vine), 0);
-        assert_eq!(game.player.inventory.get(&Item::Vine), Some(&3));
-    }
-
-    #[test]
-    fn game_transfer_to_bag_requires_the_village() {
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::Vine, 3);
-        game.player.coordinates = (5, 5);
-
-        game.transfer_to_bag(Item::Vine, 3);
-
-        assert_eq!(game.player.inventory.get(&Item::Vine), Some(&3));
-        assert!(game.player.bag.is_empty());
-    }
-
-    #[test]
-    fn game_transfer_to_bag_moves_items_at_the_village() {
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::Vine, 3);
-
-        game.transfer_to_bag(Item::Vine, 3);
-
-        assert_eq!(game.player.inventory.get(&Item::Vine), None);
-        assert_eq!(game.player.bag_count(Item::Vine), 3);
-    }
-
-    #[test]
-    fn drop_from_bag_works_anywhere() {
-        let mut game = Game::default();
-        game.player.add_to_bag(Item::Vine, 3);
-        game.player.coordinates = (5, 5); // away from the village
-
-        game.drop_from_bag(Item::Vine, 1);
-
-        assert_eq!(game.player.bag_count(Item::Vine), 2);
-        assert_eq!(
-            last_event(&game).kind(),
-            &EventKind::Dropped { item: Item::Vine }
-        );
-    }
+    // The village gate on `Game::transfer_to_storage` / `transfer_to_bag` /
+    // `drop_from_storage`, and that `drop_from_bag` has none, are covered by
+    // `tests/features/bag-storage.feature`.
 
     #[test]
     fn drop_from_bag_without_enough_does_nothing() {
@@ -817,33 +753,6 @@ mod tests {
         game.drop_from_bag(Item::Vine, 1);
 
         assert_eq!(game.events().len(), before);
-    }
-
-    #[test]
-    fn drop_from_storage_requires_the_village() {
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::Vine, 3);
-        game.player.coordinates = (5, 5);
-        let before = game.events().len();
-
-        game.drop_from_storage(Item::Vine, 1);
-
-        assert_eq!(game.player.inventory.get(&Item::Vine), Some(&3));
-        assert_eq!(game.events().len(), before);
-    }
-
-    #[test]
-    fn drop_from_storage_removes_one_unit_and_logs_at_the_village() {
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::Vine, 3);
-
-        game.drop_from_storage(Item::Vine, 1);
-
-        assert_eq!(game.player.inventory.get(&Item::Vine), Some(&2));
-        assert_eq!(
-            last_event(&game).kind(),
-            &EventKind::Dropped { item: Item::Vine }
-        );
     }
 
     #[test]
