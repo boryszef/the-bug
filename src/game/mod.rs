@@ -15,7 +15,8 @@ pub(crate) use recipe::disassembly_for;
 use quest::{EventTypeID, QUESTS, dependencies_met, quest_for};
 use recipe::find_matching;
 use std::io;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 /// Maps a live game type to its on-disk save shape (the DTO types live in
 /// `save.rs`, colocating the mapping with the type it applies to keeps each

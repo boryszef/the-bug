@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::io;
-use std::time::Instant;
+use web_time::Instant;
 
 const MAP_MIN_SIZE: u32 = 21;
 const MAP_PER_LEVEL_INCREMENT: u32 = 2;
