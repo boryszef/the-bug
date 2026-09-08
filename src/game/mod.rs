@@ -1106,24 +1106,6 @@ mod tests {
     }
 
     #[test]
-    fn accept_quest_succeeds_for_an_available_quest() {
-        let mut game = Game::default();
-        assert_eq!(game.accept_quest(QuestID::ExploreRuins), Ok(()));
-        assert_eq!(game.player.open_quest(), Some(QuestID::ExploreRuins));
-        assert_eq!(game.player.quest_progress(), 0);
-    }
-
-    #[test]
-    fn accept_quest_rejects_a_second_concurrent_quest() {
-        let mut game = Game::default();
-        game.accept_quest(QuestID::ExploreRuins).unwrap();
-        assert_eq!(
-            game.accept_quest(QuestID::CraftAxe),
-            Err(QuestError::AnotherQuestActive)
-        );
-    }
-
-    #[test]
     fn accept_quest_rejects_an_already_completed_quest() {
         let mut game = Game::default();
         game.player
@@ -1132,53 +1114,6 @@ mod tests {
             game.accept_quest(QuestID::CraftAxe),
             Err(QuestError::AlreadyCompleted)
         );
-    }
-
-    #[test]
-    fn accept_quest_rejects_a_quest_with_unmet_dependencies() {
-        let mut game = Game::default();
-        assert_eq!(
-            game.accept_quest(QuestID::CraftAxe),
-            Err(QuestError::DependenciesNotMet)
-        );
-    }
-
-    #[test]
-    fn available_quests_tracks_open_completed_and_dependencies() {
-        let ids = |game: &Game| -> Vec<QuestID> {
-            game.available_quests().iter().map(|q| q.id).collect()
-        };
-
-        let mut game = Game::default();
-        // only the dependency-free quest is available at the start
-        assert_eq!(ids(&game), [QuestID::ExploreRuins]);
-
-        game.accept_quest(QuestID::ExploreRuins).unwrap();
-        assert!(ids(&game).is_empty(), "the open quest drops off the list");
-
-        game.player
-            .restore_quest_state(None, 0, vec![QuestID::ExploreRuins]);
-        // completing it takes it off the list and unlocks its dependent
-        assert_eq!(ids(&game), [QuestID::CraftAxe]);
-    }
-
-    #[test]
-    fn crafting_the_target_item_completes_the_quest() {
-        let mut game = game_with_the_axe_quest_unlocked();
-        game.player.grant_recipe("Stone Axe");
-        game.player.inventory.insert(Item::Branch, 1);
-        game.player.inventory.insert(Item::Stone, 1);
-        game.player.inventory.insert(Item::Cord, 1);
-        game.accept_quest(QuestID::CraftAxe).unwrap();
-
-        game.craft("Stone Axe");
-
-        assert_eq!(game.player.open_quest(), None);
-        assert_eq!(
-            game.player.completed_quests(),
-            [QuestID::ExploreRuins, QuestID::CraftAxe]
-        );
-        assert_eq!(game.player.experience, 20);
     }
 
     #[test]
@@ -1213,33 +1148,6 @@ mod tests {
                 },
             ]
         );
-    }
-
-    #[test]
-    fn crafting_a_different_item_does_not_advance_quest_progress() {
-        let mut game = game_with_the_axe_quest_unlocked();
-        game.player.grant_recipe("Cord");
-        game.player.inventory.insert(Item::Vine, 2);
-        game.accept_quest(QuestID::CraftAxe).unwrap();
-
-        game.craft("Cord");
-
-        assert_eq!(game.player.quest_progress(), 0);
-        assert_eq!(game.player.open_quest(), Some(QuestID::CraftAxe));
-    }
-
-    #[test]
-    fn experimenting_the_target_item_also_counts_toward_the_quest() {
-        let mut game = game_with_the_axe_quest_unlocked();
-        game.player.inventory.insert(Item::Branch, 1);
-        game.player.inventory.insert(Item::Stone, 1);
-        game.player.inventory.insert(Item::Cord, 1);
-        game.accept_quest(QuestID::CraftAxe).unwrap();
-
-        game.experiment(&[(Item::Branch, 1), (Item::Stone, 1), (Item::Cord, 1)]);
-
-        // experimenting the target item advances the quest, same as crafting it
-        assert!(game.player.completed_quests().contains(&QuestID::CraftAxe));
     }
 
     #[test]

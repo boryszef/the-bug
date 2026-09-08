@@ -9,3 +9,4 @@ mod craft;
 mod disassemble;
 mod experiment;
 mod hunting;
+mod quests;

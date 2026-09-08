@@ -1,4 +1,4 @@
-use the_bug::game::{Direction, Game, Item, Map, Poi, QuestID, TerrainType};
+use the_bug::game::{Direction, Game, Item, Map, Poi, QuestError, QuestID, TerrainType};
 
 /// The scenario state: one `Game`, recreated fresh per scenario. `Game`
 /// already derives `Debug` and implements `Default`, which is all the
@@ -9,6 +9,9 @@ pub struct GameWorld {
     /// Event-log length captured at the start of the `When` step, so a
     /// `Then` can assert "nothing new was logged".
     pub events_before: usize,
+    /// The outcome of the most recent `accept_quest`, for the "refused
+    /// because …" assertions.
+    pub accept_result: Option<Result<(), QuestError>>,
 }
 
 impl GameWorld {
@@ -73,23 +76,33 @@ pub fn tiny_map() -> Map {
     Map::from_terrain(terrain, pois)
 }
 
+/// Accepts `id` unless it's already the open quest.
+fn accept_if_needed(game: &mut Game, id: QuestID) {
+    if game.player.open_quest() != Some(id) {
+        game.accept_quest(id)
+            .unwrap_or_else(|e| panic!("could not accept {id:?}: {e:?}"));
+    }
+}
+
 /// Drives `id` to completion through public gameplay only — no
 /// `restore_quest_state` shortcut. Swaps in [`tiny_map`] for deterministic
 /// geography and leaves the player back at the village (world origin).
+/// Idempotent and tolerant of the quest already being open.
 pub fn complete_quest(game: &mut Game, id: QuestID) {
+    if game.player.completed_quests().contains(&id) {
+        return;
+    }
     match id {
         QuestID::ExploreRuins => {
             game.map = tiny_map();
             game.player.coordinates = (0, 0);
-            game.accept_quest(QuestID::ExploreRuins)
-                .expect("ExploreRuins has no dependencies");
+            accept_if_needed(game, QuestID::ExploreRuins);
             game.walk(Direction::South); // onto the Ruins at (0, -1)
         }
         QuestID::CraftAxe => {
             complete_quest(game, QuestID::ExploreRuins);
             game.player.coordinates = (0, 0);
-            game.accept_quest(QuestID::CraftAxe)
-                .expect("CraftAxe unlocks once ExploreRuins is done");
+            accept_if_needed(game, QuestID::CraftAxe);
             for (it, n) in [(Item::Branch, 1), (Item::Stone, 1), (Item::Cord, 1)] {
                 game.player.inventory.insert(it, n);
             }
