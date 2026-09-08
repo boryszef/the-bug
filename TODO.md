@@ -13,7 +13,7 @@
   * quests should have closing narrative, sometimes revealing part of the story, sometimes commenting the reward item
 * EPIC: the story
   * add more quests
-  * items should become enhancers and can be used in the game: axe allows to chop wood, metal detector improves the odds of finding metal-containing items (bow→hunt / arrows-spent done)
+  * items should become enhancers and can be used in the game: axe allows to chop wood, metal detector improves the odds of finding metal-containing items (bow→hunt / arrows-spent done; satchel→+50 bag capacity done, docs/bag-and-storage.md)
 
 ## DONE
 

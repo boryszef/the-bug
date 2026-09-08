@@ -5,10 +5,15 @@ use super::recipe::{RECIPES, Recipe};
 use std::collections::HashMap;
 use std::io;
 
-/// The bag's total capacity: the sum of every item's quantity in it, across
-/// all item types combined — not a per-item or per-slot limit. See
-/// `docs/bag-and-storage.md`.
-pub(super) const BAG_CAPACITY: u32 = 50;
+/// The bag's base capacity: the sum of every item's quantity it holds, across
+/// all item types combined — not a per-item or per-slot limit. Carrying a
+/// Satchel raises the effective capacity (see [`Player::bag_capacity`]); this
+/// is what a bare bag holds. See `docs/bag-and-storage.md`.
+pub(super) const BAG_BASE_CAPACITY: u32 = 50;
+
+/// How much a carried Satchel adds to [`Player::bag_capacity`]. Flat — any
+/// number of Satchels grants it once.
+const SATCHEL_BONUS: u32 = 50;
 
 #[derive(Debug)]
 pub struct Player {
@@ -23,7 +28,8 @@ pub struct Player {
     pub inventory: HashMap<Item, u32>,
     /// The limited pool the player actually carries — what `search`/`hunt`
     /// fill, and what hunting gear must be in to be usable. Capped at
-    /// `BAG_CAPACITY` (a total across every item type, not a per-item cap).
+    /// [`Player::bag_capacity`] (a total across every item type, not a
+    /// per-item cap; a carried Satchel raises it).
     pub bag: HashMap<Item, u32>,
     recipes: Vec<Recipe>,
     open_quest: Option<QuestID>,
@@ -65,10 +71,22 @@ impl Player {
     }
 
     /// `(items currently in the bag, the bag's capacity)` — both summed
-    /// across every item type, since `BAG_CAPACITY` is a flat total, not a
-    /// per-item limit.
+    /// across every item type, since the cap is a flat total, not a per-item
+    /// limit. The capacity is [`Player::bag_capacity`], which a carried
+    /// Satchel raises.
     pub fn bag_progress(&self) -> (u32, u32) {
-        (self.bag_total(), BAG_CAPACITY)
+        (self.bag_total(), self.bag_capacity())
+    }
+
+    /// The bag's current total capacity: [`BAG_BASE_CAPACITY`], plus
+    /// [`SATCHEL_BONUS`] once if the player is carrying a Satchel.
+    pub(super) fn bag_capacity(&self) -> u32 {
+        BAG_BASE_CAPACITY
+            + if self.has_item_in_bag(Item::Satchel) {
+                SATCHEL_BONUS
+            } else {
+                0
+            }
     }
 
     /// The known recipe named `name`, if any.
@@ -231,16 +249,17 @@ impl Player {
     }
 
     /// Total items currently in the bag, summed across every item type —
-    /// what `BAG_CAPACITY` caps.
+    /// what [`Player::bag_capacity`] caps. A carried Satchel is itself
+    /// counted here, like any other item.
     pub(super) fn bag_total(&self) -> u32 {
         self.bag.values().sum()
     }
 
     /// Adds `amount` of `item` to the bag, unless that would push the bag's
-    /// total past `BAG_CAPACITY` — all or nothing, nothing is added on
-    /// failure. Returns whether it fit.
+    /// total past [`Player::bag_capacity`] — all or nothing, nothing is
+    /// added on failure. Returns whether it fit.
     pub(super) fn add_to_bag(&mut self, item: Item, amount: u32) -> bool {
-        if self.bag_total() + amount > BAG_CAPACITY {
+        if self.bag_total() + amount > self.bag_capacity() {
             return false;
         }
         *self.bag.entry(item).or_insert(0) += amount;

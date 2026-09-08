@@ -605,23 +605,65 @@ mod tests {
     fn add_to_bag_fits_within_capacity() {
         let mut game = Game::default();
 
-        assert!(game.player.add_to_bag(Item::Branch, player::BAG_CAPACITY));
+        assert!(
+            game.player
+                .add_to_bag(Item::Branch, player::BAG_BASE_CAPACITY)
+        );
 
-        assert_eq!(game.player.bag_count(Item::Branch), player::BAG_CAPACITY);
-        assert_eq!(game.player.bag_total(), player::BAG_CAPACITY);
+        assert_eq!(
+            game.player.bag_count(Item::Branch),
+            player::BAG_BASE_CAPACITY
+        );
+        assert_eq!(game.player.bag_total(), player::BAG_BASE_CAPACITY);
     }
 
     #[test]
     fn add_to_bag_rejects_an_amount_that_would_exceed_capacity() {
         let mut game = Game::default();
         game.player
-            .add_to_bag(Item::Branch, player::BAG_CAPACITY - 1);
+            .add_to_bag(Item::Branch, player::BAG_BASE_CAPACITY - 1);
 
         // one more than fits: rejected entirely, not partially added
         assert!(!game.player.add_to_bag(Item::Stone, 2));
 
         assert_eq!(game.player.bag_count(Item::Stone), 0);
-        assert_eq!(game.player.bag_total(), player::BAG_CAPACITY - 1);
+        assert_eq!(game.player.bag_total(), player::BAG_BASE_CAPACITY - 1);
+    }
+
+    #[test]
+    fn a_satchel_in_the_bag_raises_its_capacity_by_fifty() {
+        let mut game = Game::default();
+        assert_eq!(game.player.bag_progress().1, player::BAG_BASE_CAPACITY);
+
+        game.player.bag.insert(Item::Satchel, 1);
+        assert_eq!(game.player.bag_progress().1, player::BAG_BASE_CAPACITY + 50);
+
+        // flat, not per-satchel
+        game.player.bag.insert(Item::Satchel, 3);
+        assert_eq!(game.player.bag_progress().1, player::BAG_BASE_CAPACITY + 50);
+    }
+
+    #[test]
+    fn add_to_bag_accepts_a_total_past_the_base_cap_while_a_satchel_is_carried() {
+        let mut game = Game::default();
+        game.player.bag.insert(Item::Satchel, 1); // capacity now 100
+
+        // 1 (satchel) + 99 == 100, exactly the raised capacity
+        assert!(game.player.add_to_bag(Item::Branch, 99));
+        assert!(!game.player.add_to_bag(Item::Stone, 1));
+    }
+
+    #[test]
+    fn dropping_the_satchel_can_leave_the_bag_over_the_base_cap() {
+        let mut game = Game::default();
+        game.player.bag.insert(Item::Satchel, 1);
+        game.player.add_to_bag(Item::Branch, 80); // 81/100, fine
+
+        game.player.spend_from_bag(Item::Satchel, 1); // capacity drops back to 50
+
+        assert!(game.player.bag_total() > player::BAG_BASE_CAPACITY);
+        // over capacity: no room for anything until the player offloads
+        assert!(!game.player.add_to_bag(Item::Stone, 1));
     }
 
     #[test]
@@ -686,7 +728,8 @@ mod tests {
     fn transfer_to_bag_fails_when_the_bag_has_no_room_and_leaves_storage_untouched() {
         let mut game = Game::default();
         game.player.inventory.insert(Item::Vine, 5);
-        game.player.add_to_bag(Item::Branch, player::BAG_CAPACITY); // bag full
+        game.player
+            .add_to_bag(Item::Branch, player::BAG_BASE_CAPACITY); // bag full
 
         assert!(!game.player.transfer_to_bag(Item::Vine, 1));
 
@@ -842,7 +885,9 @@ mod tests {
     #[test]
     fn a_full_bag_loses_the_search_find_and_logs_bag_full_instead() {
         let mut game = Game::default();
-        game.player.bag.insert(Item::Stone, player::BAG_CAPACITY); // no room left
+        game.player
+            .bag
+            .insert(Item::Stone, player::BAG_BASE_CAPACITY); // no room left
         let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
         let mut tile = MapTile::with_terrain(TerrainType::Forest); // yields Branch
         for (probability, _) in tile.items.values_mut() {
@@ -911,7 +956,7 @@ mod tests {
         let carried = game.player.bag_total();
         game.player
             .bag
-            .insert(Item::Branch, player::BAG_CAPACITY - carried - 1);
+            .insert(Item::Branch, player::BAG_BASE_CAPACITY - carried - 1);
 
         game.player
             .restore_quest_state(None, 0, vec![QuestID::CraftAxe]);

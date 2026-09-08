@@ -53,9 +53,13 @@ back at the village, without a manual transfer first.
   amount) -> bool` — move between the two pools. `transfer_to_bag` tries
   `add_to_bag` (capacity-checked) *before* spending from storage, so a
   transfer that doesn't fit never leaves an item in limbo.
+- `bag_capacity() -> u32` — the bag's current cap: `BAG_BASE_CAPACITY` (50),
+  plus `SATCHEL_BONUS` (50) once while a Satchel is carried. See "Enhancer:
+  the Satchel" below.
 - `bag_progress() -> (u32, u32)` — `(carried, capacity)`, both summed across
   every item type; mirrors `recipe_progress`'s `(known, total)` shape, for
-  the gui's "Bag: 37/50" header.
+  the gui's "Bag: 37/50" header. The capacity half is `bag_capacity()`, so
+  the header reads `/100` once a Satchel is in the bag.
 
 `Game` adds four thin wrappers for the player-initiated side: `transfer_to_storage`,
 `transfer_to_bag` (both village-gated via `at_craftable_location`, reused from
@@ -63,6 +67,28 @@ village-crafting — silent no-op away from it, or without enough stock/room,
 same as any other refused village-gated action) and `drop_from_bag` (no
 gate — the bag can be dropped from anywhere) / `drop_from_storage`
 (village-gated).
+
+## Enhancer: the Satchel
+
+The Satchel (craftable: Hide + Cord, needs a Bone Needle) is the first *bag*
+enhancer from `TODO.md`'s "items should become enhancers" line — same shape
+as bow→hunt: an item that does something just by being carried.
+
+- **While a Satchel is in the bag, `bag_capacity()` is 100** (base 50 +
+  `SATCHEL_BONUS` 50). Flat — a second Satchel adds nothing, so there's no
+  incentive to carry a pile of them as free capacity.
+- **The Satchel counts as an ordinary bag item.** It's in the `bag` map, so
+  `bag_total()` includes it; net usable gain is +49. There's no equipment
+  *slot* — it lives in the bag like anything else, and capacity is just
+  `base + bonus`. (The Player panel labels the `bag_progress()` line
+  "Equipment", but that's display wording, not a separate pool.)
+- **Removing it while the bag holds more than 50 is allowed and leaves the
+  bag over its base cap.** `add_to_bag` then refuses everything until
+  `bag_total() <= bag_capacity()` again — the natural "overloaded, go dump
+  some" state. No guard blocks the drop/transfer; a `Player` unit test pins
+  this down.
+- Nothing is stored: the Satchel serialises by name into the existing `bag`
+  map, and `bag_capacity()` is derived on every read.
 
 ## What's an event and what isn't
 
@@ -107,10 +133,10 @@ Village (`at_village`, same pattern as Craft/Experiment/Disassemble); the
 Bag "x" is always enabled. Both move exactly one unit per click, matching
 the existing one-unit-per-click precedent (`ItemSelection::add`) — a
 "move the whole stack" control is a reasonable future refinement, not built
-now. The Player panel's old single "Inventory: ..." line is removed
-(**gui only** — `tui`'s own Player panel is untouched, still showing
-storage exactly as it always has, since `player.inventory` hasn't changed
-meaning).
+now. The Player panel's old single "Inventory: ..." line is gone; in its
+place an `Equipment: <carried>/<capacity>` line shows the bag's fill and its
+current (Satchel-aware) cap — just the two numbers from `bag_progress()`, no
+item list, since the Items tab is where contents are managed.
 
 `tui` gets no Bag/Inventory management at all, matching the established
 "frozen, not developed further" precedent from village-crafting and the
@@ -122,12 +148,12 @@ compiling — not a feature build.
 
 ## Scope
 
-- `src/game/player.rs` — `BAG_CAPACITY`, `Player.bag`, `bag_total`,
-  `add_to_bag`, `bag_count`, `has_item_in_bag`, `spend_from_bag`,
-  `combined_count`, `has_item_combined`, `spend_storage_then_bag`,
-  `spend_all_storage_then_bag`, `transfer_to_storage`, `transfer_to_bag`,
-  `bag_progress`. `spend_all` (the old storage-only loop) is gone — its
-  only two callers now use `spend_all_storage_then_bag`.
+- `src/game/player.rs` — `BAG_BASE_CAPACITY` + `SATCHEL_BONUS`, `bag_capacity`,
+  `Player.bag`, `bag_total`, `add_to_bag`, `bag_count`, `has_item_in_bag`,
+  `spend_from_bag`, `combined_count`, `has_item_combined`,
+  `spend_storage_then_bag`, `spend_all_storage_then_bag`, `transfer_to_storage`,
+  `transfer_to_bag`, `bag_progress`. `spend_all` (the old storage-only loop)
+  is gone — its only two callers now use `spend_all_storage_then_bag`.
 - `src/save.rs` — `PlayerState.bag`, `#[serde(default)]` so an old save
   loads with an empty bag.
 - `src/game/mod.rs` — `search`/`hunt` route through the bag; `hunt`'s gear
@@ -145,7 +171,8 @@ compiling — not a feature build.
 - `src/viewmodel/items.rs` (new, `gui`-only) — `Overview { bag,
   bag_progress, storage }`.
 - `src/gui/items.rs` (new), `src/gui/mod.rs` — the tab, its wiring, the
-  Player panel's inventory-line removal. The Experiment tab's "Available"
+  Player panel's `Equipment: <carried>/<capacity>` line (was the removed
+  inventory line). The Experiment tab's "Available"
   list (both front ends) also switched to `combined_sorted`.
 - `src/tui/app.rs` — the three placeholder `Panel::Items` arms.
 
@@ -156,3 +183,6 @@ compiling — not a feature build.
 - Per-item weight instead of a flat total-count cap.
 - Quest rewards routing through the bag — they go to storage, deliberately
   (see "What goes where").
+- Any other enhancer (metal detector, axe→chop) — the Satchel is the first.
+- A "you're overloaded" event when removing the Satchel drops you below
+  capacity — the silent refusal of the next `add_to_bag` is the only signal.

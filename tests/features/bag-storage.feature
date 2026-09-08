@@ -56,3 +56,19 @@ Feature: Bag and storage transfers
     When the player drops 1 Vine from storage
     Then storage contains 2 Vine
     And a drop of "Vine" is logged
+
+  Scenario: A near-full bag rejects a transfer that would overflow it
+    Given a new game
+    And the player has 50 Vine in storage
+    And the player has 1 Branch in the bag
+    When the player transfers 50 Vine to the bag
+    Then storage contains 50 Vine
+    And the bag contains 0 Vine
+
+  Scenario: A Satchel in the bag makes room for that same transfer
+    Given a new game
+    And the player has 50 Vine in storage
+    And the player has 1 Satchel in the bag
+    When the player transfers 50 Vine to the bag
+    Then storage contains 0 Vine
+    And the bag contains 50 Vine

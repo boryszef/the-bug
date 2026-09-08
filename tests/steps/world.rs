@@ -48,6 +48,7 @@ pub fn item(name: &str) -> Item {
         "Battery" => Battery,
         "Speaker" => Speaker,
         "Electronic Toy" => ElectronicToy,
+        "Satchel" => Satchel,
         other => panic!("no Item mapping for {other:?} — add it to tests/steps/world.rs"),
     }
 }

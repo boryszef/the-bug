@@ -222,6 +222,12 @@ fn render_player(game: &Game, lang: Language, ui: &mut Ui) {
             ("total", (total_recipes as u32).into()),
         ]),
     ));
+    let (carried, capacity) = game.player.bag_progress();
+    ui.label(i18n::ui_args(
+        "player-equipment",
+        lang,
+        HashMap::from([("carried", carried.into()), ("capacity", capacity.into())]),
+    ));
     ui.label(i18n::ui_args(
         "player-quests",
         lang,

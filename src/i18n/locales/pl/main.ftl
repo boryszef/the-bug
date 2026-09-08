@@ -214,10 +214,9 @@ panel-completed-title = Ukończone
 player-level = Poziom: { $level }
 player-xp = XP: { $xp }
 player-recipes = Przepisy: { $known }/{ $total }
+player-equipment = Wyposażenie: { $carried }/{ $capacity }
 player-quests = Zadania: { $completed }/{ $total } — { $active }
 player-quest-none = (brak)
-player-inventory = Ekwipunek: { $items }
-player-inventory-empty = (pusto)
 
 ## Village-gated actions: the gui disables the Craft/Experiment/Disassemble
 ## buttons away from the Village and shows this hint instead — no event is
