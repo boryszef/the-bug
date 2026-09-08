@@ -17,6 +17,8 @@
 
 ## DONE
 
+* functional-test scaffold — Gherkin scenarios run by cucumber-rs over game+viewmodel; shared core moved to `src/lib.rs`, one smoke scenario so far (docs/functional-tests.md, docs/adr/0003)
+
 * EPIC: more complex game mechanics
   * crafting/experimenting/disassembly should only be possible at the village — the gui disables the buttons away from it, no event is logged for the refusal (docs/village-crafting.md)
   * Players "bag" should have a limited size, when full, the player should take their findings to the village and deposit them in the storage or drop — Bag (limited, BAG_CAPACITY=50) split from Storage (unlimited, was the whole inventory); gui Items tab to manage both (docs/bag-and-storage.md)

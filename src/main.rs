@@ -1,32 +1,19 @@
-mod game;
-#[cfg(feature = "gui")]
-mod gui;
-mod i18n;
-mod mapgen;
-mod save;
-#[cfg(feature = "tui")]
-mod tui;
-mod viewmodel;
-
-#[cfg(all(feature = "gui", feature = "tui"))]
-compile_error!(
-    "the-bug: enable exactly one front end — `gui` or `tui`, not both. \
-     The default is `gui`; for the legacy terminal UI build with \
-     `--no-default-features --features tui`."
-);
-#[cfg(not(any(feature = "gui", feature = "tui")))]
-compile_error!(
-    "the-bug: no front end selected. Build with the default `gui` feature, \
-     or `--no-default-features --features tui` for the legacy terminal UI."
-);
+//! CLI shim: parse args, load or start a `Game`, hand off to the front end.
+//! Everything else lives in the `the_bug` library crate.
 
 use std::io;
 use std::path::PathBuf;
 
 use clap::Parser;
 
-use crate::game::Game;
-use crate::i18n::Language;
+use the_bug::game::Game;
+use the_bug::i18n::{self, Language};
+use the_bug::save;
+
+#[cfg(feature = "gui")]
+use the_bug::gui;
+#[cfg(feature = "tui")]
+use the_bug::tui;
 
 /// A tiny terminal survival game.
 #[derive(Parser)]

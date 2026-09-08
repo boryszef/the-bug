@@ -3,6 +3,18 @@ name = "the-bug"
 version = "0.1.0"
 edition = "2024"
 
+# The shared core (game/viewmodel/save/i18n/mapgen) is a library so the
+# functional test suite in `tests/` can drive it through its public API —
+# see docs/adr/0003-library-target-for-functional-tests.md. The front end
+# stays a single binary (`src/main.rs`) that consumes this lib.
+[lib]
+path = "src/lib.rs"
+
+# cucumber-rs runs its scenarios from its own binary, not libtest.
+[[test]]
+name = "cucumber"
+harness = false
+
 [features]
 default = ["gui"]
 # The graphical (egui/eframe) front end — the actively developed one.
@@ -24,3 +36,7 @@ rust-embed = "8.12.0"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 unic-langid = "0.9.6"
+
+[dev-dependencies]
+cucumber = "0.23.0"
+pollster = "0.4.0"

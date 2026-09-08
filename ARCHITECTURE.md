@@ -25,6 +25,14 @@ Three layers, each only depending on the one below it:
   `compile_error!`. `tui` is frozen (kept building, not developed); `gui` is
   where new work goes. See `docs/adr/0002-frontend-selected-at-build-time.md`.
 
+All of the above is a **library crate** (`src/lib.rs`, `the_bug`); `src/main.rs`
+is a thin CLI shim that parses args and hands off to the `#[cfg]`-selected
+front end. The split exists so the functional test suite in `tests/` can drive
+the game through its public API — see
+`docs/adr/0003-library-target-for-functional-tests.md` and
+`docs/functional-tests.md`. It is still one binary, still feature-selected; it
+is *not* the `src/bin/{gui,tui}` split ADR 0002 rejected.
+
 The rule of thumb: if a different front-end would also need it, it doesn't
 belong in a front-end module. See `docs/refactor-thin-ui.md` for the
 refactor that established this (written when there was only `src/ui/`;
@@ -143,9 +151,9 @@ shapes and the whole-`Game` glue that doesn't belong to any single type
 If a future dev-only utility is ever heavy enough to want its own crate,
 `tools/<name>/` is the place: a self-contained crate (own `Cargo.toml` +
 `Cargo.lock`, empty `[workspace]` table), built and run on its own, never
-shipped and never linked into `the-bug`. Because ADR 0002 rules out a
-library/binary split, such a tool cannot reuse crate internals — it would
-re-declare the small amount it needs, with a comment pointing back, and get
+shipped. It could `path`-depend on the `the_bug` library for its **public**
+API (ADR 0003), but not reach crate internals — for anything private it would
+re-declare the small amount it needs, with a comment pointing back. It gets
 its own `prek` fmt/clippy hooks since root `fmt`/`clippy`/`test` don't reach
 outside the root package.
 
@@ -177,7 +185,8 @@ design needs to be pinned down first.
   `--no-default-features --features tui` — since the shared `game`/
   `viewmodel`/`save`/`i18n` layers compile under both. `prek`'s hook runs
   `clippy` for both; run the `tui` `test` pass yourself when touching shared
-  code.
+  code. `cargo test` also builds and runs the `cucumber` functional suite
+  (`docs/functional-tests.md`), which compiles under either feature set.
 - **UI changes**: also run the affected front end and drive it through the
   change — rendering isn't unit-tested here, so this is the only real
   verification for layout/visual correctness. The `tui` needs a real pty
