@@ -5,8 +5,8 @@
 Alongside the unit tests colocated with each type, we want black-box
 **functional tests**: scenarios written in Gherkin that drive the game the
 way a front end would — call a `Game` method, read the result back through
-`viewmodel` — and never touch `gui` / `tui`. They document behaviour in
-prose and catch regressions across the `game` + `viewmodel` seam.
+`viewmodel` — and never touch `gui`. They document behaviour in prose and
+catch regressions across the `game` + `viewmodel` seam.
 
 `cucumber-rs` is the Rust runner for this. It executes scenarios from its own
 test binary (`harness = false`), which sees only the crate's **public** API —
@@ -45,9 +45,6 @@ needs. It is recreated per scenario by the `Given a new game` step.
 - `cargo test` — runs everything, functional suite included.
 - `cargo test --test cucumber` — just the functional suite (prints each
   scenario with per-step ✔ / ✘).
-- Compiles and passes under **both** feature sets (it only uses `game` +
-  `viewmodel`), so the existing two-config check in `ARCHITECTURE.md`'s
-  Workflow section already covers it.
 
 ## Conventions
 
@@ -83,7 +80,7 @@ needs. It is recreated per scenario by the `Given a new game` step.
 
 - Breadth — movement, hunting, quests, disassembly, save/load. The step
   library grows with each feature area added.
-- Any front-end (`gui` / `tui`) behaviour — rendering and input mapping are
+- Any front-end (`gui`) behaviour — rendering and input mapping are
   verified by running the app, not here.
 - Localised event text — `i18n` has its own tests; functional steps assert on
   `EventKind`, not rendered strings.

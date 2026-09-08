@@ -15,28 +15,23 @@ Three layers, each only depending on the one below it:
   all live here.
 - **`src/viewmodel/`** — presentation-agnostic helpers that shape `game`
   state for display: sorting, filtering, formatting, coordinate transforms,
-  transient interaction state (e.g. `selection::ItemSelection`). No
-  ratatui or egui types — this is the layer both front ends below share.
-- **A front-end module** — rendering and input-mapping only, one per UI
-  toolkit: **`src/tui/`** (ratatui, terminal) and **`src/gui/`** (egui,
-  graphical — see `docs/adr/0001-ui-framework-egui.md`). Exactly **one** is
-  compiled, chosen by the mutually exclusive `gui` (default) / `tui` Cargo
-  features — `src/main.rs` `#[cfg]`-gates the modules; both or neither is a
-  `compile_error!`. `tui` is frozen (kept building, not developed); `gui` is
-  where new work goes. See `docs/adr/0002-frontend-selected-at-build-time.md`.
+  transient interaction state (e.g. `selection::ItemSelection`). No egui
+  types — this is the layer a second front end would share.
+- **`src/gui/`** — the front end: egui/eframe, rendering and input-mapping
+  only (see `docs/adr/0001-ui-framework-egui.md`). It was one of two
+  toolkit-selected front ends until `docs/adr/0004-retire-tui-front-end.md`
+  deleted the frozen ratatui `src/tui/`; there are now no front-end Cargo
+  features and no `#[cfg]` selection.
 
 All of the above is a **library crate** (`src/lib.rs`, `the_bug`); `src/main.rs`
-is a thin CLI shim that parses args and hands off to the `#[cfg]`-selected
-front end. The split exists so the functional test suite in `tests/` can drive
-the game through its public API — see
-`docs/adr/0003-library-target-for-functional-tests.md` and
-`docs/functional-tests.md`. It is still one binary, still feature-selected; it
-is *not* the `src/bin/{gui,tui}` split ADR 0002 rejected.
+is a thin CLI shim that parses args and hands off to `gui::run`. The split
+exists so the functional test suite in `tests/` can drive the game through its
+public API — see `docs/adr/0003-library-target-for-functional-tests.md` and
+`docs/functional-tests.md`.
 
-The rule of thumb: if a different front-end would also need it, it doesn't
-belong in a front-end module. See `docs/refactor-thin-ui.md` for the
-refactor that established this (written when there was only `src/ui/`;
-the same rule now applies to both `tui` and `gui`).
+The rule of thumb: if a second front-end would also need it, it doesn't
+belong in `src/gui/`. See `docs/refactor-thin-ui.md` for the refactor that
+established this (written when there was only `src/ui/`).
 
 `src/mapgen/` sits beside `game`: a policy-free terrain generator that
 `Map::new` calls with a hardcoded `Spec` (`docs/mapgen.md`). It depends on
@@ -50,16 +45,15 @@ No front-end module is the product. Concretely:
   `game`, if it's really domain logic). A front-end module's files should
   be small enough that swapping — or adding — a front end mostly means
   writing that module and leaving `game`/`viewmodel` untouched.
-- Interactive `tui` modules (`craft.rs`, `disassemble.rs`, `experiment.rs`,
-  `quests.rs`) follow one shape: a small `State` struct holding only
-  transient UI state (cursor, focus — never game data), a `handle_key`
-  method, an `Outcome` enum describing what `App` should do next, and a
-  `render` method. They take `game`/`viewmodel` data as parameters rather
-  than holding a reference to `Game`, which keeps them independently
-  testable without a terminal. `gui` should follow the equivalent shape for
-  its own toolkit as its panels are built out.
-- `tui::App` (`src/tui/app.rs`) owns key dispatch and layout only — see
-  `docs/panel-layout.md` for the current panel-cycling structure.
+- The panel modules (`craft.rs`, `disassemble.rs`, `experiment.rs`,
+  `quests.rs`) take `game`/`viewmodel` data as parameters and return an
+  `Outcome` describing what `App` should do next, rather than holding a
+  reference to `Game` — so their logic stays testable without a window. Any
+  transient view state (e.g. `experiment::Experiment`'s running selection)
+  is UI-only, never game data.
+- `gui::App` (`src/gui/mod.rs`) owns tab dispatch and layout only — see
+  `docs/panel-layout.md` for the panel-cycling structure it inherited from
+  the tui.
 
 ## `Game` is a thin orchestrator — models own their own logic
 
@@ -179,16 +173,10 @@ design needs to be pinned down first.
   characterization tests first if not) → change → re-run the full suite
   unmodified as proof nothing changed. Keep refactor commits separate from
   behavior-changing ones.
-- **Before every commit**: `cargo fmt --all -- --check`, plus `cargo test`
-  and `cargo clippy --all-targets -- -D warnings` for **both** front-end
-  feature sets — the default (`gui`) and
-  `--no-default-features --features tui` — since the shared `game`/
-  `viewmodel`/`save`/`i18n` layers compile under both. `prek`'s hook runs
-  `clippy` for both; run the `tui` `test` pass yourself when touching shared
-  code. `cargo test` also builds and runs the `cucumber` functional suite
-  (`docs/functional-tests.md`), which compiles under either feature set.
-- **UI changes**: also run the affected front end and drive it through the
+- **Before every commit**: `cargo fmt --all -- --check`, `cargo test`, and
+  `cargo clippy --all-targets -- -D warnings` (`prek`'s hook runs fmt +
+  clippy). `cargo test` also builds and runs the `cucumber` functional suite
+  (`docs/functional-tests.md`).
+- **UI changes**: also run the gui (`cargo run`) and drive it through the
   change — rendering isn't unit-tested here, so this is the only real
-  verification for layout/visual correctness. The `tui` needs a real pty
-  (wrap in `screen`/`tmux`); build it with `--no-default-features --features
-  tui`. The `gui` is the default build (`cargo run`).
+  verification for layout/visual correctness.

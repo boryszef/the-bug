@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted. Supersedes the "Structure" section of `docs/gui-frontend.md`.
+Accepted, then **superseded by `docs/adr/0004-retire-tui-front-end.md`** —
+the `tui` front end and the `gui`/`tui` feature scheme this ADR set up are
+gone; there is one unconditional front end. Supersedes the "Structure"
+section of `docs/gui-frontend.md`.
 
 ## Context
 

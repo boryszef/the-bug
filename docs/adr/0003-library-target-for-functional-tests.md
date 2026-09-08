@@ -5,6 +5,11 @@
 Accepted. Amends ADR 0002's aside that a `src/lib.rs` split was "more
 restructuring than warranted".
 
+> **Superseded in part by ADR 0004.** The `#[cfg(feature = "gui")] pub mod
+> gui;` / `#[cfg(feature = "tui")] pub mod tui;` this ADR set up is now a
+> single unconditional `pub mod gui;` — the `tui` front end and the front-end
+> Cargo features are gone. The library/binary split itself stands.
+
 ## Context
 
 We want functional (BDD) tests in Gherkin, run by `cucumber-rs`

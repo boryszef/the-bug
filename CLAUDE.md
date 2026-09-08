@@ -1,6 +1,6 @@
 # the-bug
 
-A terminal crafting/exploration game (Rust, ratatui) set in a post-apocalyptic
+A crafting/exploration game (Rust, egui/eframe) set in a post-apocalyptic
 future reshaped by alien-derived biological computing.
 
 Before making structural changes — new modules, moving logic between

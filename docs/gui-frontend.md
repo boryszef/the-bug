@@ -1,5 +1,11 @@
 # Feature: egui/eframe gui front end
 
+> **Historical.** This documents building the gui *alongside* the ratatui
+> `tui`. That migration is complete: `docs/adr/0004-retire-tui-front-end.md`
+> deleted the tui, and the "Structure" section's two-feature scheme is gone
+> (there is one unconditional front end, no `src/lib.rs`-less binary — see
+> ADR 0003). Kept as the record of why the gui looks the way it does.
+
 ## Why
 
 `docs/adr/0001-ui-framework-egui.md` picked egui/eframe as the framework for
