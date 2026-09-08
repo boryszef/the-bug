@@ -63,18 +63,21 @@ needs. It is recreated per scenario by the `Given a new game` step.
   explicitly. (The unit tests that *do* exercise `search` / `hunt` force
   every tile probability to `1.0` first — they can, because they're inside
   the crate and can touch `MapTile`; functional tests can't and shouldn't.)
-- **Item names.** Gherkin refers to items by their `Display` name (`Vine`,
-  `Stone Axe`); `tests/steps/world.rs::item()` maps them to the enum. It's a
-  hand-maintained table (the crate's own `Item::ALL` is `#[cfg(test)]` and
-  unreachable here) — extend it as features name new items.
+- **Item names.** Gherkin refers to items by their English `i18n` name
+  (`Branch`, not `Stick`; `Stone Axe`); `tests/steps/world.rs::item()` maps
+  them to the enum. It's a hand-maintained table (the crate's own `Item::ALL`
+  is `#[cfg(test)]` and unreachable here) — extend it as features name new
+  items. Multi-word names mean the item-bearing steps use `regex` rather than
+  a `{word}` cucumber expression.
 - **One file per feature area**, both for `features/*.feature` and the
   matching `tests/steps/*.rs`.
 
 ## Current coverage
 
-- `crafting.feature` — one smoke scenario: an experiment discovers the Cord
-  recipe, and the new recipe then shows up in `viewmodel::crafting::options`.
-  It's the end-to-end proof that `game` and `viewmodel` are wired together.
+- `crafting.feature` — experiment outcomes read back through
+  `viewmodel::crafting::options`: recipe discovery, shortage / wrong-quantity
+  failures still spending the inputs, and the tool gate (an experiment that
+  matches a recipe but lacks its tool learns nothing).
 
 ## Out of scope (for now)
 

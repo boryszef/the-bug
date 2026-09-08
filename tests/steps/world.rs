@@ -21,6 +21,8 @@ pub fn item(name: &str) -> Item {
         "Stone" => Stone,
         "Vine" => Vine,
         "Cord" => Cord,
+        "Stone Axe" => StoneAxe,
+        "Arrow" => Arrow,
         other => panic!("no Item mapping for {other:?} — add it to tests/steps/world.rs"),
     }
 }
