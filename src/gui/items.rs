@@ -58,7 +58,8 @@ pub(super) fn render(
             }
             for &(item, quantity) in &overview.equipment {
                 columns[0].horizontal(|ui| {
-                    ui.label(i18n::item_with_quantity(item, quantity, lang));
+                    // Buttons first, so they stay vertically aligned and don't
+                    // shift when the quantity's digit count changes (10 → 9).
                     // "→": move one unit to storage. Monospace, like the
                     // Map tab's arrows — egui's default proportional font
                     // has no arrow glyph coverage, but bundled Hack does.
@@ -72,6 +73,7 @@ pub(super) fn render(
                     if ui.button("x").clicked() {
                         outcome = Outcome::DropFromEquipment(item);
                     }
+                    ui.label(i18n::item_with_quantity(item, quantity, lang));
                 });
             }
 
@@ -81,7 +83,7 @@ pub(super) fn render(
             }
             for &(item, quantity) in &overview.storage {
                 columns[1].horizontal(|ui| {
-                    ui.label(i18n::item_with_quantity(item, quantity, lang));
+                    // Buttons first — see the equipment column above.
                     // "←": move one unit to the equipment. Monospace, same reason
                     // as "→" above.
                     if ui
@@ -93,6 +95,7 @@ pub(super) fn render(
                     if ui.add_enabled(at_village, Button::new("x")).clicked() {
                         outcome = Outcome::DropFromStorage(item);
                     }
+                    ui.label(i18n::item_with_quantity(item, quantity, lang));
                 });
             }
         });
