@@ -323,10 +323,12 @@ impl Player {
         self.add_all_to_inventory(items);
     }
 
-    /// Marks the craftable recipe with the given name as known (used when
-    /// loading a save). Returns `false` for an unrecognised or non-craftable
-    /// name, which the caller can ignore — a known recipe is always craftable.
-    pub(crate) fn grant_recipe(&mut self, name: &str) -> bool {
+    /// Marks the craftable recipe with the given name as known — used when
+    /// loading a save, and to hand a test a recipe without making it
+    /// experiment one into existence first. Returns `false` for an
+    /// unrecognised or non-craftable name, which the caller can ignore — a
+    /// known recipe is always craftable.
+    pub fn grant_recipe(&mut self, name: &str) -> bool {
         match RECIPES.iter().find(|recipe| recipe.name() == name).copied() {
             Some(recipe) if recipe.craftable() => {
                 if !self.recipes.contains(&recipe) {

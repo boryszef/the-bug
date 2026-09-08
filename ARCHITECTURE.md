@@ -117,11 +117,16 @@ Default to fully private. Widen only as far as the real caller requires:
   for cross-file-but-internal-to-`game` sharing (e.g. `Map::contains`,
   `Player::spend`, `Recipe::find_matching`).
 - **`pub(crate)`** — genuinely needed elsewhere in the crate, most often
-  `save.rs` (`Player::grant_recipe`, `Event::new`, `Map::from_terrain`) or
-  the `SaveState`/`RestoreState` traits themselves.
-- **`pub`** — real public API: consumed by `viewmodel`/`ui`, or (for
-  `game`'s own DTO-adjacent types like `Quest`'s `id`/`name`/`description`)
-  data meant to be read widely without a dedicated accessor for every field.
+  `save.rs` (`Event::new`, `Player::restore_quest_state`) or the
+  `SaveState`/`RestoreState` traits themselves.
+- **`pub`** — real public API: consumed by `viewmodel`/`gui` or the
+  functional test suite in `tests/`, or (for `game`'s own DTO-adjacent types
+  like `Quest`'s `id`/`name`) data meant to be read widely without a
+  dedicated accessor for every field. Two members are `pub` specifically for
+  `tests/`: `Player::grant_recipe` ("give the player a known recipe") and
+  `Map::from_terrain` ("build a fixed map from explicit grids") — both are
+  also on the save path, and neither exposes a new mutation the game itself
+  doesn't already do.
 
 When a module split or a new caller breaks a private-field assumption,
 prefer adding a narrowly-scoped accessor/mutator method over reaching for

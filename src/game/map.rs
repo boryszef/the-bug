@@ -242,10 +242,11 @@ impl Map {
         Map::from_terrain(grid, pois)
     }
 
-    /// Rebuilds a map from a saved terrain grid and its parallel POI grid. Tile
-    /// items are recomputed from the terrain; per-tile search cooldowns start
-    /// fresh.
-    pub(crate) fn from_terrain(terrain: Vec<Vec<TerrainType>>, pois: Vec<Vec<Option<Poi>>>) -> Map {
+    /// Builds a map from an explicit terrain grid and its parallel POI grid.
+    /// Tile items are recomputed from the terrain; per-tile search cooldowns
+    /// start fresh. Used to rebuild a saved map, and `pub` so a functional
+    /// test can stand up a small fixed map instead of a random one.
+    pub fn from_terrain(terrain: Vec<Vec<TerrainType>>, pois: Vec<Vec<Option<Poi>>>) -> Map {
         let half = (terrain.len() / 2) as i32;
         let tiles = terrain
             .into_iter()

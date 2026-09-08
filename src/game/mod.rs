@@ -449,7 +449,7 @@ impl Game {
 mod tests {
     use super::*;
     use quest::QuestCondition;
-    use recipe::{RECIPES, Recipe};
+    use recipe::RECIPES;
     use std::collections::HashMap;
 
     #[test]
@@ -591,20 +591,6 @@ mod tests {
         assert_eq!(game.events().len(), events_before);
         assert_eq!(game.player.inventory.get(&Item::Vine), Some(&2));
         assert_eq!(game.player.inventory.get(&Item::Cord), None);
-    }
-
-    #[test]
-    fn experiment_away_from_the_village_does_nothing() {
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::Vine, 2);
-        game.player.coordinates = (5, 5);
-        let events_before = game.events().len();
-
-        game.experiment(&[(Item::Vine, 2)]);
-
-        assert_eq!(game.events().len(), events_before);
-        assert_eq!(game.player.inventory.get(&Item::Vine), Some(&2));
-        assert!(game.player.known_recipes().is_empty());
     }
 
     #[test]
@@ -917,16 +903,6 @@ mod tests {
     }
 
     #[test]
-    fn experiment_removes_exhausted_inputs() {
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::Vine, 2);
-
-        game.experiment(&[(Item::Vine, 2)]);
-
-        assert_eq!(game.player.inventory.get(&Item::Vine), None);
-    }
-
-    #[test]
     fn craft_spends_storage_before_dipping_into_the_bag() {
         let mut game = Game::default();
         game.player.grant_recipe("Cord");
@@ -951,18 +927,6 @@ mod tests {
 
         assert_eq!(game.player.inventory.get(&Item::Vine), None);
         assert_eq!(game.player.bag.get(&Item::Vine), Some(&5));
-    }
-
-    #[test]
-    fn experiment_spends_storage_before_dipping_into_the_bag() {
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::Vine, 1);
-        game.player.bag.insert(Item::Vine, 1);
-
-        game.experiment(&[(Item::Vine, 2)]);
-
-        assert_eq!(game.player.inventory.get(&Item::Vine), None);
-        assert_eq!(game.player.bag.get(&Item::Vine), None);
     }
 
     #[test]
@@ -1004,52 +968,6 @@ mod tests {
     }
 
     #[test]
-    fn experiment_matching_a_recipe_without_its_tool_fails() {
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::Branch, 1);
-        game.player.inventory.insert(Item::Cord, 1);
-
-        game.experiment(&[(Item::Branch, 1), (Item::Cord, 1)]); // Wooden Bow, no axe
-
-        assert_eq!(
-            last_event(&game).kind(),
-            &EventKind::CraftMissingTool {
-                tool: Item::StoneAxe,
-                output: Item::WoodenBow,
-            }
-        );
-        assert_eq!(game.player.inventory.get(&Item::WoodenBow), None);
-        // a failed experiment still spends the combination
-        assert_eq!(game.player.inventory.get(&Item::Branch), None);
-        assert_eq!(game.player.inventory.get(&Item::Cord), None);
-        assert!(
-            game.player
-                .known_recipes()
-                .iter()
-                .all(|r| r.output() != Item::WoodenBow)
-        );
-    }
-
-    #[test]
-    fn experiment_with_the_tool_present_discovers_and_builds() {
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::Branch, 1);
-        game.player.inventory.insert(Item::Cord, 1);
-        game.player.inventory.insert(Item::StoneAxe, 1);
-
-        game.experiment(&[(Item::Branch, 1), (Item::Cord, 1)]);
-
-        assert_eq!(game.player.inventory.get(&Item::WoodenBow), Some(&1));
-        assert_eq!(game.player.inventory.get(&Item::StoneAxe), Some(&1));
-        assert!(
-            game.player
-                .known_recipes()
-                .iter()
-                .any(|r| r.output() == Item::WoodenBow)
-        );
-    }
-
-    #[test]
     fn craft_logs_unknown_recipe_then_crafted() {
         let mut game = Game::default();
         game.craft("Cord"); // unknown recipe
@@ -1067,23 +985,6 @@ mod tests {
             last_event(&game).kind(),
             &EventKind::Crafted { output: Item::Cord }
         );
-    }
-
-    #[test]
-    fn known_recipes_starts_empty_and_grows_on_discovery() {
-        let mut game = Game::default();
-        assert!(game.player.known_recipes().is_empty());
-
-        game.player.inventory.insert(Item::Vine, 2);
-        game.experiment(&[(Item::Vine, 2)]);
-
-        let known: Vec<&str> = game
-            .player
-            .known_recipes()
-            .iter()
-            .map(Recipe::name)
-            .collect();
-        assert_eq!(known, ["Cord"]);
     }
 
     #[test]
@@ -1109,18 +1010,6 @@ mod tests {
         game.player
             .restore_quest_state(None, 0, vec![QuestID::CraftAxe]);
         assert_eq!(game.quest_progress(), (1, QUESTS.len()));
-    }
-
-    #[test]
-    fn experiment_discovery_grants_experience() {
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::Vine, 4);
-
-        game.experiment(&[(Item::Vine, 2)]);
-        assert_eq!(game.player.experience, 10);
-
-        game.experiment(&[(Item::Vine, 2)]); // already known -> no XP
-        assert_eq!(game.player.experience, 10);
     }
 
     #[test]
@@ -1402,31 +1291,6 @@ mod tests {
         assert_eq!(game.player.inventory.get(&Item::Umbrella), None);
         assert_eq!(game.player.inventory.get(&Item::Fabric), Some(&1));
         assert_eq!(game.player.inventory.get(&Item::Pole), Some(&1));
-    }
-
-    #[test]
-    fn a_disassemble_only_recipe_cannot_be_experimented_into_existence() {
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::Battery, 1);
-        game.player.inventory.insert(Item::Speaker, 1);
-
-        game.experiment(&[(Item::Battery, 1), (Item::Speaker, 1)]);
-
-        assert_eq!(
-            last_event(&game).kind(),
-            &EventKind::ExperimentFailed {
-                items: vec![(Item::Battery, 1), (Item::Speaker, 1)],
-            }
-        );
-        assert_eq!(game.player.inventory.get(&Item::ElectronicToy), None);
-        assert!(
-            game.player
-                .known_recipes()
-                .iter()
-                .all(|r| r.output() != Item::ElectronicToy)
-        );
-        // experiment still consumes the inputs, like any failed experiment
-        assert!(game.player.inventory.is_empty());
     }
 
     #[test]
