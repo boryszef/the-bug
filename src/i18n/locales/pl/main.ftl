@@ -235,6 +235,10 @@ items-storage-title = Ekwipunek
 items-equipment-empty = Twoje wyposażenie jest puste.
 items-storage-empty = Ekwipunek jest pusty.
 
+## Experiment panel.
+
+experiment-promising = Wygląda dobrze!
+
 ## Craft panel.
 
 craft-empty = Nie odkryłeś jeszcze żadnych przepisów.

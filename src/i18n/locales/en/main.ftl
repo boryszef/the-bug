@@ -123,6 +123,12 @@ items-storage-title = Inventory
 items-equipment-empty = Your equipment is empty.
 items-storage-empty = Storage is empty.
 
+## Experiment panel.
+
+# Shown while building a selection that exactly matches a recipe the player
+# hasn't discovered yet. Deliberately says nothing more — see docs/recipe-tools.md.
+experiment-promising = Looks good!
+
 ## Craft panel.
 
 craft-empty = You haven't discovered any recipes yet.

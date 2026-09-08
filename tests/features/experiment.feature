@@ -70,6 +70,18 @@ Feature: Experimenting
     And craft menu is empty
     And the experiment reports only that a tool is missing
 
+  Scenario: The exact components of an undiscovered recipe are flagged as promising
+    Given a new game
+    Then combining 2 Vine is promising
+    And combining 1 Vine is not promising
+    And combining 3 Vine is not promising
+    And combining 1 Battery and 1 Speaker is not promising
+
+  Scenario: A combination for an already-known recipe is not flagged
+    Given a new game
+    And the player knows the "Cord" recipe
+    Then combining 2 Vine is not promising
+
   Scenario: A disassemble-only item cannot be experimented into existence
     Given a new game
     And the player has 1 Battery in storage

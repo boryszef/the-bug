@@ -96,6 +96,14 @@ impl Player {
         self.recipes.iter().find(|r| r.name() == name).copied()
     }
 
+    /// Whether combining exactly `items` would discover a recipe the player
+    /// doesn't know yet — the "Looks good!" signal for the Experiment panel.
+    /// A plain yes/no: it names nothing. A required tool the player lacks
+    /// doesn't change the answer (the components are what's being checked).
+    pub fn experiment_would_discover(&self, items: &[(Item, u32)]) -> bool {
+        super::recipe::find_matching(items).is_some_and(|recipe| !self.recipes.contains(recipe))
+    }
+
     /// Where `dir` takes the player, ignoring map boundaries — the caller
     /// checks those separately.
     pub(super) fn coordinates_after(&self, dir: Direction) -> (i32, i32) {

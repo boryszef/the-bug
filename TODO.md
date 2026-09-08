@@ -2,7 +2,6 @@
 
 ## TODO
 
-* when user is experimenting and hits the exact components for a missing recipe, signal this to the user ("Looks good!"), but don't say more than that
 * review events: event should reflect important messages coming from the game, not just reflect user actions - for example: finding an item should trigger an event, but trying to craft outside village should not. Also: a random roll merits a record even if it comes up empty, but only when the attempt had a real cost regardless of outcome (hunting always spends an arrow; searching costs nothing and is freely repeatable, so its silent miss is correct, not a gap) — docs/event-worthiness.md has the full rule and where every current EventKind stands against it
   * remove the log line for a pure refusal that changes nothing: UnknownRecipe, CraftShortage, CraftMissingTool (from craft() only - the experiment() trigger stays, since it happens after items are already spent), ExperimentShortage, HuntUnprepared
 * EPIC: improve the map
@@ -16,6 +15,7 @@
 
 ## DONE
 
+* experiment "Looks good!" hint — a green line above the Run button when the current selection exactly matches an undiscovered recipe (`Player::experiment_would_discover`); names nothing else (docs/gui-panels.md, docs/recipe-tools.md)
 * rename "Bag" → "Equipment" everywhere — `Player.equipment`, `equipment_*` methods, `EventKind::EquipmentFull`, the save key, the Items-tab label, `docs/equipment-and-storage.md`, cucumber steps. Pure rename, no behaviour change
 * experiment tool-missing message no longer names the recipe — split `EventKind::ExperimentMissingTool { items }` off `CraftMissingTool`; experiment says only "you're missing a tool" (docs/recipe-tools.md)
 * retire the ratatui `tui` front end — `src/tui/` deleted, `gui`/`tui` Cargo features and the two-config build gone; `gui` (egui) is the only front end (docs/adr/0004)

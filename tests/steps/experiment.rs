@@ -59,6 +59,28 @@ async fn player_has_experience(world: &mut GameWorld, xp: u32) {
     assert_eq!(world.game.player.experience, xp);
 }
 
+#[then(regex = r"^combining (.+) is promising$")]
+async fn combination_is_promising(world: &mut GameWorld, spec: String) {
+    assert!(
+        world
+            .game
+            .player
+            .experiment_would_discover(&item_list(&spec)),
+        "combining {spec} was not flagged as promising"
+    );
+}
+
+#[then(regex = r"^combining (.+) is not promising$")]
+async fn combination_is_not_promising(world: &mut GameWorld, spec: String) {
+    assert!(
+        !world
+            .game
+            .player
+            .experiment_would_discover(&item_list(&spec)),
+        "combining {spec} was unexpectedly flagged as promising"
+    );
+}
+
 #[then("the experiment reports only that a tool is missing")]
 async fn reports_missing_tool(world: &mut GameWorld) {
     assert!(

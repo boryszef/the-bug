@@ -39,9 +39,14 @@ Verification is running the app.
   inventory item with its still-addable count (`owned` − already picked);
   a row is a button, disabled at count 0, that moves one unit right.
   Selected lists picked items; clicking a row returns one unit.
+- When the current selection exactly matches a recipe the player hasn't
+  discovered, a green **"Looks good!"** (`experiment-promising`) shows above
+  the Run button — via a `looks_promising` closure `App::ui` builds from
+  `Player::experiment_would_discover`. It names nothing else, on purpose
+  (`docs/recipe-tools.md`). Shown regardless of `at_village`.
 - A **Run experiment** button (disabled while nothing is selected) runs
   `Game::experiment` with the selection and clears it.
-- State (`ItemSelection`) persists while switching tabs, like `tui`.
+- State (`ItemSelection`) persists while switching tabs.
 
 ### Craft (`src/gui/craft.rs`)
 - A button per known recipe, labelled with the output item; recipes the
@@ -88,6 +93,6 @@ Verification is running the app.
   order are UI-agnostic. Each front end keeps only its own label lookup —
   `title_id` in `src/gui/mod.rs`, the `footer-*` mapping in `src/tui/app.rs`.
 - `src/i18n/locales/{en,pl}/main.ftl` — `action-experiment`, `action-accept`
-  (gui-only button labels); existing `*-empty` / `panel-*-title` strings
-  reused.
+  (gui-only button labels), `experiment-promising`; existing `*-empty` /
+  `panel-*-title` strings reused.
 - `docs/gui-frontend.md` — Progress list updated per tab.

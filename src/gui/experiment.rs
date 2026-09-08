@@ -2,7 +2,7 @@
 //! recipe. Mouse-driven — the only state is the running [`ItemSelection`];
 //! there is no cursor.
 
-use eframe::egui::{self, Button, RichText, Ui};
+use eframe::egui::{self, Button, Color32, RichText, Ui};
 
 use crate::game::Item;
 use crate::i18n::{self, Language};
@@ -27,12 +27,15 @@ impl Experiment {
     /// disables the Run button (with a hint explaining why) when the player
     /// isn't standing somewhere experimenting is allowed — picking items
     /// into the selection is still allowed anywhere, since it has no effect
-    /// on its own.
+    /// on its own. `looks_promising` answers "would this combination discover
+    /// a recipe" for the current selection — a plain yes/no hint, shown
+    /// regardless of `at_village`.
     pub(super) fn render(
         &mut self,
         ui: &mut Ui,
         inventory: &[(Item, u32)],
         at_village: bool,
+        looks_promising: impl Fn(&[(Item, u32)]) -> bool,
         lang: Language,
     ) -> Outcome {
         ui.heading(i18n::ui("panel-experiment-title", lang));
@@ -49,6 +52,7 @@ impl Experiment {
         // an item this selection counted on), so it's trimmed to the live
         // stock before `owned - picked` is computed below.
         self.selection.clamp_to(inventory);
+        let promising = looks_promising(self.selection.items());
 
         let mut outcome = Outcome::Idle;
         egui::ScrollArea::vertical().show(ui, |ui| {
@@ -78,6 +82,12 @@ impl Experiment {
             });
 
             ui.separator();
+
+            if promising {
+                ui.label(
+                    RichText::new(i18n::ui("experiment-promising", lang)).color(Color32::GREEN),
+                );
+            }
 
             if ui
                 .add_enabled(

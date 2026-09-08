@@ -35,6 +35,12 @@ its consumables) enforce tools:
   unmistakably the Arrow). This is a deliberate split from
   `CraftMissingTool`.
 
+Same "reveal nothing" principle, positive side: while the player is building
+an Experiment selection, `Player::experiment_would_discover(items)` (reusing
+`find_matching`, ignoring tools) drives a green **"Looks good!"** hint when
+the selection exactly matches an *undiscovered* recipe — a plain yes/no, no
+name, no "how close". See `docs/gui-panels.md`.
+
 ### Craft panel
 
 `viewmodel::crafting::CraftOption` carries `tools: Vec<CraftTool { item, present }>`

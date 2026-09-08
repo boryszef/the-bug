@@ -123,10 +123,15 @@ impl eframe::App for App {
             Panel::Experiment => {
                 let inventory = viewmodel::inventory::combined_sorted(&self.game.player);
                 let at_village = self.game.at_craftable_location();
-                if let experiment::Outcome::Run(items) =
-                    self.experiment
-                        .render(ui, &inventory, at_village, self.language)
-                {
+                let player = &self.game.player;
+                let outcome = self.experiment.render(
+                    ui,
+                    &inventory,
+                    at_village,
+                    |items| player.experiment_would_discover(items),
+                    self.language,
+                );
+                if let experiment::Outcome::Run(items) = outcome {
                     self.game.experiment(&items);
                 }
             }

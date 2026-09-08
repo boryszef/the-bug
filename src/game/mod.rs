@@ -597,6 +597,27 @@ mod tests {
         assert_eq!(game.player.inventory.get(&Item::Branch), None);
     }
 
+    #[test]
+    fn experiment_would_discover_only_for_an_exact_match_of_an_unknown_recipe() {
+        let mut game = Game::default();
+
+        // exact consumables of the (unknown) Cord recipe
+        assert!(game.player.experiment_would_discover(&[(Item::Vine, 2)]));
+        // wrong quantity — not an exact match
+        assert!(!game.player.experiment_would_discover(&[(Item::Vine, 1)]));
+        assert!(!game.player.experiment_would_discover(&[(Item::Vine, 3)]));
+        // a disassemble-only recipe's parts never "match" for experimenting
+        assert!(
+            !game
+                .player
+                .experiment_would_discover(&[(Item::Battery, 1), (Item::Speaker, 1)])
+        );
+
+        game.player.grant_recipe("Cord");
+        // known now — no longer a discovery
+        assert!(!game.player.experiment_would_discover(&[(Item::Vine, 2)]));
+    }
+
     // The default player spawns at the world origin, which is always the
     // Village (`scatter_pois` fixes it there) — so every craft / experiment /
     // disassemble test in this file exercises the "at the village" path
