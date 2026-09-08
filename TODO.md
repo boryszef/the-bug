@@ -18,7 +18,7 @@
 ## DONE
 
 * retire the ratatui `tui` front end — `src/tui/` deleted, `gui`/`tui` Cargo features and the two-config build gone; `gui` (egui) is the only front end (docs/adr/0004)
-* functional-test scaffold — Gherkin scenarios run by cucumber-rs over game+viewmodel; shared core moved to `src/lib.rs`, one smoke scenario so far (docs/functional-tests.md, docs/adr/0003)
+* functional-test suite — Gherkin scenarios run by cucumber-rs over game+viewmodel (shared core moved to `src/lib.rs`); six feature files (experiment/craft/disassemble/hunting/quests/bag-storage), ~40 behaviour scenarios migrated out of `src/game/mod.rs`'s unit tests (docs/functional-tests.md, docs/adr/0003)
 
 * EPIC: more complex game mechanics
   * crafting/experimenting/disassembly should only be possible at the village — the gui disables the buttons away from it, no event is logged for the refusal (docs/village-crafting.md)
