@@ -1,8 +1,6 @@
 //! The map prepared for display: every tile paired with its world coordinates.
 
-use crate::game::{Map, MapTile};
-#[cfg(feature = "gui")]
-use crate::game::{Poi, TerrainType};
+use crate::game::{Map, MapTile, Poi, TerrainType};
 
 /// One tile's data as a renderer needs it: its world coordinates and the
 /// terrain to draw there.
@@ -10,10 +8,6 @@ use crate::game::{Poi, TerrainType};
 /// Owned rather than a `&MapTile` reference so a later increment can add
 /// `feature`/`connections` fields without a front end reaching back into the
 /// domain model — see `docs/gui-map.md`.
-///
-/// Only the `gui` front end consumes this; `#[cfg]`-gated so a `tui`-only
-/// build doesn't carry it as dead code.
-#[cfg(feature = "gui")]
 pub struct TileView {
     pub world: (i32, i32),
     pub terrain: TerrainType,
@@ -27,19 +21,16 @@ pub struct TileView {
 /// Every tile as a [`TileView`]. Thin adapter over [`world_tiles`] for now;
 /// the indirection is what lets both a procedural and a sprite renderer
 /// share one descriptor.
-#[cfg(feature = "gui")]
 pub fn tile_views(map: &Map) -> impl Iterator<Item = TileView> + '_ {
     world_tiles(map).map(move |(world, tile)| tile_view(map, world, tile))
 }
 
 /// The [`TileView`] for the tile at `world`, or `None` if that coordinate is
 /// off the map. Used to name the terrain / POI the player is standing on.
-#[cfg(feature = "gui")]
 pub fn tile_at(map: &Map, world: (i32, i32)) -> Option<TileView> {
     map.get_tile(world).map(|tile| tile_view(map, world, tile))
 }
 
-#[cfg(feature = "gui")]
 fn tile_view(map: &Map, world: (i32, i32), tile: &MapTile) -> TileView {
     TileView {
         world,
@@ -51,7 +42,6 @@ fn tile_view(map: &Map, world: (i32, i32), tile: &MapTile) -> TileView {
 
 /// Terrain of the four orthogonally-adjacent tiles — `[N, E, S, W]` in world
 /// space, `None` past the map edge.
-#[cfg(feature = "gui")]
 fn neighbours(map: &Map, (wx, wy): (i32, i32)) -> [Option<TerrainType>; 4] {
     [
         map.get_tile((wx, wy + 1)).map(|t| t.terrain_type), // North
@@ -64,7 +54,6 @@ fn neighbours(map: &Map, (wx, wy): (i32, i32)) -> [Option<TerrainType>; 4] {
 /// The fill colour for a terrain type, as raw `(r, g, b)` so the palette
 /// stays free of any toolkit's colour type — mirrors how
 /// [`TerrainType::symbol`] centralises the glyph.
-#[cfg(feature = "gui")]
 pub fn terrain_rgb(terrain: TerrainType) -> (u8, u8, u8) {
     match terrain {
         TerrainType::Meadow => (0x7c, 0xb3, 0x42),
@@ -88,9 +77,7 @@ pub fn world_tiles(map: &Map) -> impl Iterator<Item = ((i32, i32), &MapTile)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(feature = "gui")]
-    use crate::game::TerrainType;
-    use crate::game::{Player, Poi};
+    use crate::game::{Player, Poi, TerrainType};
 
     #[test]
     fn visits_every_tile() {
@@ -107,8 +94,6 @@ mod tests {
             .expect("a tile at the origin");
         assert_eq!(tile.poi, Some(Poi::Village));
     }
-
-    #[cfg(feature = "gui")]
     #[test]
     fn tile_views_pairs_every_world_coord_with_its_terrain() {
         let map = Map::new(&Player::default());
@@ -120,8 +105,6 @@ mod tests {
 
         assert_eq!(from_views, from_world_tiles);
     }
-
-    #[cfg(feature = "gui")]
     #[test]
     fn tile_views_reports_the_village_poi_at_the_origin() {
         let map = Map::new(&Player::default());
@@ -132,8 +115,6 @@ mod tests {
 
         assert_eq!(origin.poi, Some(Poi::Village));
     }
-
-    #[cfg(feature = "gui")]
     #[test]
     fn tile_at_returns_the_village_at_the_origin() {
         let map = Map::new(&Player::default());
@@ -143,15 +124,11 @@ mod tests {
         assert_eq!(here.world, (0, 0));
         assert_eq!(here.poi, Some(Poi::Village));
     }
-
-    #[cfg(feature = "gui")]
     #[test]
     fn tile_at_is_none_past_the_map_edge() {
         let map = Map::new(&Player::default());
         assert!(tile_at(&map, (9999, 9999)).is_none());
     }
-
-    #[cfg(feature = "gui")]
     #[test]
     fn tile_views_reports_each_tiles_four_neighbours() {
         use std::collections::HashMap;
@@ -172,8 +149,6 @@ mod tests {
             ]
         );
     }
-
-    #[cfg(feature = "gui")]
     #[test]
     fn tile_views_has_none_neighbours_past_the_map_edge() {
         let map = Map::new(&Player::default());
@@ -185,8 +160,6 @@ mod tests {
         assert!(corner.neighbours[2].is_some(), "South on the map");
         assert!(corner.neighbours[3].is_some(), "West on the map");
     }
-
-    #[cfg(feature = "gui")]
     #[test]
     fn terrain_rgb_is_distinct_per_terrain() {
         let colours = [

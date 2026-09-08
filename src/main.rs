@@ -7,13 +7,9 @@ use std::path::PathBuf;
 use clap::Parser;
 
 use the_bug::game::Game;
+use the_bug::gui;
 use the_bug::i18n::{self, Language};
 use the_bug::save;
-
-#[cfg(feature = "gui")]
-use the_bug::gui;
-#[cfg(feature = "tui")]
-use the_bug::tui;
 
 /// A tiny terminal survival game.
 #[derive(Parser)]
@@ -46,26 +42,11 @@ fn main() -> io::Result<()> {
 }
 
 /// Runs the graphical (egui) front end, then returns.
-#[cfg(feature = "gui")]
 fn run_frontend(game: Game, language: Language) -> io::Result<()> {
     if let Err(e) = gui::run(game, language) {
         eprintln!("gui error: {e}");
         std::process::exit(1);
     }
-    Ok(())
-}
-
-/// Runs the legacy terminal (ratatui) front end and saves on exit.
-#[cfg(all(feature = "tui", not(feature = "gui")))]
-fn run_frontend(game: Game, language: Language) -> io::Result<()> {
-    let mut app = tui::App::with_game(game, language);
-    ratatui::run(|terminal| app.run(terminal))?;
-
-    match save::save(app.game()) {
-        Ok(path) => println!("Game saved to {}", path.display()),
-        Err(e) => eprintln!("Warning: could not save game: {e}"),
-    }
-
     Ok(())
 }
 

@@ -19,8 +19,7 @@ use experiment::Experiment;
 use map::{MapCommand, MapView};
 
 /// Launches the egui/eframe front end on `game`, blocking until the window
-/// closes. Saves `game` to disk on close, mirroring `tui::App`'s
-/// save-on-exit in `main`.
+/// closes. Saves `game` to disk on close (see [`App::on_exit`]).
 pub fn run(game: Game, language: Language) -> eframe::Result<()> {
     eframe::run_native(
         "the-bug",
@@ -184,9 +183,8 @@ impl eframe::App for App {
 }
 
 /// The bottom hint bar's text: universal controls always, plus the Map
-/// tab's pan/zoom hint when it's active. The gui's counterpart of `tui`'s
-/// per-panel footer (`docs/panel-layout.md`), collapsed to one line since
-/// every other panel is self-evident buttons.
+/// tab's pan/zoom hint when it's active. Collapsed to one line since every
+/// other panel is self-evident buttons (`docs/panel-layout.md`).
 fn hint_text(panel: Panel, lang: Language) -> String {
     let mut hint = i18n::ui("gui-hint", lang);
     if panel == Panel::Map {
@@ -248,7 +246,7 @@ fn render_events(game: &Game, lang: Language, ui: &mut Ui) {
 }
 
 /// The colour an event-log line gets based on its kind; `None` keeps the
-/// default text color. Mirrors `tui::app::event_color`.
+/// default text color.
 fn event_color(kind: &EventKind) -> Option<Color32> {
     match kind {
         EventKind::Awoke => None,

@@ -114,7 +114,7 @@ player-inventory-empty = (empty)
 
 village-required-hint = You need to be in the Village to do this.
 
-## Items panel (gui only — the Bag/Inventory split; see
+## Items panel (the Bag/Inventory split; see
 ## docs/bag-and-storage.md). "panel-items-title" above doubles as this
 ## tab's heading.
 
@@ -122,21 +122,14 @@ items-bag-title = Bag: { $count }/{ $capacity }
 items-storage-title = Inventory
 items-bag-empty = Your bag is empty.
 items-storage-empty = Storage is empty.
-items-not-in-tui = Not available in this view — use the gui to manage your bag and storage.
 
 ## Craft panel.
 
 craft-empty = You haven't discovered any recipes yet.
-craft-hint = ↑↓ move   Enter craft   Esc cancel
-
-## Experiment panel.
-
-experiment-hint = ↑↓ move   ←→ add/remove   Tab switch column   e run   Esc cancel
 
 ## Disassemble panel.
 
 disassemble-empty = Nothing you're carrying can be taken apart.
-disassemble-hint = ↑↓ move   Enter take apart   Esc cancel
 
 ## Quests panel.
 
@@ -144,19 +137,8 @@ quests-active-none = No quest accepted.
 quests-active-blocked = Complete your active quest to accept another.
 quests-available-empty = No quests available right now.
 quests-completed-empty = No quests completed yet.
-quests-completed-none = Completed: (none yet)
-quests-completed = Completed: { $names }
 
-## Footer key hints, one per panel (src/tui/app.rs's render_footer).
-
-footer-map = ←↑↓→ move   s search   h hunt   [ ] panel   q quit
-footer-experiment = ↑↓ move   ←→ add/remove   Tab switch column   e run   [ ] panel   q quit
-footer-craft = ↑↓ move   Enter craft   [ ] panel   q quit
-footer-disassemble = ↑↓ move   Enter take apart   [ ] panel   q quit
-footer-quests = ↑↓ move   Enter accept   [ ] panel   q quit
-footer-items = [ ] panel   q quit
-
-## gui-only controls (src/gui/mod.rs's toolbar, panel buttons, hint bar).
+## Controls (src/gui/mod.rs's toolbar, panel buttons, hint bar).
 
 action-quit = Quit (q)
 action-experiment = Run experiment

@@ -1,9 +1,7 @@
-//! Which panel occupies a front end's central area, and the fixed order the
-//! `[` / `]` accelerators cycle it through. Shared by `gui::Panel` and
-//! `tui::app::Panel` (formerly duplicated verbatim in both — see
-//! docs/gui-panels.md) since the tab set and its order are UI-agnostic; each
-//! front end still owns its own label lookup (`gui`'s `title_id`, `tui`'s
-//! `footer-*` id mapping).
+//! Which panel occupies the front end's central area, and the fixed order the
+//! `[` / `]` accelerators cycle it through. The tab set and its order are
+//! UI-agnostic, so they live here; `gui` owns only its own label lookup
+//! (`title_id`). See docs/gui-panels.md.
 
 /// One of the five tabs a front end switches between. `ALL` is the single
 /// source of truth for their order — `next`/`prev` cycle through it rather

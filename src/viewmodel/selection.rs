@@ -72,20 +72,6 @@ impl ItemSelection {
         });
     }
 
-    /// `inventory` with the picked amounts removed (saturating): what can still
-    /// be added.
-    ///
-    /// Only `tui::experiment` renders a precomputed "available" column; the
-    /// `gui` subtracts per row inline — so this is unused (but still tested)
-    /// in a `gui`-only build.
-    #[cfg_attr(not(feature = "tui"), allow(dead_code))]
-    pub fn available(&self, inventory: &[(Item, u32)]) -> Vec<(Item, u32)> {
-        inventory
-            .iter()
-            .map(|&(item, owned)| (item, owned.saturating_sub(self.quantity(item))))
-            .collect()
-    }
-
     /// Takes the selection, leaving it empty.
     pub fn take(&mut self) -> Vec<(Item, u32)> {
         std::mem::take(&mut self.picked)
@@ -95,11 +81,7 @@ impl ItemSelection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::Item::{Branch, Stone, Vine};
-
-    fn inventory() -> Vec<(Item, u32)> {
-        vec![(Branch, 1), (Stone, 3), (Vine, 2)]
-    }
+    use crate::game::Item::{Branch, Stone};
 
     #[test]
     fn add_accumulates_and_caps_at_owned() {
@@ -125,16 +107,6 @@ mod tests {
         assert!(sel.decrement_at(0));
         assert!(sel.is_empty());
         assert!(!sel.decrement_at(0));
-    }
-
-    #[test]
-    fn available_subtracts_selection_saturating() {
-        let mut sel = ItemSelection::default();
-        sel.add(Branch, 1);
-        assert_eq!(
-            sel.available(&inventory()),
-            vec![(Branch, 0), (Stone, 3), (Vine, 2)]
-        );
     }
 
     #[test]

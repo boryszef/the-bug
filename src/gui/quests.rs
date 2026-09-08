@@ -1,8 +1,7 @@
 //! The Quests tab: the active quest's progress, quests available to accept,
 //! and completed quests — each of the latter two a collapsing section with
 //! its description, so completed quests read back as the story so far.
-//! Mirrors `tui::quests`'s data, but list-of-collapsing-sections replaces
-//! `tui`'s joined "Completed: A, B, C" line; mouse-driven — no cursor.
+//! Mouse-driven — no cursor.
 
 use eframe::egui::{self, Ui};
 

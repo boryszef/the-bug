@@ -1,8 +1,0 @@
-# Convenience aliases for building/running the legacy terminal front end
-# (the default build is the graphical `gui` one). See
-# docs/adr/0002-frontend-selected-at-build-time.md.
-[alias]
-run-tui = "run --no-default-features --features tui"
-build-tui = "build --no-default-features --features tui"
-test-tui = "test --no-default-features --features tui"
-clippy-tui = "clippy --all-targets --no-default-features --features tui"

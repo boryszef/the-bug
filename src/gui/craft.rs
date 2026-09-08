@@ -1,6 +1,6 @@
 //! The Craft tab: one row per known recipe — a button, disabled while the
 //! player can't afford its consumables, followed by each consumable as
-//! `have/need`. Mirrors `tui::craft`, mouse-driven — no cursor.
+//! `have/need`. Mouse-driven — no cursor.
 
 use eframe::egui::{self, Button, RichText, Ui};
 

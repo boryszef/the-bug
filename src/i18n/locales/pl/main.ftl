@@ -226,7 +226,7 @@ player-inventory-empty = (pusto)
 
 village-required-hint = Musisz być w osadzie, aby to zrobić.
 
-## Items panel (gui only — the Bag/Inventory split; see
+## Items panel (the Bag/Inventory split; see
 ## docs/bag-and-storage.md). "panel-items-title" above doubles as this
 ## tab's heading.
 
@@ -234,21 +234,14 @@ items-bag-title = Torba: { $count }/{ $capacity }
 items-storage-title = Ekwipunek
 items-bag-empty = Twoja torba jest pusta.
 items-storage-empty = Ekwipunek jest pusty.
-items-not-in-tui = Niedostępne w tym widoku — użyj gui, aby zarządzać torbą i ekwipunkiem.
 
 ## Craft panel.
 
 craft-empty = Nie odkryłeś jeszcze żadnych przepisów.
-craft-hint = ↑↓ ruch   Enter wytwórz   Esc anuluj
-
-## Experiment panel.
-
-experiment-hint = ↑↓ ruch   ←→ dodaj/usuń   Tab zmień kolumnę   e uruchom   Esc anuluj
 
 ## Disassemble panel.
 
 disassemble-empty = Nie masz nic, co dałoby się rozłożyć.
-disassemble-hint = ↑↓ ruch   Enter rozłóż   Esc anuluj
 
 ## Quests panel.
 
@@ -256,19 +249,8 @@ quests-active-none = Nie przyjęto żadnego zadania.
 quests-active-blocked = Ukończ aktywne zadanie, aby przyjąć kolejne.
 quests-available-empty = Brak dostępnych zadań.
 quests-completed-empty = Nie ukończono jeszcze żadnego zadania.
-quests-completed-none = Ukończone: (brak)
-quests-completed = Ukończone: { $names }
 
-## Footer key hints, one per panel.
-
-footer-map = ←↑↓→ ruch   s szukaj   h poluj   [ ] panel   q wyjście
-footer-experiment = ↑↓ ruch   ←→ dodaj/usuń   Tab zmień kolumnę   e uruchom   [ ] panel   q wyjście
-footer-craft = ↑↓ ruch   Enter wytwórz   [ ] panel   q wyjście
-footer-disassemble = ↑↓ ruch   Enter rozłóż   [ ] panel   q wyjście
-footer-quests = ↑↓ ruch   Enter przyjmij   [ ] panel   q wyjście
-footer-items = [ ] panel   q wyjście
-
-## Sterowanie tylko w gui (pasek narzędzi, przyciski paneli, pasek podpowiedzi w src/gui/mod.rs).
+## Sterowanie (pasek narzędzi, przyciski paneli, pasek podpowiedzi w src/gui/mod.rs).
 
 action-quit = Wyjście (q)
 action-experiment = Eksperymentuj

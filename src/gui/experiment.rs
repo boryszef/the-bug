@@ -1,6 +1,6 @@
 //! The Experiment tab: pick items from the inventory and try to discover a
-//! recipe. Mirrors `tui::experiment`, but mouse-driven — the only state is
-//! the running [`ItemSelection`]; there is no cursor.
+//! recipe. Mouse-driven — the only state is the running [`ItemSelection`];
+//! there is no cursor.
 
 use eframe::egui::{self, Button, RichText, Ui};
 

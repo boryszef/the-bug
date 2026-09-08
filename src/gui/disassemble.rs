@@ -1,5 +1,5 @@
 //! The Disassemble tab: a button per carried item that can be taken apart.
-//! Mirrors `tui::disassemble`, mouse-driven — no cursor.
+//! Mouse-driven — no cursor.
 
 use eframe::egui::{self, Button, RichText, Ui};
 
