@@ -229,6 +229,11 @@ pub fn event(kind: &EventKind, lang: Language) -> String {
             "event-experiment-failed",
             items = describe_items(items, lang)
         ),
+        EventKind::ExperimentMissingTool { items } => fl!(
+            loader,
+            "event-experiment-missing-tool",
+            items = describe_items(items, lang)
+        ),
         EventKind::Experimented {
             items,
             output,
@@ -515,6 +520,39 @@ mod tests {
     }
 
     #[test]
+    fn experiment_missing_tool_names_neither_the_tool_nor_the_output() {
+        // `1 Branch` matches the Arrow recipe (tool: Stone Axe) — but an
+        // experiment must not spoil either the product or the tool.
+        for lang in [Language::English, Language::Polish] {
+            let text = event(
+                &EventKind::ExperimentMissingTool {
+                    items: vec![(Item::Branch, 1)],
+                },
+                lang,
+            );
+            for leak in [
+                self::item(Item::Arrow, lang),
+                self::item(Item::StoneAxe, lang),
+            ] {
+                assert!(
+                    !text.contains(&leak),
+                    "{lang:?} rendered {text:?}, which leaks {leak:?}"
+                );
+            }
+        }
+
+        assert_eq!(
+            event(
+                &EventKind::ExperimentMissingTool {
+                    items: vec![(Item::Branch, 1)],
+                },
+                Language::English,
+            ),
+            "Experiment: 1 Branch -> you're missing a tool"
+        );
+    }
+
+    #[test]
     fn event_renders_crafted_in_polish_with_the_accusative_case() {
         let text = event(
             &EventKind::Crafted {
@@ -568,6 +606,9 @@ mod tests {
             },
             EventKind::ExperimentFailed {
                 items: vec![(Item::Vine, 1), (Item::Branch, 1)],
+            },
+            EventKind::ExperimentMissingTool {
+                items: vec![(Item::Branch, 1)],
             },
             EventKind::Experimented {
                 items: vec![(Item::Vine, 2)],

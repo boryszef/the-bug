@@ -59,7 +59,7 @@ Feature: Experimenting
     And storage contains 1 Stone Axe
     And an "Arrow" craft is offered in the craft menu
 
-  Scenario: Experiment matching a recipe without its tool learns nothing
+  Scenario: Experiment matching a recipe without its tool learns nothing and gives nothing away
     Given a new game
     And the player has 1 Branch in storage
     When the player experiments with 1 Branch
@@ -68,6 +68,7 @@ Feature: Experimenting
     And storage contains 0 Stone Axe
     And the recipe "Arrow" is not known
     And craft menu is empty
+    And the experiment reports only that a tool is missing
 
   Scenario: A disassemble-only item cannot be experimented into existence
     Given a new game

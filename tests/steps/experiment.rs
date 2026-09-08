@@ -3,7 +3,7 @@
 //! are in `common.rs`.
 
 use cucumber::{then, when};
-use the_bug::game::Item;
+use the_bug::game::{EventKind, Item};
 
 use crate::steps::world::{GameWorld, item};
 
@@ -57,4 +57,16 @@ async fn recipe_is_not_known(world: &mut GameWorld, recipe: String) {
 #[then(regex = r"^the player has (\d+) experience$")]
 async fn player_has_experience(world: &mut GameWorld, xp: u32) {
     assert_eq!(world.game.player.experience, xp);
+}
+
+#[then("the experiment reports only that a tool is missing")]
+async fn reports_missing_tool(world: &mut GameWorld) {
+    assert!(
+        matches!(
+            world.game.events().last().map(|e| e.kind()),
+            Some(EventKind::ExperimentMissingTool { .. })
+        ),
+        "last event is not ExperimentMissingTool: {:?}",
+        world.game.events().last().map(|e| e.kind())
+    );
 }

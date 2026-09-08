@@ -43,7 +43,7 @@ wording; a variant with no `.ftl` message would compile but render
 | Searching a tile | `Found` | `You find a Branch in the Forest.` |
 | Hunting a tile | `Hunted` / `HuntMissed` / `HuntUnprepared` | `Hunt: 1 Meat + 1 Hide.` / `Hunt: the quarry got away.` / `You need a Wooden Bow to hunt.` |
 | Crafting | `Crafted` / `CraftShortage` / `CraftMissingTool` / `UnknownRecipe` | `You craft a Cord.` / `You don't have enough Vine to craft a Cord.` |
-| Experimenting | `Experimented` / `ExperimentFailed` / `ExperimentShortage` | see below |
+| Experimenting | `Experimented` / `ExperimentFailed` / `ExperimentShortage` / `ExperimentMissingTool` | see below |
 | Disassembling | `Disassembled` | `You take apart a Stone Axe, recovering 1 Branch + 1 Stone + 1 Cord.` |
 | Accepting/completing a quest | `QuestAccepted` / `QuestCompleted` | — |
 | **Walking** | — | *not logged* |

@@ -18,6 +18,7 @@ event-craft-missing-tool = Potrzebujesz { $tool }, aby zrobić { $output }.
 event-crafted = Tworzysz { $output }.
 event-experiment-shortage = Eksperyment: { $items } -> za mało { $missing } (masz { $available }, potrzeba { $needed })
 event-experiment-failed = Eksperyment: { $items } -> klapa
+event-experiment-missing-tool = Eksperyment: { $items } -> brakuje narzędzia
 event-experimented = Eksperyment: { $items } -> { $output }{ $newly_learned ->
     [yes] { " (nowy przepis!)" }
    *[no] {""}

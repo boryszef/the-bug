@@ -2,7 +2,7 @@
 
 ## TODO
 
-* Experiment with 1 Branch and no Stone Axe produces message that reveals the recipe "you need a stone axe to make arrow"
+* when user is experimenting and hits the exact components for a missing recipe, signal this to the user ("Looks good!"), but don't say more than that
 * review events: event should reflect important messages coming from the game, not just reflect user actions - for example: finding an item should trigger an event, but trying to craft outside village should not. Also: a random roll merits a record even if it comes up empty, but only when the attempt had a real cost regardless of outcome (hunting always spends an arrow; searching costs nothing and is freely repeatable, so its silent miss is correct, not a gap) — docs/event-worthiness.md has the full rule and where every current EventKind stands against it
   * remove the log line for a pure refusal that changes nothing: UnknownRecipe, CraftShortage, CraftMissingTool (from craft() only - the experiment() trigger stays, since it happens after items are already spent), ExperimentShortage, HuntUnprepared
 * EPIC: improve the map
@@ -13,10 +13,10 @@
   * quests should have closing narrative, sometimes revealing part of the story, sometimes commenting the reward item
 * EPIC: the story
   * add more quests
-  * items should become enhancers and can be used in the game: axe allows to chop wood, metal detector improves the odds of finding metal-containing items (bow→hunt / arrows-spent done; satchel→+50 bag capacity done, docs/bag-and-storage.md)
 
 ## DONE
 
+* experiment tool-missing message no longer names the recipe — split `EventKind::ExperimentMissingTool { items }` off `CraftMissingTool`; experiment says only "you're missing a tool" (docs/recipe-tools.md)
 * retire the ratatui `tui` front end — `src/tui/` deleted, `gui`/`tui` Cargo features and the two-config build gone; `gui` (egui) is the only front end (docs/adr/0004)
 * functional-test suite — Gherkin scenarios run by cucumber-rs over game+viewmodel (shared core moved to `src/lib.rs`); six feature files (experiment/craft/disassemble/hunting/quests/bag-storage), ~40 behaviour scenarios migrated out of `src/game/mod.rs`'s unit tests (docs/functional-tests.md, docs/adr/0003)
 
@@ -24,6 +24,7 @@
   * crafting/experimenting/disassembly should only be possible at the village — the gui disables the buttons away from it, no event is logged for the refusal (docs/village-crafting.md)
   * Players "bag" should have a limited size, when full, the player should take their findings to the village and deposit them in the storage or drop — Bag (limited, BAG_CAPACITY=50) split from Storage (unlimited, was the whole inventory); gui Items tab to manage both (docs/bag-and-storage.md)
 * EPIC: the story
+  * items should become enhancers and can be used in the game: axe allows to chop wood, metal detector improves the odds of finding metal-containing items (bow→hunt / arrows-spent done; satchel→+50 bag capacity done, docs/bag-and-storage.md)
   * name of the quest should refer to the part of the story it tells, not the product or task
   * implement hunting: `h` on the Map tab, needs a bow held + spends an arrow, yields meat/bone/hide/fur on meadow/forest (docs/hunting.md)
 * BUG: "Znajdujesz Plastikowa Butelka" -> "Znajdujesz Plastikową Butelkę" (accusative)

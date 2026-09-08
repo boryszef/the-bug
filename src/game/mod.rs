@@ -354,13 +354,15 @@ impl Game {
             return;
         };
 
-        if let Some(tool) = self.player.first_missing_tool(recipe.tools()) {
+        if self.player.first_missing_tool(recipe.tools()).is_some() {
             // The combination was right, but a required tool isn't in hand —
             // the recipe isn't learned and nothing is produced (the
             // consumables are already spent, like any failed experiment).
-            self.log(EventKind::CraftMissingTool {
-                tool,
-                output: recipe.output(),
+            // The log names neither the tool nor the output: the player is
+            // discovering, and revealing either would give the recipe away
+            // (unlike `craft`, where the player already chose the recipe).
+            self.log(EventKind::ExperimentMissingTool {
+                items: items.to_vec(),
             });
             return;
         }
@@ -572,6 +574,26 @@ mod tests {
         let before = game.events().len();
         game.experiment(&[]);
         assert_eq!(game.events().len(), before);
+    }
+
+    #[test]
+    fn experiment_missing_its_tool_logs_without_naming_the_recipe() {
+        // 1 Branch matches the Arrow recipe, whose tool is a Stone Axe the
+        // player isn't holding. `craft` would say "you need a Stone Axe to
+        // make an Arrow"; an experiment must not — the player is discovering.
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Branch, 1);
+
+        game.experiment(&[(Item::Branch, 1)]);
+
+        assert_eq!(
+            last_event(&game).kind(),
+            &EventKind::ExperimentMissingTool {
+                items: vec![(Item::Branch, 1)],
+            }
+        );
+        // the failed experiment still spends the inputs
+        assert_eq!(game.player.inventory.get(&Item::Branch), None);
     }
 
     // The default player spawns at the world origin, which is always the

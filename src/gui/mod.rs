@@ -271,6 +271,7 @@ fn event_color(kind: &EventKind) -> Option<Color32> {
         | EventKind::Dropped { .. } => Some(Color32::YELLOW),
         EventKind::ExperimentShortage { .. }
         | EventKind::ExperimentFailed { .. }
+        | EventKind::ExperimentMissingTool { .. }
         | EventKind::Experimented { .. } => Some(Color32::CYAN),
     }
 }

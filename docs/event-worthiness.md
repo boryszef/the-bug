@@ -67,18 +67,20 @@ and stays silent for the same reason.
 | `Disassembled` | yes | no | keep — rule 1 |
 | `Hunted` | yes | yes | keep |
 | `HuntMissed` | yes (arrow already spent — `hunt` spends it *before* rolling) | yes, costly | keep — rule 1 and rule 2 agree |
-| `CraftMissingTool` (from `experiment`) | yes (items already spent by the time the tool check runs) | no | keep — rule 1 |
+| `ExperimentMissingTool` | yes (items already spent by the time the tool check runs) | no | keep — rule 1 |
 | `UnknownRecipe` | no | no | **candidate** — a pure refusal, same shape as the village check |
 | `CraftShortage` | no (checked before spending) | no | **candidate** |
 | `CraftMissingTool` (from `craft`) | no (checked before spending) | no | **candidate** |
 | `ExperimentShortage` | no (checked before spending) | no | **candidate** |
 | `HuntUnprepared` | no (returns before spending the arrow) | no | **candidate** |
 
-The same `EventKind` (`CraftMissingTool`) is logged from two call sites with
-different verdicts — `craft` catches it before spending anything (a
-candidate), `experiment` only reaches the check after the combination is
-already spent (a keeper). One variant, two different justifications; worth
-knowing if it's ever split or reworked.
+`CraftMissingTool` and `ExperimentMissingTool` used to be one variant
+(`CraftMissingTool`) logged from both `craft` and `experiment` with opposite
+verdicts — `craft` catches it before spending (a candidate for removal),
+`experiment` only after the combination is spent (a keeper). It was split
+when the experiment message had to stop naming the recipe it would have
+produced (`docs/recipe-tools.md`); the two justifications now live on two
+variants.
 
 ## Not a gap: search's silent miss
 

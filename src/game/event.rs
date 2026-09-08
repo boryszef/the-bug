@@ -37,6 +37,11 @@ pub enum EventKind {
     },
     /// Experimented with `items`; no recipe matched.
     ExperimentFailed { items: Vec<(Item, u32)> },
+    /// Experimented with `items` and the combination *did* match a recipe,
+    /// but a required tool wasn't held. Unlike `CraftMissingTool` this names
+    /// neither the tool nor the output — the player is discovering, and
+    /// either would give the recipe away.
+    ExperimentMissingTool { items: Vec<(Item, u32)> },
     /// Experimented with `items` and produced `output` — `newly_learned` is
     /// set the first time this recipe is discovered.
     Experimented {
