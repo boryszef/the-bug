@@ -28,7 +28,7 @@ event-dropped = You drop a { $item }.
 
 ## Item names (nominative), src/game/item.rs's Item.
 
-item-stick = Branch
+item-branch = Branch
 item-stone = Stone
 item-vine = Vine
 item-cord = Cord

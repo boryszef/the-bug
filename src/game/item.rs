@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Item {
-    Stick,
+    Branch,
     Stone,
     Vine,
     Cord,
@@ -42,7 +42,7 @@ impl Item {
     /// silently fall out of a hand-maintained sample list.
     #[cfg(test)]
     pub const ALL: [Item; 31] = [
-        Item::Stick,
+        Item::Branch,
         Item::Stone,
         Item::Vine,
         Item::Cord,

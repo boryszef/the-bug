@@ -36,17 +36,17 @@ Either way the log line is `EventKind::CraftMissingTool { tool, output }` →
 alongside `consumables`, and `enabled` requires every consumable met **and**
 every tool present. The `gui` panel renders each tool in the recipe's row as a
 bare item name — **no `have/need` number** — muted when held, in the error
-colour when missing (`Wooden Bow  1/1 Stick  0/1 Cord  Stone Axe`). The frozen
+colour when missing (`Wooden Bow  1/1 Branch  0/1 Cord  Stone Axe`). The frozen
 `tui` panel appends them in brackets on the row text
-(`Wooden Bow  (1/1 Stick, 0/1 Cord) [Stone Axe]`); it has no per-item colour, so
+(`Wooden Bow  (1/1 Branch, 0/1 Cord) [Stone Axe]`); it has no per-item colour, so
 a missing tool only shows via the row being dimmed.
 
 ### What requires what
 
 | Recipe | Consumables | Tools |
 |---|---|---|
-| Arrow | Stick ×1 | Stone Axe |
-| Wooden Bow | Stick ×1, Cord ×1 | Stone Axe |
+| Arrow | Branch ×1 | Stone Axe |
+| Wooden Bow | Branch ×1, Cord ×1 | Stone Axe |
 
 Every other recipe has `tools: &[]`.
 

@@ -36,7 +36,7 @@ pub fn combined_sorted(player: &Player) -> Vec<(Item, u32)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::Item::{Cord, Stick, Stone};
+    use crate::game::Item::{Branch, Cord, Stone};
 
     #[test]
     fn empty_inventory_yields_empty_list() {
@@ -47,29 +47,29 @@ mod tests {
     fn entries_are_sorted_by_item_order() {
         let mut player = Player::default();
         player.inventory.insert(Cord, 1);
-        player.inventory.insert(Stick, 4);
+        player.inventory.insert(Branch, 4);
         player.inventory.insert(Stone, 2);
 
-        assert_eq!(sorted(&player), vec![(Stick, 4), (Stone, 2), (Cord, 1)]);
+        assert_eq!(sorted(&player), vec![(Branch, 4), (Stone, 2), (Cord, 1)]);
     }
 
     #[test]
     fn zero_quantity_entries_are_omitted() {
         let mut player = Player::default();
-        player.inventory.insert(Stick, 3);
+        player.inventory.insert(Branch, 3);
         player.inventory.insert(Cord, 0);
 
-        assert_eq!(sorted(&player), vec![(Stick, 3)]);
+        assert_eq!(sorted(&player), vec![(Branch, 3)]);
     }
 
     #[test]
     fn combined_sorted_merges_storage_and_bag_quantities_for_the_same_item() {
         let mut player = Player::default();
-        player.inventory.insert(Stick, 3);
-        player.bag.insert(Stick, 2);
+        player.inventory.insert(Branch, 3);
+        player.bag.insert(Branch, 2);
         player.bag.insert(Stone, 1);
 
-        assert_eq!(combined_sorted(&player), vec![(Stick, 5), (Stone, 1)]);
+        assert_eq!(combined_sorted(&player), vec![(Branch, 5), (Stone, 1)]);
     }
 
     #[test]
@@ -77,8 +77,8 @@ mod tests {
         let mut player = Player::default();
         player.inventory.insert(Cord, 0);
         player.bag.insert(Cord, 0);
-        player.bag.insert(Stick, 2);
+        player.bag.insert(Branch, 2);
 
-        assert_eq!(combined_sorted(&player), vec![(Stick, 2)]);
+        assert_eq!(combined_sorted(&player), vec![(Branch, 2)]);
     }
 }

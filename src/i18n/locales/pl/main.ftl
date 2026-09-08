@@ -39,7 +39,7 @@ event-dropped = Wyrzucasz { $item }.
 ## consonant-stem feminine ones like "gałąź"), the `.accusative` just repeats
 ## the name.
 
-item-stick = Gałąź
+item-branch = Gałąź
     .genitive = gałęzi
     .genitive-plural = gałęzi
     .accusative = Gałąź

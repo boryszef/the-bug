@@ -27,7 +27,7 @@ stays small and editable:
   "player": {
     "level": 1,
     "coordinates": [0, 1],
-    "inventory": { "Vine": 3, "Stick": 1 },
+    "inventory": { "Vine": 3, "Branch": 1 },
     "recipes": ["Cord"]
   },
   "map": {

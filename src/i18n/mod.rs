@@ -287,7 +287,7 @@ pub fn event(kind: &EventKind, lang: Language) -> String {
 
 fn item_id(item: Item) -> &'static str {
     match item {
-        Item::Stick => "item-stick",
+        Item::Branch => "item-branch",
         Item::Stone => "item-stone",
         Item::Vine => "item-vine",
         Item::Cord => "item-cord",
@@ -404,7 +404,7 @@ pub fn ui_args(id: &str, lang: Language, args: HashMap<&str, FluentValue>) -> St
 }
 
 /// A sorted, `" + "`-joined rendering of a set of items with quantities, e.g.
-/// `"1 Stick + 1 Stone + 1 Cord"` — used inside event messages that carry a
+/// `"1 Branch + 1 Stone + 1 Cord"` — used inside event messages that carry a
 /// runtime list ([`EventKind::ExperimentShortage`] and friends).
 fn describe_items(items: &[(Item, u32)], lang: Language) -> String {
     let mut sorted = items.to_vec();
@@ -455,7 +455,7 @@ mod tests {
     fn event_renders_found_in_terrain_in_english() {
         let text = event(
             &EventKind::Found {
-                item: Item::Stick,
+                item: Item::Branch,
                 source: FoundIn::Terrain(TerrainType::Forest),
             },
             Language::English,
@@ -491,7 +491,7 @@ mod tests {
     fn event_renders_craft_shortage_in_polish_with_plural_genitive_and_accusative() {
         let text = event(
             &EventKind::CraftShortage {
-                needed: Item::Stick,
+                needed: Item::Branch,
                 output: Item::Arrow,
             },
             Language::Polish,
@@ -535,7 +535,7 @@ mod tests {
         let samples = [
             EventKind::Awoke,
             EventKind::Found {
-                item: Item::Stick,
+                item: Item::Branch,
                 source: FoundIn::Terrain(TerrainType::Forest),
             },
             EventKind::Found {
@@ -552,7 +552,7 @@ mod tests {
                 recipe: "Widget".to_string(),
             },
             EventKind::CraftShortage {
-                needed: Item::Stick,
+                needed: Item::Branch,
                 output: Item::Arrow,
             },
             EventKind::CraftMissingTool {
@@ -567,7 +567,7 @@ mod tests {
                 needed: 5,
             },
             EventKind::ExperimentFailed {
-                items: vec![(Item::Vine, 1), (Item::Stick, 1)],
+                items: vec![(Item::Vine, 1), (Item::Branch, 1)],
             },
             EventKind::Experimented {
                 items: vec![(Item::Vine, 2)],
@@ -584,7 +584,7 @@ mod tests {
             EventKind::HuntUnprepared {
                 missing: Item::Arrow,
             },
-            EventKind::BagFull { item: Item::Stick },
+            EventKind::BagFull { item: Item::Branch },
             EventKind::Dropped { item: Item::Vine },
         ];
 

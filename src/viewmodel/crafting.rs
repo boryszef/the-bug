@@ -152,7 +152,7 @@ mod tests {
     fn a_missing_tool_disables_the_option_even_with_every_consumable() {
         let mut game = Game::default();
         game.player.grant_recipe("Wooden Bow"); // needs a Stone Axe tool
-        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Branch, 1);
         game.player.inventory.insert(Item::Cord, 1);
 
         let opt = options(&game.player).pop().unwrap();

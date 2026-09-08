@@ -37,7 +37,7 @@ fn sorted(items: &HashMap<Item, u32>) -> Vec<(Item, u32)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::Item::{Cord, Stick, Stone};
+    use crate::game::Item::{Branch, Cord, Stone};
 
     #[test]
     fn empty_player_yields_empty_bag_and_storage() {
@@ -54,28 +54,28 @@ mod tests {
     fn bag_and_storage_are_each_sorted_by_item_order_independently() {
         let mut player = Player::default();
         player.bag.insert(Cord, 1);
-        player.bag.insert(Stick, 4);
+        player.bag.insert(Branch, 4);
         player.inventory.insert(Stone, 2);
 
         let overview = overview(&player);
 
-        assert_eq!(overview.bag, vec![(Stick, 4), (Cord, 1)]);
+        assert_eq!(overview.bag, vec![(Branch, 4), (Cord, 1)]);
         assert_eq!(overview.storage, vec![(Stone, 2)]);
     }
 
     #[test]
     fn zero_quantity_entries_are_omitted_from_the_bag() {
         let mut player = Player::default();
-        player.bag.insert(Stick, 3);
+        player.bag.insert(Branch, 3);
         player.bag.insert(Cord, 0);
 
-        assert_eq!(overview(&player).bag, vec![(Stick, 3)]);
+        assert_eq!(overview(&player).bag, vec![(Branch, 3)]);
     }
 
     #[test]
     fn bag_progress_reflects_the_bags_running_total() {
         let mut player = Player::default();
-        player.bag.insert(Stick, 3);
+        player.bag.insert(Branch, 3);
         player.bag.insert(Stone, 2);
 
         let capacity = Player::default().bag_progress().1;

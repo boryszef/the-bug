@@ -17,7 +17,7 @@ pub struct GameWorld {
 pub fn item(name: &str) -> Item {
     use Item::*;
     match name {
-        "Stick" => Stick,
+        "Branch" => Branch,
         "Stone" => Stone,
         "Vine" => Vine,
         "Cord" => Cord,

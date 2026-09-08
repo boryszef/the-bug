@@ -95,10 +95,10 @@ impl ItemSelection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::Item::{Stick, Stone, Vine};
+    use crate::game::Item::{Branch, Stone, Vine};
 
     fn inventory() -> Vec<(Item, u32)> {
-        vec![(Stick, 1), (Stone, 3), (Vine, 2)]
+        vec![(Branch, 1), (Stone, 3), (Vine, 2)]
     }
 
     #[test]
@@ -109,9 +109,9 @@ mod tests {
         assert_eq!(sel.quantity(Stone), 2);
 
         for _ in 0..5 {
-            sel.add(Stick, 1);
+            sel.add(Branch, 1);
         }
-        assert_eq!(sel.quantity(Stick), 1);
+        assert_eq!(sel.quantity(Branch), 1);
     }
 
     #[test]
@@ -130,18 +130,18 @@ mod tests {
     #[test]
     fn available_subtracts_selection_saturating() {
         let mut sel = ItemSelection::default();
-        sel.add(Stick, 1);
+        sel.add(Branch, 1);
         assert_eq!(
             sel.available(&inventory()),
-            vec![(Stick, 0), (Stone, 3), (Vine, 2)]
+            vec![(Branch, 0), (Stone, 3), (Vine, 2)]
         );
     }
 
     #[test]
     fn take_empties_the_selection() {
         let mut sel = ItemSelection::default();
-        sel.add(Stick, 1);
-        assert_eq!(sel.take(), vec![(Stick, 1)]);
+        sel.add(Branch, 1);
+        assert_eq!(sel.take(), vec![(Branch, 1)]);
         assert!(sel.is_empty());
     }
 
@@ -160,10 +160,10 @@ mod tests {
     #[test]
     fn clamp_to_drops_an_entry_the_stock_no_longer_has() {
         let mut sel = ItemSelection::default();
-        sel.add(Stick, 1);
+        sel.add(Branch, 1);
         sel.add(Stone, 1);
 
-        sel.clamp_to(&[(Stone, 1)]); // Stick is gone from the inventory entirely
+        sel.clamp_to(&[(Stone, 1)]); // Branch is gone from the inventory entirely
 
         assert_eq!(sel.items(), &[(Stone, 1)]);
     }
@@ -171,12 +171,12 @@ mod tests {
     #[test]
     fn clamp_to_leaves_a_selection_the_stock_still_covers_untouched() {
         let mut sel = ItemSelection::default();
-        sel.add(Stick, 1);
+        sel.add(Branch, 1);
         sel.add(Stone, 5);
         sel.add(Stone, 5);
 
-        sel.clamp_to(&[(Stick, 1), (Stone, 5)]); // Stone grew, Stick unchanged
+        sel.clamp_to(&[(Branch, 1), (Stone, 5)]); // Stone grew, Branch unchanged
 
-        assert_eq!(sel.items(), &[(Stick, 1), (Stone, 2)]);
+        assert_eq!(sel.items(), &[(Branch, 1), (Stone, 2)]);
     }
 }

@@ -267,14 +267,14 @@ mod tests {
         let mut game = Game::default();
         game.player.coordinates = (2, -1);
         game.player.inventory.insert(Item::Vine, 5);
-        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Branch, 1);
         game.player.grant_recipe("Cord");
 
         let restored = roundtrip(&game);
 
         assert_eq!(restored.player.coordinates, (2, -1));
         assert_eq!(restored.player.inventory.get(&Item::Vine), Some(&5));
-        assert_eq!(restored.player.inventory.get(&Item::Stick), Some(&1));
+        assert_eq!(restored.player.inventory.get(&Item::Branch), Some(&1));
         let recipes: Vec<&str> = restored
             .player
             .known_recipes()
@@ -288,12 +288,12 @@ mod tests {
     fn bag_survives_round_trip() {
         let mut game = Game::default();
         game.player.bag.insert(Item::Vine, 4);
-        game.player.bag.insert(Item::Stick, 1);
+        game.player.bag.insert(Item::Branch, 1);
 
         let restored = roundtrip(&game);
 
         assert_eq!(restored.player.bag.get(&Item::Vine), Some(&4));
-        assert_eq!(restored.player.bag.get(&Item::Stick), Some(&1));
+        assert_eq!(restored.player.bag.get(&Item::Branch), Some(&1));
     }
 
     #[test]

@@ -116,7 +116,7 @@ impl fmt::Display for MapTile {
 /// Items a tile's *terrain* can turn up when searched, with the base
 /// probability per search.
 const TERRAIN_ITEMS: &[(TerrainType, Item, f64)] = &[
-    (TerrainType::Forest, Item::Stick, 0.5),
+    (TerrainType::Forest, Item::Branch, 0.5),
     (TerrainType::Meadow, Item::Vine, 0.3),
 ];
 
@@ -532,10 +532,10 @@ mod tests {
 
     #[test]
     fn a_poi_tile_yields_its_terrain_items_and_its_poi_items() {
-        // A cave on forest offers Stick (forest) and Stone (cave).
+        // A cave on forest offers Branch (forest) and Stone (cave).
         let tile = MapTile::with_terrain_and_poi(TerrainType::Forest, Some(Poi::Cave));
         assert_eq!(
-            tile.items.get(&Item::Stick).map(|&(_, s)| s),
+            tile.items.get(&Item::Branch).map(|&(_, s)| s),
             Some(FoundIn::Terrain(TerrainType::Forest))
         );
         assert_eq!(

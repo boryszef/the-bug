@@ -31,7 +31,7 @@ Unchecked `u32` subtraction. `ItemSelection` lives on `App` and survives tab
 switches, but `owned` is re-read from the live inventory every frame, so the
 selection can outlive the stock it was capped against:
 
-1. Hold 3 Branches. On Experiment, click Branch three times → selection `(Stick, 3)`.
+1. Hold 3 Branches. On Experiment, click Branch three times → selection `(Branch, 3)`.
 2. Switch to Craft, craft an Arrow (spends 1 Branch) → stock is 2.
 3. Switch back to Experiment → `2 - 3` underflows.
 

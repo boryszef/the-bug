@@ -525,13 +525,13 @@ mod tests {
 
         // failure: shows the items tried
         let mut game = Game::default();
-        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Branch, 1);
         game.player.inventory.insert(Item::Vine, 1);
-        game.experiment(&[(Item::Vine, 1), (Item::Stick, 1)]);
+        game.experiment(&[(Item::Vine, 1), (Item::Branch, 1)]);
         assert_eq!(
             last_event(&game).kind(),
             &EventKind::ExperimentFailed {
-                items: vec![(Item::Vine, 1), (Item::Stick, 1)],
+                items: vec![(Item::Vine, 1), (Item::Branch, 1)],
             }
         );
 
@@ -618,7 +618,7 @@ mod tests {
 
         assert_eq!(game.events().len(), events_before);
         assert_eq!(game.player.inventory.get(&Item::StoneAxe), Some(&1));
-        assert_eq!(game.player.inventory.get(&Item::Stick), None);
+        assert_eq!(game.player.inventory.get(&Item::Branch), None);
     }
 
     #[test]
@@ -643,7 +643,7 @@ mod tests {
         let mut game = Game::default();
         assert_eq!(game.player.bag_total(), 0);
 
-        game.player.add_to_bag(Item::Stick, 3);
+        game.player.add_to_bag(Item::Branch, 3);
         game.player.add_to_bag(Item::Stone, 2);
 
         assert_eq!(game.player.bag_total(), 5);
@@ -653,9 +653,9 @@ mod tests {
     fn add_to_bag_fits_within_capacity() {
         let mut game = Game::default();
 
-        assert!(game.player.add_to_bag(Item::Stick, player::BAG_CAPACITY));
+        assert!(game.player.add_to_bag(Item::Branch, player::BAG_CAPACITY));
 
-        assert_eq!(game.player.bag_count(Item::Stick), player::BAG_CAPACITY);
+        assert_eq!(game.player.bag_count(Item::Branch), player::BAG_CAPACITY);
         assert_eq!(game.player.bag_total(), player::BAG_CAPACITY);
     }
 
@@ -663,7 +663,7 @@ mod tests {
     fn add_to_bag_rejects_an_amount_that_would_exceed_capacity() {
         let mut game = Game::default();
         game.player
-            .add_to_bag(Item::Stick, player::BAG_CAPACITY - 1);
+            .add_to_bag(Item::Branch, player::BAG_CAPACITY - 1);
 
         // one more than fits: rejected entirely, not partially added
         assert!(!game.player.add_to_bag(Item::Stone, 2));
@@ -675,15 +675,15 @@ mod tests {
     #[test]
     fn has_item_in_bag_and_bag_count_reflect_the_bag_not_storage() {
         let mut game = Game::default();
-        game.player.inventory.insert(Item::Stick, 5); // storage, not bag
+        game.player.inventory.insert(Item::Branch, 5); // storage, not bag
 
-        assert!(!game.player.has_item_in_bag(Item::Stick));
-        assert_eq!(game.player.bag_count(Item::Stick), 0);
+        assert!(!game.player.has_item_in_bag(Item::Branch));
+        assert_eq!(game.player.bag_count(Item::Branch), 0);
 
-        game.player.add_to_bag(Item::Stick, 1);
+        game.player.add_to_bag(Item::Branch, 1);
 
-        assert!(game.player.has_item_in_bag(Item::Stick));
-        assert_eq!(game.player.bag_count(Item::Stick), 1);
+        assert!(game.player.has_item_in_bag(Item::Branch));
+        assert_eq!(game.player.bag_count(Item::Branch), 1);
     }
 
     #[test]
@@ -734,7 +734,7 @@ mod tests {
     fn transfer_to_bag_fails_when_the_bag_has_no_room_and_leaves_storage_untouched() {
         let mut game = Game::default();
         game.player.inventory.insert(Item::Vine, 5);
-        game.player.add_to_bag(Item::Stick, player::BAG_CAPACITY); // bag full
+        game.player.add_to_bag(Item::Branch, player::BAG_CAPACITY); // bag full
 
         assert!(!game.player.transfer_to_bag(Item::Vine, 1));
 
@@ -969,7 +969,7 @@ mod tests {
     fn craft_without_the_required_tool_is_blocked() {
         let mut game = Game::default();
         game.player.grant_recipe("Wooden Bow");
-        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Branch, 1);
         game.player.inventory.insert(Item::Cord, 1);
 
         game.craft("Wooden Bow"); // needs a Stone Axe, not holding one
@@ -983,7 +983,7 @@ mod tests {
         );
         assert_eq!(game.player.inventory.get(&Item::WoodenBow), None);
         // craft checks before spending — the consumables are untouched
-        assert_eq!(game.player.inventory.get(&Item::Stick), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::Branch), Some(&1));
         assert_eq!(game.player.inventory.get(&Item::Cord), Some(&1));
     }
 
@@ -991,14 +991,14 @@ mod tests {
     fn craft_does_not_consume_the_tool() {
         let mut game = Game::default();
         game.player.grant_recipe("Wooden Bow");
-        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Branch, 1);
         game.player.inventory.insert(Item::Cord, 1);
         game.player.inventory.insert(Item::StoneAxe, 1);
 
         game.craft("Wooden Bow");
 
         assert_eq!(game.player.inventory.get(&Item::WoodenBow), Some(&1));
-        assert_eq!(game.player.inventory.get(&Item::Stick), None);
+        assert_eq!(game.player.inventory.get(&Item::Branch), None);
         assert_eq!(game.player.inventory.get(&Item::Cord), None);
         assert_eq!(game.player.inventory.get(&Item::StoneAxe), Some(&1));
     }
@@ -1006,10 +1006,10 @@ mod tests {
     #[test]
     fn experiment_matching_a_recipe_without_its_tool_fails() {
         let mut game = Game::default();
-        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Branch, 1);
         game.player.inventory.insert(Item::Cord, 1);
 
-        game.experiment(&[(Item::Stick, 1), (Item::Cord, 1)]); // Wooden Bow, no axe
+        game.experiment(&[(Item::Branch, 1), (Item::Cord, 1)]); // Wooden Bow, no axe
 
         assert_eq!(
             last_event(&game).kind(),
@@ -1020,7 +1020,7 @@ mod tests {
         );
         assert_eq!(game.player.inventory.get(&Item::WoodenBow), None);
         // a failed experiment still spends the combination
-        assert_eq!(game.player.inventory.get(&Item::Stick), None);
+        assert_eq!(game.player.inventory.get(&Item::Branch), None);
         assert_eq!(game.player.inventory.get(&Item::Cord), None);
         assert!(
             game.player
@@ -1033,11 +1033,11 @@ mod tests {
     #[test]
     fn experiment_with_the_tool_present_discovers_and_builds() {
         let mut game = Game::default();
-        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Branch, 1);
         game.player.inventory.insert(Item::Cord, 1);
         game.player.inventory.insert(Item::StoneAxe, 1);
 
-        game.experiment(&[(Item::Stick, 1), (Item::Cord, 1)]);
+        game.experiment(&[(Item::Branch, 1), (Item::Cord, 1)]);
 
         assert_eq!(game.player.inventory.get(&Item::WoodenBow), Some(&1));
         assert_eq!(game.player.inventory.get(&Item::StoneAxe), Some(&1));
@@ -1146,7 +1146,7 @@ mod tests {
         let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
         game.map.tiles[ty][tx] = MapTile {
             items: HashMap::from([
-                (Item::Stick, (1.0, FoundIn::Terrain(TerrainType::Forest))),
+                (Item::Branch, (1.0, FoundIn::Terrain(TerrainType::Forest))),
                 (Item::Stone, (1.0, FoundIn::Poi(Poi::Cave))),
             ]),
             ..MapTile::with_terrain_and_poi(TerrainType::Forest, Some(Poi::Cave))
@@ -1156,7 +1156,7 @@ mod tests {
         game.search();
 
         // found items go into the bag, not storage
-        assert_eq!(game.player.bag.get(&Item::Stick), Some(&1));
+        assert_eq!(game.player.bag.get(&Item::Branch), Some(&1));
         assert_eq!(game.player.bag.get(&Item::Stone), Some(&1));
         assert!(game.player.inventory.is_empty());
         assert_eq!(game.events().len(), before + 2);
@@ -1177,7 +1177,7 @@ mod tests {
         let mut game = Game::default();
         game.player.bag.insert(Item::Stone, player::BAG_CAPACITY); // no room left
         let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
-        let mut tile = MapTile::with_terrain(TerrainType::Forest); // yields Stick
+        let mut tile = MapTile::with_terrain(TerrainType::Forest); // yields Branch
         for (probability, _) in tile.items.values_mut() {
             *probability = 1.0; // a sure find, not a coin flip
         }
@@ -1187,9 +1187,9 @@ mod tests {
 
         assert_eq!(
             last_event(&game).kind(),
-            &EventKind::BagFull { item: Item::Stick }
+            &EventKind::BagFull { item: Item::Branch }
         );
-        assert_eq!(game.player.bag.get(&Item::Stick), None);
+        assert_eq!(game.player.bag.get(&Item::Branch), None);
     }
 
     /// Puts the player on a Meadow tile whose game is a sure thing (every
@@ -1292,7 +1292,7 @@ mod tests {
         let carried = game.player.bag_total();
         game.player
             .bag
-            .insert(Item::Stick, player::BAG_CAPACITY - carried - 1);
+            .insert(Item::Branch, player::BAG_CAPACITY - carried - 1);
 
         game.player
             .restore_quest_state(None, 0, vec![QuestID::CraftAxe]);
@@ -1320,7 +1320,7 @@ mod tests {
         game.disassemble(Item::StoneAxe);
 
         assert_eq!(game.player.inventory.get(&Item::StoneAxe), None);
-        assert_eq!(game.player.inventory.get(&Item::Stick), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::Branch), Some(&1));
         assert_eq!(game.player.inventory.get(&Item::Stone), Some(&1));
         assert_eq!(game.player.inventory.get(&Item::Cord), Some(&1));
     }
@@ -1335,7 +1335,7 @@ mod tests {
         // recovered components always land in storage, regardless of
         // where the disassembled item itself came from
         assert_eq!(game.player.bag.get(&Item::StoneAxe), None);
-        assert_eq!(game.player.inventory.get(&Item::Stick), Some(&1));
+        assert_eq!(game.player.inventory.get(&Item::Branch), Some(&1));
         assert_eq!(game.player.inventory.get(&Item::Stone), Some(&1));
         assert_eq!(game.player.inventory.get(&Item::Cord), Some(&1));
     }
@@ -1364,7 +1364,7 @@ mod tests {
         game.disassemble(Item::Arrow);
 
         assert_eq!(game.player.inventory.get(&Item::Arrow), Some(&1));
-        assert_eq!(game.player.inventory.get(&Item::Stick), None);
+        assert_eq!(game.player.inventory.get(&Item::Branch), None);
         assert_eq!(game.events().len(), before);
     }
 
@@ -1383,11 +1383,11 @@ mod tests {
     fn disassemble_stacks_components_onto_existing_entries() {
         let mut game = Game::default();
         game.player.inventory.insert(Item::StoneAxe, 1);
-        game.player.inventory.insert(Item::Stick, 2);
+        game.player.inventory.insert(Item::Branch, 2);
 
         game.disassemble(Item::StoneAxe);
 
-        assert_eq!(game.player.inventory.get(&Item::Stick), Some(&3));
+        assert_eq!(game.player.inventory.get(&Item::Branch), Some(&3));
     }
 
     #[test]
@@ -1547,7 +1547,7 @@ mod tests {
     fn crafting_the_target_item_completes_the_quest() {
         let mut game = game_with_the_axe_quest_unlocked();
         game.player.grant_recipe("Stone Axe");
-        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Branch, 1);
         game.player.inventory.insert(Item::Stone, 1);
         game.player.inventory.insert(Item::Cord, 1);
         game.accept_quest(QuestID::CraftAxe).unwrap();
@@ -1569,7 +1569,7 @@ mod tests {
         // as "quest complete" above "you craft the axe".
         let mut game = game_with_the_axe_quest_unlocked();
         game.player.grant_recipe("Stone Axe");
-        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Branch, 1);
         game.player.inventory.insert(Item::Stone, 1);
         game.player.inventory.insert(Item::Cord, 1);
         game.accept_quest(QuestID::CraftAxe).unwrap();
@@ -1612,12 +1612,12 @@ mod tests {
     #[test]
     fn experimenting_the_target_item_also_counts_toward_the_quest() {
         let mut game = game_with_the_axe_quest_unlocked();
-        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Branch, 1);
         game.player.inventory.insert(Item::Stone, 1);
         game.player.inventory.insert(Item::Cord, 1);
         game.accept_quest(QuestID::CraftAxe).unwrap();
 
-        game.experiment(&[(Item::Stick, 1), (Item::Stone, 1), (Item::Cord, 1)]);
+        game.experiment(&[(Item::Branch, 1), (Item::Stone, 1), (Item::Cord, 1)]);
 
         // experimenting the target item advances the quest, same as crafting it
         assert!(game.player.completed_quests().contains(&QuestID::CraftAxe));
@@ -1626,12 +1626,12 @@ mod tests {
     #[test]
     fn experimenting_the_target_item_logs_the_experiment_before_the_quest_completion() {
         let mut game = game_with_the_axe_quest_unlocked();
-        game.player.inventory.insert(Item::Stick, 1);
+        game.player.inventory.insert(Item::Branch, 1);
         game.player.inventory.insert(Item::Stone, 1);
         game.player.inventory.insert(Item::Cord, 1);
         game.accept_quest(QuestID::CraftAxe).unwrap();
 
-        game.experiment(&[(Item::Stick, 1), (Item::Stone, 1), (Item::Cord, 1)]);
+        game.experiment(&[(Item::Branch, 1), (Item::Stone, 1), (Item::Cord, 1)]);
 
         let kinds: Vec<&EventKind> = game
             .events()
@@ -1647,7 +1647,7 @@ mod tests {
                     quest: QuestID::CraftAxe
                 },
                 &EventKind::Experimented {
-                    items: vec![(Item::Stick, 1), (Item::Stone, 1), (Item::Cord, 1)],
+                    items: vec![(Item::Branch, 1), (Item::Stone, 1), (Item::Cord, 1)],
                     output: Item::StoneAxe,
                     newly_learned: true,
                 },

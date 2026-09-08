@@ -64,14 +64,14 @@ impl PartialEq for Recipe {
 pub(super) const RECIPES: &[Recipe] = &[
     Recipe {
         name: "Arrow",
-        consumables: &[(Item::Stick, 1)],
+        consumables: &[(Item::Branch, 1)],
         tools: &[Item::StoneAxe],
         output: Item::Arrow,
         flow: RecipeFlow::CraftOnly,
     },
     Recipe {
         name: "Wooden Bow",
-        consumables: &[(Item::Stick, 1), (Item::Cord, 1)],
+        consumables: &[(Item::Branch, 1), (Item::Cord, 1)],
         tools: &[Item::StoneAxe],
         output: Item::WoodenBow,
         flow: RecipeFlow::Both,
@@ -85,7 +85,7 @@ pub(super) const RECIPES: &[Recipe] = &[
     },
     Recipe {
         name: "Stone Axe",
-        consumables: &[(Item::Stick, 1), (Item::Stone, 1), (Item::Cord, 1)],
+        consumables: &[(Item::Branch, 1), (Item::Stone, 1), (Item::Cord, 1)],
         tools: &[],
         output: Item::StoneAxe,
         flow: RecipeFlow::Both,
@@ -180,7 +180,7 @@ mod tests {
             name: "x",
             consumables: &[],
             tools: &[],
-            output: Item::Stick,
+            output: Item::Branch,
             flow,
         }
     }

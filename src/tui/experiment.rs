@@ -178,11 +178,11 @@ fn item_list(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::Item::{Stick, Stone, Vine};
+    use crate::game::Item::{Branch, Stone, Vine};
 
     /// Sorted the same way `viewmodel::inventory::sorted` sorts.
     fn inventory() -> Vec<(Item, u32)> {
-        vec![(Stick, 1), (Stone, 3), (Vine, 2)]
+        vec![(Branch, 1), (Stone, 3), (Vine, 2)]
     }
 
     #[test]
@@ -206,7 +206,7 @@ mod tests {
     fn cursor_down_stops_at_selected_end() {
         let mut exp = Experiment::default();
         let inv = inventory();
-        exp.handle_key(KeyCode::Right, &inv); // select Stick
+        exp.handle_key(KeyCode::Right, &inv); // select Branch
         exp.handle_key(KeyCode::Down, &inv);
         exp.handle_key(KeyCode::Right, &inv); // select Stone
         exp.handle_key(KeyCode::Tab, &inv); // focus Selected, cursor 0
@@ -261,11 +261,11 @@ mod tests {
         let mut exp = Experiment::default();
         let inv = inventory();
         for _ in 0..5 {
-            exp.handle_key(KeyCode::Right, &inv); // Stick, owned 1
+            exp.handle_key(KeyCode::Right, &inv); // Branch, owned 1
         }
         assert_eq!(
             exp.handle_key(KeyCode::Char('e'), &inv),
-            Outcome::Run(vec![(Stick, 1)])
+            Outcome::Run(vec![(Branch, 1)])
         );
     }
 
@@ -273,12 +273,12 @@ mod tests {
     fn right_is_noop_when_focus_is_selected() {
         let mut exp = Experiment::default();
         let inv = inventory();
-        exp.handle_key(KeyCode::Right, &inv); // select Stick
+        exp.handle_key(KeyCode::Right, &inv); // select Branch
         exp.handle_key(KeyCode::Tab, &inv); // focus Selected
         exp.handle_key(KeyCode::Right, &inv); // no-op
         assert_eq!(
             exp.handle_key(KeyCode::Char('e'), &inv),
-            Outcome::Run(vec![(Stick, 1)])
+            Outcome::Run(vec![(Branch, 1)])
         );
     }
 
@@ -303,11 +303,11 @@ mod tests {
     fn left_is_noop_when_focus_is_available() {
         let mut exp = Experiment::default();
         let inv = inventory();
-        exp.handle_key(KeyCode::Right, &inv); // select Stick
+        exp.handle_key(KeyCode::Right, &inv); // select Branch
         exp.handle_key(KeyCode::Left, &inv); // focus still Available -> no-op
         assert_eq!(
             exp.handle_key(KeyCode::Char('e'), &inv),
-            Outcome::Run(vec![(Stick, 1)])
+            Outcome::Run(vec![(Branch, 1)])
         );
     }
 
@@ -331,7 +331,7 @@ mod tests {
         exp.handle_key(KeyCode::Right, &inv);
         assert_eq!(
             exp.handle_key(KeyCode::Char('e'), &inv),
-            Outcome::Run(vec![(Stick, 1)])
+            Outcome::Run(vec![(Branch, 1)])
         );
         assert!(exp.selection.is_empty());
     }
