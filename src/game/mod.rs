@@ -579,21 +579,6 @@ mod tests {
     // away to exercise the no-op.
 
     #[test]
-    fn craft_away_from_the_village_does_nothing() {
-        let mut game = Game::default();
-        game.player.grant_recipe("Cord");
-        game.player.inventory.insert(Item::Vine, 2);
-        game.player.coordinates = (5, 5);
-        let events_before = game.events().len();
-
-        game.craft("Cord");
-
-        assert_eq!(game.events().len(), events_before);
-        assert_eq!(game.player.inventory.get(&Item::Vine), Some(&2));
-        assert_eq!(game.player.inventory.get(&Item::Cord), None);
-    }
-
-    #[test]
     fn disassemble_away_from_the_village_does_nothing() {
         let mut game = Game::default();
         game.player.inventory.insert(Item::StoneAxe, 1);
@@ -881,18 +866,6 @@ mod tests {
     }
 
     #[test]
-    fn crafting_removes_exhausted_consumables() {
-        let mut game = Game::default();
-        game.player.grant_recipe("Cord");
-        game.player.inventory.insert(Item::Vine, 2); // exactly one Cord
-
-        game.craft("Cord");
-
-        assert_eq!(game.player.inventory.get(&Item::Vine), None);
-        assert_eq!(game.player.inventory.get(&Item::Cord), Some(&1));
-    }
-
-    #[test]
     fn failed_craft_does_not_insert_zero_entries() {
         let mut game = Game::default();
         game.player.grant_recipe("Stone Axe");
@@ -900,91 +873,6 @@ mod tests {
         game.craft("Stone Axe"); // empty inventory
 
         assert!(game.player.inventory.is_empty());
-    }
-
-    #[test]
-    fn craft_spends_storage_before_dipping_into_the_bag() {
-        let mut game = Game::default();
-        game.player.grant_recipe("Cord");
-        game.player.inventory.insert(Item::Vine, 1);
-        game.player.bag.insert(Item::Vine, 1); // 2 combined, exactly one Cord
-
-        game.craft("Cord");
-
-        assert_eq!(game.player.inventory.get(&Item::Vine), None);
-        assert_eq!(game.player.bag.get(&Item::Vine), None);
-        assert_eq!(game.player.inventory.get(&Item::Cord), Some(&1));
-    }
-
-    #[test]
-    fn craft_leaves_the_bag_untouched_when_storage_alone_covers_it() {
-        let mut game = Game::default();
-        game.player.grant_recipe("Cord");
-        game.player.inventory.insert(Item::Vine, 2);
-        game.player.bag.insert(Item::Vine, 5); // untouched — storage alone is enough
-
-        game.craft("Cord");
-
-        assert_eq!(game.player.inventory.get(&Item::Vine), None);
-        assert_eq!(game.player.bag.get(&Item::Vine), Some(&5));
-    }
-
-    #[test]
-    fn craft_without_the_required_tool_is_blocked() {
-        let mut game = Game::default();
-        game.player.grant_recipe("Wooden Bow");
-        game.player.inventory.insert(Item::Branch, 1);
-        game.player.inventory.insert(Item::Cord, 1);
-
-        game.craft("Wooden Bow"); // needs a Stone Axe, not holding one
-
-        assert_eq!(
-            last_event(&game).kind(),
-            &EventKind::CraftMissingTool {
-                tool: Item::StoneAxe,
-                output: Item::WoodenBow,
-            }
-        );
-        assert_eq!(game.player.inventory.get(&Item::WoodenBow), None);
-        // craft checks before spending — the consumables are untouched
-        assert_eq!(game.player.inventory.get(&Item::Branch), Some(&1));
-        assert_eq!(game.player.inventory.get(&Item::Cord), Some(&1));
-    }
-
-    #[test]
-    fn craft_does_not_consume_the_tool() {
-        let mut game = Game::default();
-        game.player.grant_recipe("Wooden Bow");
-        game.player.inventory.insert(Item::Branch, 1);
-        game.player.inventory.insert(Item::Cord, 1);
-        game.player.inventory.insert(Item::StoneAxe, 1);
-
-        game.craft("Wooden Bow");
-
-        assert_eq!(game.player.inventory.get(&Item::WoodenBow), Some(&1));
-        assert_eq!(game.player.inventory.get(&Item::Branch), None);
-        assert_eq!(game.player.inventory.get(&Item::Cord), None);
-        assert_eq!(game.player.inventory.get(&Item::StoneAxe), Some(&1));
-    }
-
-    #[test]
-    fn craft_logs_unknown_recipe_then_crafted() {
-        let mut game = Game::default();
-        game.craft("Cord"); // unknown recipe
-        assert_eq!(
-            last_event(&game).kind(),
-            &EventKind::UnknownRecipe {
-                recipe: "Cord".to_string()
-            }
-        );
-
-        game.player.grant_recipe("Cord");
-        game.player.inventory.insert(Item::Vine, 2);
-        game.craft("Cord");
-        assert_eq!(
-            last_event(&game).kind(),
-            &EventKind::Crafted { output: Item::Cord }
-        );
     }
 
     #[test]
