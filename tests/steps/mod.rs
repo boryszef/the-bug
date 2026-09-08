@@ -8,3 +8,4 @@ mod common;
 mod craft;
 mod disassemble;
 mod experiment;
+mod hunting;

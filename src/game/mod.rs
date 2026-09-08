@@ -966,54 +966,6 @@ mod tests {
     }
 
     #[test]
-    fn hunt_without_a_bow_logs_unprepared_and_spends_nothing() {
-        let mut game = Game::default();
-        game.player.bag.insert(Item::Arrow, 3);
-
-        game.hunt();
-
-        assert_eq!(
-            last_event(&game).kind(),
-            &EventKind::HuntUnprepared {
-                missing: Item::WoodenBow
-            }
-        );
-        assert_eq!(game.player.bag.get(&Item::Arrow), Some(&3));
-    }
-
-    #[test]
-    fn hunt_without_arrows_logs_unprepared() {
-        let mut game = Game::default();
-        game.player.bag.insert(Item::WoodenBow, 1);
-
-        game.hunt();
-
-        assert_eq!(
-            last_event(&game).kind(),
-            &EventKind::HuntUnprepared {
-                missing: Item::Arrow
-            }
-        );
-    }
-
-    #[test]
-    fn hunt_with_gear_only_in_storage_still_logs_unprepared() {
-        // The bow must be carried, not just owned back at the village.
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::WoodenBow, 1);
-        game.player.inventory.insert(Item::Arrow, 3);
-
-        game.hunt();
-
-        assert_eq!(
-            last_event(&game).kind(),
-            &EventKind::HuntUnprepared {
-                missing: Item::WoodenBow
-            }
-        );
-    }
-
-    #[test]
     fn a_successful_hunt_spends_one_arrow_keeps_the_bow_and_logs_the_haul() {
         let mut game = armed_on_a_meadow();
         game.player.bag.insert(Item::Arrow, 2);
