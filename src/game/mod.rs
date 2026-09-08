@@ -619,6 +619,27 @@ mod tests {
         assert!(!game.player.experiment_would_discover(&[(Item::Vine, 2)]));
     }
 
+    #[test]
+    fn experiment_would_discover_requires_the_recipes_tools_in_hand() {
+        let mut game = Game::default();
+        let recipe = recipe::find_matching(&[(Item::Branch, 1), (Item::Cord, 1)])
+            .expect("Wooden Bow is an experiment recipe");
+        assert_eq!(recipe.tools(), &[Item::StoneAxe]);
+
+        // right components, unknown recipe, but no Stone Axe in hand
+        assert!(
+            !game
+                .player
+                .experiment_would_discover(&[(Item::Branch, 1), (Item::Cord, 1)])
+        );
+
+        game.player.add_to_inventory(Item::StoneAxe, 1);
+        assert!(
+            game.player
+                .experiment_would_discover(&[(Item::Branch, 1), (Item::Cord, 1)])
+        );
+    }
+
     // The default player spawns at the world origin, which is always the
     // Village (`scatter_pois` fixes it there) — so every craft / experiment /
     // disassemble test in this file exercises the "at the village" path

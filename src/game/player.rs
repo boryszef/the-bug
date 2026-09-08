@@ -97,11 +97,15 @@ impl Player {
     }
 
     /// Whether combining exactly `items` would discover a recipe the player
-    /// doesn't know yet — the "Looks good!" signal for the Experiment panel.
-    /// A plain yes/no: it names nothing. A required tool the player lacks
-    /// doesn't change the answer (the components are what's being checked).
+    /// doesn't know yet *and* they hold every tool that recipe requires — the
+    /// "Looks good!" signal for the Experiment panel. A plain yes/no: it names
+    /// nothing. When the components match an unknown recipe but a required
+    /// tool is missing, the answer is `false`: running the experiment would
+    /// spend the consumables and learn nothing.
     pub fn experiment_would_discover(&self, items: &[(Item, u32)]) -> bool {
-        super::recipe::find_matching(items).is_some_and(|recipe| !self.recipes.contains(recipe))
+        super::recipe::find_matching(items).is_some_and(|recipe| {
+            !self.recipes.contains(recipe) && self.first_missing_tool(recipe.tools()).is_none()
+        })
     }
 
     /// Where `dir` takes the player, ignoring map boundaries — the caller

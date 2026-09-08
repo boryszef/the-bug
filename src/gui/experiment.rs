@@ -27,9 +27,10 @@ impl Experiment {
     /// disables the Run button (with a hint explaining why) when the player
     /// isn't standing somewhere experimenting is allowed — picking items
     /// into the selection is still allowed anywhere, since it has no effect
-    /// on its own. `looks_promising` answers "would this combination discover
-    /// a recipe" for the current selection — a plain yes/no hint, shown
-    /// regardless of `at_village`.
+    /// on its own. `looks_promising` answers "would running this combination
+    /// discover a recipe" for the current selection — that means an unknown
+    /// recipe whose required tools the player is also holding — a plain
+    /// yes/no hint, shown regardless of `at_village`.
     pub(super) fn render(
         &mut self,
         ui: &mut Ui,
