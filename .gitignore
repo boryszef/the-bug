@@ -1,6 +1,5 @@
 /target
 .claude
-.github
 /the-bug-save-*.json
 
 /dist

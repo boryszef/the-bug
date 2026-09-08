@@ -2,6 +2,7 @@
 name = "the-bug"
 version = "0.1.0"
 edition = "2024"
+repository = "https://github.com/boryszef/the-bug"
 
 # The shared core (game/viewmodel/save/i18n/mapgen) is a library so the
 # functional test suite in `tests/` can drive it through its public API —

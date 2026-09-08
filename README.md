@@ -3,6 +3,8 @@
 A crafting/exploration game (Rust, egui/eframe) set in a post-apocalyptic
 future reshaped by alien-derived biological computing.
 
+**▶ Play it in the browser: <https://boryszef.github.io/the-bug/>**
+
 ## Run it
 
 **Desktop:**
@@ -31,6 +33,9 @@ No `trunk`? `cargo install wasm-bindgen-cli --version <see Cargo.lock>` then
 The browser build autosaves to `localStorage` and resumes on the next visit
 (clear the `the-bug-game` key to start over), and picks up the browser
 language (`navigator.language`). See `docs/adr/0005-web-build.md`.
+
+Pushing a `v*` tag (or running the "Deploy web build to GitHub Pages"
+workflow by hand) publishes `dist/` to <https://boryszef.github.io/the-bug/>.
 
 ## Layout
 

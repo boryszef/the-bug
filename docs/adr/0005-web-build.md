@@ -75,12 +75,30 @@ native build; a bundler turns it into a static page.
   `data-trunk` directive) + `Trunk.toml`; `trunk serve` for dev, `trunk build
   --release` for deploy.
 - `trunk` currently won't `cargo install` on the dev box (its `libdeflate-sys`
-  C build fails under gcc 16). **`scripts/build-web.sh`** is the fallback:
-  `cargo build --release --target wasm32-unknown-unknown --bin the-bug` →
-  `wasm-bindgen --target web` → optional `wasm-opt` → a plain `dist/index.html`.
-  `(cd dist && python3 -m http.server 8080)` to serve.
+  C build fails under gcc 16). **`scripts/build-web.sh`** is the local-only
+  fallback: `cargo build --release --target wasm32-unknown-unknown --bin
+  the-bug` → `wasm-bindgen --target web` → optional `wasm-opt` → a plain
+  `dist/index.html`. `(cd dist && python3 -m http.server 8080)` to serve.
 - `.ftl` locales and `assets/icons/*.png` are `include_bytes!`'d — no runtime
   fetch, nothing else to serve.
+
+### Publishing
+
+- **GitHub Pages**, via `.github/workflows/deploy.yml` (a standard
+  `configure-pages` → `upload-pages-artifact` → `deploy-pages` job). It builds
+  with `trunk build --release --public-url "/<repo>/"` — the `--public-url`
+  makes the hashed asset URLs resolve under the project-page subpath. `trunk`
+  installs fine on the GitHub runner (the gcc-16 issue is local to the dev
+  box), so CI uses it rather than `scripts/build-web.sh`.
+- Trigger: pushing a `v*` tag, or the Actions "Run workflow" button
+  (`workflow_dispatch`) — not every push to `main`. The first publish
+  therefore needs a tag or a manual run.
+- Live at `https://boryszef.github.io/the-bug/`. The repo is public, so Pages
+  is free; `configure-pages` self-enables it (`enablement: true`) on the
+  first run, else enable it once under Settings → Pages → Source "GitHub
+  Actions".
+- Adding the workflow meant `.github/` — until now a git-ignored symlink to
+  the dev box's shared agent config — becomes a real tracked directory.
 
 ## Consequences
 
@@ -94,14 +112,15 @@ native build; a bundler turns it into a static page.
   Debug is ~48 MB — use release for anything shared.
 - The native build, `cargo test`, `cargo clippy --all-targets`, `cargo run`
   are unchanged.
+- `.github/` stops being a per-repo symlink to the dev box's shared agent
+  config; it's now a real directory in the repo (only `workflows/`).
 - `docs/gui-frontend.md`'s "one front end, no web" framing and ADR 0002's
   "not scoped by this decision" note on wasm are now superseded here.
 
 ## Not decided / follow-ups
 
-- **Publishing** — no host chosen. GitHub Pages (needs the repo pushed to
-  GitHub + a `trunk build` Actions workflow), itch.io (zip `dist/`), or a
-  static host. The repo has no remote yet.
+- No CI gate — `deploy.yml` only builds+publishes; `cargo test` / `clippy`
+  aren't run on push. A separate CI workflow is still open.
 - No in-browser way to clear the save or start over (clear `localStorage`
   by hand); no export/import of the JSON.
 - On wasm, `eprintln!` (the version-mismatch note, the "ignoring stored
