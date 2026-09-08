@@ -123,17 +123,27 @@ pub(crate) struct EventState {
 /// Writes the game to `the-bug-save-<unix-seconds>.json` in the current
 /// directory and returns the path it wrote.
 pub fn save(game: &Game) -> io::Result<PathBuf> {
-    let json = serde_json::to_string_pretty(&capture(game)).map_err(io::Error::other)?;
     let path = PathBuf::from(save_filename(now_epoch()));
-    std::fs::write(&path, json)?;
+    std::fs::write(&path, to_json(game)?)?;
     Ok(path)
 }
 
 /// Loads a game from a JSON save file.
 pub fn load(path: &Path) -> io::Result<Game> {
-    let json = std::fs::read_to_string(path)?;
+    from_json(&std::fs::read_to_string(path)?)
+}
+
+/// Serializes `game` to the same JSON that [`save`] writes to disk. The web
+/// build uses this to persist into `localStorage` (there is no filesystem).
+pub fn to_json(game: &Game) -> io::Result<String> {
+    serde_json::to_string_pretty(&capture(game)).map_err(io::Error::other)
+}
+
+/// Reconstructs a game from JSON produced by [`to_json`] or [`save`]. A
+/// version mismatch is noted on stderr but not treated as an error.
+pub fn from_json(json: &str) -> io::Result<Game> {
     let state: SaveFile =
-        serde_json::from_str(&json).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        serde_json::from_str(json).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
     if !state.version.is_empty() && state.version != VERSION {
         eprintln!(
             "note: save file was written by the-bug {}, running {VERSION}",
@@ -253,8 +263,18 @@ mod tests {
     use super::*;
 
     fn roundtrip(game: &Game) -> Game {
-        let json = serde_json::to_string(&capture(game)).unwrap();
-        restore(serde_json::from_str(&json).unwrap()).unwrap()
+        from_json(&to_json(game).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn to_json_is_pretty_printed() {
+        assert!(to_json(&Game::default()).unwrap().contains('\n'));
+    }
+
+    #[test]
+    fn from_json_rejects_malformed_input() {
+        let err = from_json("{ not json").unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
     }
 
     #[test]
