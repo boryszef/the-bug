@@ -566,31 +566,12 @@ mod tests {
         assert_eq!(game.events().len(), before);
     }
 
-    // --- Village-gated actions ---------------------------------------------
-    //
-    // Silent no-ops, like `disassemble`'s other two guards (unknown recipe,
-    // item not held): being away from the village is the player's own doing,
-    // not a result the game produced, so nothing is logged for it — the gui
-    // disables the relevant button instead (not unit-tested; see
-    // docs/village-crafting.md). The default player spawns at the world
-    // origin, which is always the Village (`scatter_pois` fixes it there) —
-    // every other craft/experiment/disassemble test above and below
-    // exercises the "at the village" path implicitly. These move the player
-    // away to exercise the no-op.
-
-    #[test]
-    fn disassemble_away_from_the_village_does_nothing() {
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::StoneAxe, 1);
-        game.player.coordinates = (5, 5);
-        let events_before = game.events().len();
-
-        game.disassemble(Item::StoneAxe);
-
-        assert_eq!(game.events().len(), events_before);
-        assert_eq!(game.player.inventory.get(&Item::StoneAxe), Some(&1));
-        assert_eq!(game.player.inventory.get(&Item::Branch), None);
-    }
+    // The default player spawns at the world origin, which is always the
+    // Village (`scatter_pois` fixes it there) — so every craft / experiment /
+    // disassemble test in this file exercises the "at the village" path
+    // implicitly. The *away*-from-the-village no-ops are covered by the
+    // `craft`/`experiment`/`disassemble` Gherkin features (see
+    // `docs/functional-tests.md`); this checks the query they gate on.
 
     #[test]
     fn at_craftable_location_is_true_at_the_default_spawn_and_false_away_from_it() {
@@ -1090,34 +1071,6 @@ mod tests {
     }
 
     #[test]
-    fn disassemble_returns_components_and_consumes_the_item() {
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::StoneAxe, 1);
-
-        game.disassemble(Item::StoneAxe);
-
-        assert_eq!(game.player.inventory.get(&Item::StoneAxe), None);
-        assert_eq!(game.player.inventory.get(&Item::Branch), Some(&1));
-        assert_eq!(game.player.inventory.get(&Item::Stone), Some(&1));
-        assert_eq!(game.player.inventory.get(&Item::Cord), Some(&1));
-    }
-
-    #[test]
-    fn disassemble_can_target_an_item_held_only_in_the_bag() {
-        let mut game = Game::default();
-        game.player.bag.insert(Item::StoneAxe, 1);
-
-        game.disassemble(Item::StoneAxe);
-
-        // recovered components always land in storage, regardless of
-        // where the disassembled item itself came from
-        assert_eq!(game.player.bag.get(&Item::StoneAxe), None);
-        assert_eq!(game.player.inventory.get(&Item::Branch), Some(&1));
-        assert_eq!(game.player.inventory.get(&Item::Stone), Some(&1));
-        assert_eq!(game.player.inventory.get(&Item::Cord), Some(&1));
-    }
-
-    #[test]
     fn disassemble_logs_the_item_taken_apart() {
         let mut game = Game::default();
         game.player.inventory.insert(Item::StoneAxe, 1);
@@ -1133,19 +1086,6 @@ mod tests {
     }
 
     #[test]
-    fn disassemble_ignores_craft_only_recipes() {
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::Arrow, 1); // the Arrow recipe is craft-only
-        let before = game.events().len();
-
-        game.disassemble(Item::Arrow);
-
-        assert_eq!(game.player.inventory.get(&Item::Arrow), Some(&1));
-        assert_eq!(game.player.inventory.get(&Item::Branch), None);
-        assert_eq!(game.events().len(), before);
-    }
-
-    #[test]
     fn disassemble_without_the_item_does_nothing() {
         let mut game = Game::default();
         let before = game.events().len();
@@ -1154,31 +1094,6 @@ mod tests {
 
         assert!(game.player.inventory.is_empty());
         assert_eq!(game.events().len(), before);
-    }
-
-    #[test]
-    fn disassemble_stacks_components_onto_existing_entries() {
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::StoneAxe, 1);
-        game.player.inventory.insert(Item::Branch, 2);
-
-        game.disassemble(Item::StoneAxe);
-
-        assert_eq!(game.player.inventory.get(&Item::Branch), Some(&3));
-    }
-
-    #[test]
-    fn disassemble_a_scavenged_object_returns_its_parts() {
-        // The Umbrella recipe is disassemble-only — you can take a found one
-        // apart, and that is the only way to get Fabric and Pole.
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::Umbrella, 1);
-
-        game.disassemble(Item::Umbrella);
-
-        assert_eq!(game.player.inventory.get(&Item::Umbrella), None);
-        assert_eq!(game.player.inventory.get(&Item::Fabric), Some(&1));
-        assert_eq!(game.player.inventory.get(&Item::Pole), Some(&1));
     }
 
     #[test]
