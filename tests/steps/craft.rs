@@ -1,5 +1,5 @@
 //! Steps for `tests/features/craft.feature` — building a known recipe.
-//! Setup and storage/bag assertions live in `common.rs`.
+//! Setup and storage/equipment assertions live in `common.rs`.
 
 use cucumber::{then, when};
 use the_bug::game::EventKind;

@@ -25,11 +25,11 @@ tests/
   steps/                    # a subdir, so Cargo doesn't treat it as its own test
     mod.rs                  # module wiring
     world.rs                # GameWorld, item()/quest(), tiny_map(), complete_quest()
-    common.rs               # shared: new game, storage/bag contents, craft menu, "no event"
-    experiment.rs craft.rs disassemble.rs hunting.rs quests.rs bag_storage.rs
+    common.rs               # shared: new game, storage/equipment contents, craft menu, "no event"
+    experiment.rs craft.rs disassemble.rs hunting.rs quests.rs equipment_storage.rs
   features/
     experiment.feature craft.feature disassemble.feature
-    hunting.feature quests.feature bag-storage.feature
+    hunting.feature quests.feature equipment-storage.feature
 ```
 
 `tests/cucumber.rs` is tiny:
@@ -57,7 +57,7 @@ scenario by `Given a new game`.
 
 - **Public API only.** Steps call `Game` methods and read `viewmodel`
   functions / public `Player` getters. Set-up state is forced through public
-  fields — `player.inventory` / `player.bag` / `player.coordinates` — or
+  fields — `player.inventory` / `player.equipment` / `player.coordinates` — or
   through `Player::grant_recipe` and `Map::from_terrain`, which are `pub`
   precisely so `tests/` can use them (both are also on the save path; see
   `ARCHITECTURE.md`'s visibility note). If a scenario needs something that
@@ -88,11 +88,11 @@ scenario by `Given a new game`.
 | feature | what it pins down |
 |---|---|
 | `experiment.feature` | recipe discovery, shortage / wrong-quantity failures still spending inputs, the tool gate, disassemble-only rejection, XP on discovery, the village gate |
-| `craft.feature` | consumables from storage-then-bag, tool required but kept, unknown-recipe and missing-tool refusals, the village gate |
-| `disassemble.feature` | parts returned to storage (from storage or bag), scavenged umbrella, craft-only ignored, parts stacking, the village gate |
+| `craft.feature` | consumables from storage-then-equipment, tool required but kept, unknown-recipe and missing-tool refusals, the village gate |
+| `disassemble.feature` | parts returned to storage (from storage or equipment), scavenged umbrella, craft-only ignored, parts stacking, the village gate |
 | `hunting.feature` | the deterministic "unprepared" checks — no bow / no arrows / gear only in storage |
 | `quests.feature` | accept rules (opening quest, one-at-a-time, unmet prerequisites), available/completed transitions, completion by crafting or experimenting the target item |
-| `bag-storage.feature` | `Game`-level transfers and drops — the village gate on transfers and drop-from-storage; drop-from-bag has none |
+| `equipment-storage.feature` | `Game`-level transfers and drops — the village gate on transfers and drop-from-storage; drop-from-equipment has none |
 
 ## Out of scope (for now)
 

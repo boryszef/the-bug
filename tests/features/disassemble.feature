@@ -2,7 +2,7 @@ Feature: Disassembly
 
   Taking a carried item apart at the village returns the consumables of the
   recipe it decomposes into. Recovered parts always go to storage, whether
-  the item came from storage or the bag; craft-only recipes don't decompose.
+  the item came from storage or the equipment; craft-only recipes don't decompose.
 
   Scenario: Taking apart a stone axe returns its parts and logs
     Given a new game
@@ -14,11 +14,11 @@ Feature: Disassembly
     And storage contains 1 Cord
     And a disassembly of "Stone Axe" is logged
 
-  Scenario: Disassembling an item from the bag; the parts land in storage
+  Scenario: Disassembling an item from the equipment; the parts land in storage
     Given a new game
-    And the player has 1 Stone Axe in the bag
+    And the player has 1 Stone Axe in the equipment
     When the player disassembles "Stone Axe"
-    Then the bag contains 0 Stone Axe
+    Then the equipment contains 0 Stone Axe
     And storage contains 1 Branch
     And storage contains 1 Stone
     And storage contains 1 Cord

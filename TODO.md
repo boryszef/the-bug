@@ -16,15 +16,16 @@
 
 ## DONE
 
+* rename "Bag" → "Equipment" everywhere — `Player.equipment`, `equipment_*` methods, `EventKind::EquipmentFull`, the save key, the Items-tab label, `docs/equipment-and-storage.md`, cucumber steps. Pure rename, no behaviour change
 * experiment tool-missing message no longer names the recipe — split `EventKind::ExperimentMissingTool { items }` off `CraftMissingTool`; experiment says only "you're missing a tool" (docs/recipe-tools.md)
 * retire the ratatui `tui` front end — `src/tui/` deleted, `gui`/`tui` Cargo features and the two-config build gone; `gui` (egui) is the only front end (docs/adr/0004)
-* functional-test suite — Gherkin scenarios run by cucumber-rs over game+viewmodel (shared core moved to `src/lib.rs`); six feature files (experiment/craft/disassemble/hunting/quests/bag-storage), ~40 behaviour scenarios migrated out of `src/game/mod.rs`'s unit tests (docs/functional-tests.md, docs/adr/0003)
+* functional-test suite — Gherkin scenarios run by cucumber-rs over game+viewmodel (shared core moved to `src/lib.rs`); six feature files (experiment/craft/disassemble/hunting/quests/equipment-storage), ~40 behaviour scenarios migrated out of `src/game/mod.rs`'s unit tests (docs/functional-tests.md, docs/adr/0003)
 
 * EPIC: more complex game mechanics
   * crafting/experimenting/disassembly should only be possible at the village — the gui disables the buttons away from it, no event is logged for the refusal (docs/village-crafting.md)
-  * Players "bag" should have a limited size, when full, the player should take their findings to the village and deposit them in the storage or drop — Bag (limited, BAG_CAPACITY=50) split from Storage (unlimited, was the whole inventory); gui Items tab to manage both (docs/bag-and-storage.md)
+  * Players carried pool should have a limited size, when full, the player should take their findings to the village and deposit them in the storage or drop — Equipment (limited, EQUIPMENT_BASE_CAPACITY=50; originally "Bag") split from Storage (unlimited, was the whole inventory); gui Items tab to manage both (docs/equipment-and-storage.md)
 * EPIC: the story
-  * items should become enhancers and can be used in the game: axe allows to chop wood, metal detector improves the odds of finding metal-containing items (bow→hunt / arrows-spent done; satchel→+50 bag capacity done, docs/bag-and-storage.md)
+  * items should become enhancers and can be used in the game: axe allows to chop wood, metal detector improves the odds of finding metal-containing items (bow→hunt / arrows-spent done; satchel→+50 equipment capacity done, docs/equipment-and-storage.md)
   * name of the quest should refer to the part of the story it tells, not the product or task
   * implement hunting: `h` on the Map tab, needs a bow held + spends an arrow, yields meat/bone/hide/fur on meadow/forest (docs/hunting.md)
 * BUG: "Znajdujesz Plastikowa Butelka" -> "Znajdujesz Plastikową Butelkę" (accusative)

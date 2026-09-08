@@ -1,5 +1,5 @@
 //! Steps for `tests/features/disassemble.feature` — taking a carried item
-//! apart. Setup and storage/bag assertions live in `common.rs`.
+//! apart. Setup and storage/equipment assertions live in `common.rs`.
 
 use cucumber::{then, when};
 use the_bug::game::EventKind;

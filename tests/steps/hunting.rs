@@ -1,6 +1,6 @@
 //! Steps for `tests/features/hunting.feature`. Only the deterministic
 //! "unprepared" checks live here — a successful hunt rolls the tile's game
-//! and stays a unit test. Setup and bag assertions are in `common.rs`.
+//! and stays a unit test. Setup and equipment assertions are in `common.rs`.
 
 use cucumber::{then, when};
 use the_bug::game::EventKind;

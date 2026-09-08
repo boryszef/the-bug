@@ -5,14 +5,15 @@ use super::recipe::{RECIPES, Recipe};
 use std::collections::HashMap;
 use std::io;
 
-/// The bag's base capacity: the sum of every item's quantity it holds, across
-/// all item types combined — not a per-item or per-slot limit. Carrying a
-/// Satchel raises the effective capacity (see [`Player::bag_capacity`]); this
-/// is what a bare bag holds. See `docs/bag-and-storage.md`.
-pub(super) const BAG_BASE_CAPACITY: u32 = 50;
+/// The equipment's base capacity: the sum of every item's quantity it holds,
+/// across all item types combined — not a per-item or per-slot limit.
+/// Carrying a Satchel raises the effective capacity (see
+/// [`Player::equipment_capacity`]); this is what the equipment holds without
+/// one. See `docs/equipment-and-storage.md`.
+pub(super) const EQUIPMENT_BASE_CAPACITY: u32 = 50;
 
-/// How much a carried Satchel adds to [`Player::bag_capacity`]. Flat — any
-/// number of Satchels grants it once.
+/// How much a carried Satchel adds to [`Player::equipment_capacity`]. Flat —
+/// any number of Satchels grants it once.
 const SATCHEL_BONUS: u32 = 50;
 
 #[derive(Debug)]
@@ -24,13 +25,14 @@ pub struct Player {
     pub coordinates: (i32, i32),
     /// The unlimited village Storage — everything crafting, experimenting,
     /// disassembling, and quest rewards use, exactly as this field always
-    /// has. See `docs/bag-and-storage.md` for why it's split from `bag`.
+    /// has. See `docs/equipment-and-storage.md` for why it's split from the
+    /// `equipment` pool.
     pub inventory: HashMap<Item, u32>,
     /// The limited pool the player actually carries — what `search`/`hunt`
     /// fill, and what hunting gear must be in to be usable. Capped at
-    /// [`Player::bag_capacity`] (a total across every item type, not a
+    /// [`Player::equipment_capacity`] (a total across every item type, not a
     /// per-item cap; a carried Satchel raises it).
-    pub bag: HashMap<Item, u32>,
+    pub equipment: HashMap<Item, u32>,
     recipes: Vec<Recipe>,
     open_quest: Option<QuestID>,
     /// Occurrences of the open quest's condition seen since it was accepted.
@@ -47,7 +49,7 @@ impl Default for Player {
             crafts_completed: 0,
             coordinates: (0, 0),
             inventory: HashMap::new(),
-            bag: HashMap::new(),
+            equipment: HashMap::new(),
             recipes: Vec::new(),
             open_quest: None,
             quest_progress: 0,
@@ -70,19 +72,19 @@ impl Player {
         (self.known_recipes().len(), total)
     }
 
-    /// `(items currently in the bag, the bag's capacity)` — both summed
+    /// `(items currently in the equipment, the equipment's capacity)` — both summed
     /// across every item type, since the cap is a flat total, not a per-item
-    /// limit. The capacity is [`Player::bag_capacity`], which a carried
+    /// limit. The capacity is [`Player::equipment_capacity`], which a carried
     /// Satchel raises.
-    pub fn bag_progress(&self) -> (u32, u32) {
-        (self.bag_total(), self.bag_capacity())
+    pub fn equipment_progress(&self) -> (u32, u32) {
+        (self.equipment_total(), self.equipment_capacity())
     }
 
-    /// The bag's current total capacity: [`BAG_BASE_CAPACITY`], plus
+    /// The equipment's current total capacity: [`EQUIPMENT_BASE_CAPACITY`], plus
     /// [`SATCHEL_BONUS`] once if the player is carrying a Satchel.
-    pub(super) fn bag_capacity(&self) -> u32 {
-        BAG_BASE_CAPACITY
-            + if self.has_item_in_bag(Item::Satchel) {
+    pub(super) fn equipment_capacity(&self) -> u32 {
+        EQUIPMENT_BASE_CAPACITY
+            + if self.has_item_in_equipment(Item::Satchel) {
                 SATCHEL_BONUS
             } else {
                 0
@@ -158,7 +160,7 @@ impl Player {
     /// build; a release build saturates at zero instead of wrapping, in case
     /// a caller's check turns out to have missed a case (e.g. a duplicated
     /// item in the amount being spent, checked as a whole but spent one
-    /// entry at a time — see `spend_all_storage_then_bag`).
+    /// entry at a time — see `spend_all_storage_then_equipment`).
     pub(super) fn spend(&mut self, item: Item, amount: u32) {
         if let Some(remaining) = self.inventory.get_mut(&item) {
             debug_assert!(
@@ -195,9 +197,9 @@ impl Player {
     }
 
     /// The first entry in `items` the player doesn't have enough of, as
-    /// `(item, available, needed)` — `available` is storage and the bag
+    /// `(item, available, needed)` — `available` is storage and the equipment
     /// combined, since craft/experiment/disassemble draw on both (storage
-    /// first, the bag for any remainder — see `spend_storage_then_bag`).
+    /// first, the equipment for any remainder — see `spend_storage_then_equipment`).
     /// `None` if every entry is satisfied.
     pub(super) fn first_shortage(&self, items: &[(Item, u32)]) -> Option<(Item, u32, u32)> {
         items.iter().find_map(|&(item, needed)| {
@@ -216,106 +218,106 @@ impl Player {
         tools.iter().copied().find(|&tool| !self.has_item(tool))
     }
 
-    /// Combined count of `item` across storage and the bag.
+    /// Combined count of `item` across storage and the equipment.
     pub(super) fn combined_count(&self, item: Item) -> u32 {
-        self.inventory_count(item) + self.bag_count(item)
+        self.inventory_count(item) + self.equipment_count(item)
     }
 
-    /// Whether the player holds at least one `item`, in storage or the bag
+    /// Whether the player holds at least one `item`, in storage or the equipment
     /// combined.
     pub(super) fn has_item_combined(&self, item: Item) -> bool {
         self.combined_count(item) > 0
     }
 
-    /// Removes `amount` of `item`, drawing from storage first and the bag
+    /// Removes `amount` of `item`, drawing from storage first and the equipment
     /// for any remainder — what craft/experiment/disassemble use, now that
     /// both pools are available to them. Callers must have already checked
     /// the combined total covers `amount` (see `first_shortage`/
     /// `combined_count`).
-    pub(super) fn spend_storage_then_bag(&mut self, item: Item, amount: u32) {
+    pub(super) fn spend_storage_then_equipment(&mut self, item: Item, amount: u32) {
         let from_storage = amount.min(self.inventory_count(item));
         self.spend(item, from_storage);
         let remainder = amount - from_storage;
         if remainder > 0 {
-            self.spend_from_bag(item, remainder);
+            self.spend_from_equipment(item, remainder);
         }
     }
 
-    /// Removes each of `items`, per `spend_storage_then_bag`.
-    pub(super) fn spend_all_storage_then_bag(&mut self, items: &[(Item, u32)]) {
+    /// Removes each of `items`, per `spend_storage_then_equipment`.
+    pub(super) fn spend_all_storage_then_equipment(&mut self, items: &[(Item, u32)]) {
         for &(item, amount) in items {
-            self.spend_storage_then_bag(item, amount);
+            self.spend_storage_then_equipment(item, amount);
         }
     }
 
-    /// Total items currently in the bag, summed across every item type —
-    /// what [`Player::bag_capacity`] caps. A carried Satchel is itself
+    /// Total items currently in the equipment, summed across every item type —
+    /// what [`Player::equipment_capacity`] caps. A carried Satchel is itself
     /// counted here, like any other item.
-    pub(super) fn bag_total(&self) -> u32 {
-        self.bag.values().sum()
+    pub(super) fn equipment_total(&self) -> u32 {
+        self.equipment.values().sum()
     }
 
-    /// Adds `amount` of `item` to the bag, unless that would push the bag's
-    /// total past [`Player::bag_capacity`] — all or nothing, nothing is
+    /// Adds `amount` of `item` to the equipment, unless that would push the equipment's
+    /// total past [`Player::equipment_capacity`] — all or nothing, nothing is
     /// added on failure. Returns whether it fit.
-    pub(super) fn add_to_bag(&mut self, item: Item, amount: u32) -> bool {
-        if self.bag_total() + amount > self.bag_capacity() {
+    pub(super) fn add_to_equipment(&mut self, item: Item, amount: u32) -> bool {
+        if self.equipment_total() + amount > self.equipment_capacity() {
             return false;
         }
-        *self.bag.entry(item).or_insert(0) += amount;
+        *self.equipment.entry(item).or_insert(0) += amount;
         true
     }
 
-    /// How many of `item` are in the bag.
-    pub(super) fn bag_count(&self, item: Item) -> u32 {
-        self.bag.get(&item).copied().unwrap_or(0)
+    /// How many of `item` are in the equipment.
+    pub(super) fn equipment_count(&self, item: Item) -> u32 {
+        self.equipment.get(&item).copied().unwrap_or(0)
     }
 
-    /// Whether the player is carrying at least one `item` in the bag.
-    pub(super) fn has_item_in_bag(&self, item: Item) -> bool {
-        self.bag_count(item) > 0
+    /// Whether the player is carrying at least one `item` in the equipment.
+    pub(super) fn has_item_in_equipment(&self, item: Item) -> bool {
+        self.equipment_count(item) > 0
     }
 
-    /// Removes `amount` of `item` from the bag. Mirrors `spend` exactly,
-    /// targeting the bag instead of storage — callers must have already
-    /// checked the bag holds enough.
-    pub(super) fn spend_from_bag(&mut self, item: Item, amount: u32) {
-        if let Some(remaining) = self.bag.get_mut(&item) {
+    /// Removes `amount` of `item` from the equipment. Mirrors `spend` exactly,
+    /// targeting the equipment instead of storage — callers must have already
+    /// checked the equipment holds enough.
+    pub(super) fn spend_from_equipment(&mut self, item: Item, amount: u32) {
+        if let Some(remaining) = self.equipment.get_mut(&item) {
             debug_assert!(
                 *remaining >= amount,
-                "spend_from_bag({item:?}, {amount}) exceeds the {remaining} held"
+                "spend_from_equipment({item:?}, {amount}) exceeds the {remaining} held"
             );
             *remaining = remaining.saturating_sub(amount);
             if *remaining == 0 {
-                self.bag.remove(&item);
+                self.equipment.remove(&item);
             }
         }
     }
 
-    /// Moves `amount` of `item` from the bag to storage. Storage has no
-    /// capacity to check; fails only if the bag doesn't hold `amount`, in
+    /// Moves `amount` of `item` from the equipment to storage. Storage has no
+    /// capacity to check; fails only if the equipment doesn't hold `amount`, in
     /// which case nothing moves. Returns whether it happened.
     #[allow(dead_code)] // wired up by Game::transfer_to_storage's real callers (next commit)
     pub(super) fn transfer_to_storage(&mut self, item: Item, amount: u32) -> bool {
-        if self.bag_count(item) < amount {
+        if self.equipment_count(item) < amount {
             return false;
         }
-        self.spend_from_bag(item, amount);
+        self.spend_from_equipment(item, amount);
         self.add_to_inventory(item, amount);
         true
     }
 
-    /// Moves `amount` of `item` from storage to the bag. Fails if storage
-    /// doesn't hold `amount`, or if the bag has no room for it — in either
-    /// case nothing moves (storage is only spent once the bag confirms it
+    /// Moves `amount` of `item` from storage to the equipment. Fails if storage
+    /// doesn't hold `amount`, or if the equipment has no room for it — in either
+    /// case nothing moves (storage is only spent once the equipment confirms it
     /// fit, so a failed transfer never leaves the item in limbo). Returns
     /// whether it happened.
-    #[allow(dead_code)] // wired up by Game::transfer_to_bag's real callers (next commit)
-    pub(super) fn transfer_to_bag(&mut self, item: Item, amount: u32) -> bool {
+    #[allow(dead_code)] // wired up by Game::transfer_to_equipment's real callers (next commit)
+    pub(super) fn transfer_to_equipment(&mut self, item: Item, amount: u32) -> bool {
         if self.inventory_count(item) < amount {
             return false;
         }
-        if !self.add_to_bag(item, amount) {
+        if !self.add_to_equipment(item, amount) {
             return false;
         }
         self.spend(item, amount);
@@ -381,7 +383,7 @@ impl super::SaveState for Player {
             crafts_completed: self.crafts_completed,
             coordinates: self.coordinates,
             inventory: self.inventory.clone(),
-            bag: self.bag.clone(),
+            equipment: self.equipment.clone(),
             recipes: self
                 .known_recipes()
                 .iter()
@@ -404,7 +406,7 @@ impl super::RestoreState for Player {
             crafts_completed: saved.crafts_completed,
             coordinates: saved.coordinates,
             inventory: saved.inventory,
-            bag: saved.bag,
+            equipment: saved.equipment,
             ..Player::default()
         };
         for name in &saved.recipes {

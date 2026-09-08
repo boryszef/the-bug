@@ -4,10 +4,10 @@
 
 pub mod world;
 
-mod bag_storage;
 mod common;
 mod craft;
 mod disassemble;
+mod equipment_storage;
 mod experiment;
 mod hunting;
 mod quests;

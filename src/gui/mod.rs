@@ -151,11 +151,11 @@ impl eframe::App for App {
                     items::Outcome::TransferToStorage(item) => {
                         self.game.transfer_to_storage(item, 1);
                     }
-                    items::Outcome::TransferToBag(item) => {
-                        self.game.transfer_to_bag(item, 1);
+                    items::Outcome::TransferToEquipment(item) => {
+                        self.game.transfer_to_equipment(item, 1);
                     }
-                    items::Outcome::DropFromBag(item) => {
-                        self.game.drop_from_bag(item, 1);
+                    items::Outcome::DropFromEquipment(item) => {
+                        self.game.drop_from_equipment(item, 1);
                     }
                     items::Outcome::DropFromStorage(item) => {
                         self.game.drop_from_storage(item, 1);
@@ -222,7 +222,7 @@ fn render_player(game: &Game, lang: Language, ui: &mut Ui) {
             ("total", (total_recipes as u32).into()),
         ]),
     ));
-    let (carried, capacity) = game.player.bag_progress();
+    let (carried, capacity) = game.player.equipment_progress();
     ui.label(i18n::ui_args(
         "player-equipment",
         lang,
@@ -267,7 +267,7 @@ fn event_color(kind: &EventKind) -> Option<Color32> {
         | EventKind::Disassembled { .. }
         | EventKind::HuntMissed
         | EventKind::HuntUnprepared { .. }
-        | EventKind::BagFull { .. }
+        | EventKind::EquipmentFull { .. }
         | EventKind::Dropped { .. } => Some(Color32::YELLOW),
         EventKind::ExperimentShortage { .. }
         | EventKind::ExperimentFailed { .. }

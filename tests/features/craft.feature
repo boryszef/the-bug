@@ -1,7 +1,7 @@
 Feature: Crafting
 
   Building a known recipe at the village: consumables come from storage first
-  and the bag for any remainder, a required tool is checked but never spent,
+  and the equipment for any remainder, a required tool is checked but never spent,
   and an unknown recipe or a missing tool is refused.
 
   Scenario: Crafting consumes exactly its consumables and logs
@@ -13,24 +13,24 @@ Feature: Crafting
     And storage contains 1 Cord
     And a craft of "Cord" is logged
 
-  Scenario: A craft draws from storage before the bag
+  Scenario: A craft draws from storage before the equipment
     Given a new game
     And the player knows the "Cord" recipe
     And the player has 1 Vine in storage
-    And the player has 1 Vine in the bag
+    And the player has 1 Vine in the equipment
     When the player crafts "Cord"
     Then storage contains 0 Vine
-    And the bag contains 0 Vine
+    And the equipment contains 0 Vine
     And storage contains 1 Cord
 
-  Scenario: A craft leaves the bag alone when storage alone covers it
+  Scenario: A craft leaves the equipment alone when storage alone covers it
     Given a new game
     And the player knows the "Cord" recipe
     And the player has 2 Vine in storage
-    And the player has 5 Vine in the bag
+    And the player has 5 Vine in the equipment
     When the player crafts "Cord"
     Then storage contains 0 Vine
-    And the bag contains 5 Vine
+    And the equipment contains 5 Vine
 
   Scenario: Crafting is blocked without the required tool held
     Given a new game

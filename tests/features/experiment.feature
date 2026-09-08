@@ -32,13 +32,13 @@ Feature: Experimenting
     And storage contains 0 Cord
     And craft menu is empty
 
-  Scenario: An experiment draws from storage before the bag
+  Scenario: An experiment draws from storage before the equipment
     Given a new game
     And the player has 1 Vine in storage
-    And the player has 1 Vine in the bag
+    And the player has 1 Vine in the equipment
     When the player experiments with 2 Vine
     Then storage contains 0 Vine
-    And the bag contains 0 Vine
+    And the equipment contains 0 Vine
     And a "Cord" craft is offered in the craft menu
 
   Scenario: Discovering a recipe grants experience; rediscovering it does not

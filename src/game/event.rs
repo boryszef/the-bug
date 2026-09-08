@@ -59,10 +59,10 @@ pub enum EventKind {
     HuntMissed,
     /// Tried to hunt without the gear: `missing` is the Wooden Bow or an Arrow.
     HuntUnprepared { missing: Item },
-    /// Found or caught `item`, but the bag was already too full to carry it
-    /// — the item is lost, not gained.
-    BagFull { item: Item },
-    /// Dropped one unit of `item`, from the bag or from storage.
+    /// Found or caught `item`, but the equipment had no room left for it —
+    /// the item is lost, not gained.
+    EquipmentFull { item: Item },
+    /// Dropped one unit of `item`, from the equipment or from storage.
     Dropped { item: Item },
 }
 

@@ -3,7 +3,7 @@
 use super::inventory;
 use crate::game::{Item, Player, disassembly_for};
 
-/// The items the player is carrying — storage and the bag combined, since
+/// The items the player is carrying — storage and the equipment combined, since
 /// disassembling now draws on either — that can be taken apart, in
 /// [`Item`] order (a stable, index-addressable list for the popup cursor).
 pub fn options(player: &Player) -> Vec<Item> {
@@ -46,9 +46,9 @@ mod tests {
     }
 
     #[test]
-    fn an_item_held_only_in_the_bag_is_still_offered() {
+    fn an_item_held_only_in_the_equipment_is_still_offered() {
         let mut player = Player::default();
-        player.bag.insert(Item::StoneAxe, 1);
+        player.equipment.insert(Item::StoneAxe, 1);
 
         assert_eq!(options(&player), vec![Item::StoneAxe]);
     }

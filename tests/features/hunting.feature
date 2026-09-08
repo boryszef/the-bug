@@ -1,19 +1,19 @@
 Feature: Hunting
 
-  A hunt needs a Wooden Bow and an Arrow carried in the bag. Missing either
+  A hunt needs a Wooden Bow and an Arrow carried in the equipment. Missing either
   is refused before anything is rolled or spent, and gear sitting in storage
   back at the village doesn't count.
 
   Scenario: Hunting with no bow is refused and spends nothing
     Given a new game
-    And the player has 3 Arrow in the bag
+    And the player has 3 Arrow in the equipment
     When the player hunts
     Then the hunt reports a missing "Wooden Bow"
-    And the bag contains 3 Arrow
+    And the equipment contains 3 Arrow
 
   Scenario: Hunting with a bow but no arrows is refused
     Given a new game
-    And the player has 1 Wooden Bow in the bag
+    And the player has 1 Wooden Bow in the equipment
     When the player hunts
     Then the hunt reports a missing "Arrow"
 

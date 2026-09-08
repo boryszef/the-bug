@@ -24,7 +24,7 @@ event-disassembled = You take apart a { $item }, recovering { $recovered }.
 event-hunted = Hunt: { $items }.
 event-hunt-missed = Hunt: the quarry got away.
 event-hunt-unprepared = You need a { $missing } to hunt.
-event-bag-full = Your bag is too full to carry the { $item }.
+event-equipment-full = You have no room left for the { $item }.
 event-dropped = You drop a { $item }.
 
 ## Item names (nominative), src/game/item.rs's Item.
@@ -114,13 +114,13 @@ player-quest-none = (none)
 
 village-required-hint = You need to be in the Village to do this.
 
-## Items panel (the Bag/Inventory split; see
-## docs/bag-and-storage.md). "panel-items-title" above doubles as this
+## Items panel (the Equipment/Inventory split; see
+## docs/equipment-and-storage.md). "panel-items-title" above doubles as this
 ## tab's heading.
 
-items-bag-title = Bag: { $count }/{ $capacity }
+items-equipment-title = Equipment: { $count }/{ $capacity }
 items-storage-title = Inventory
-items-bag-empty = Your bag is empty.
+items-equipment-empty = Your equipment is empty.
 items-storage-empty = Storage is empty.
 
 ## Craft panel.

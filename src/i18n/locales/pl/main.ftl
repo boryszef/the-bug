@@ -27,7 +27,7 @@ event-disassembled = Rozbierasz { $item }, odzyskując { $recovered }.
 event-hunted = Polowanie: { $items }.
 event-hunt-missed = Polowanie: zwierzyna uciekła.
 event-hunt-unprepared = Potrzebujesz { $missing }, aby polować.
-event-bag-full = Twoja torba jest zbyt pełna, aby unieść { $item }.
+event-equipment-full = Nie masz już miejsca na { $item }.
 event-dropped = Wyrzucasz { $item }.
 
 ## Item names (nominative), with a `.genitive` attribute (singular), a
@@ -226,13 +226,13 @@ player-quest-none = (brak)
 
 village-required-hint = Musisz być w osadzie, aby to zrobić.
 
-## Items panel (the Bag/Inventory split; see
-## docs/bag-and-storage.md). "panel-items-title" above doubles as this
+## Items panel (the Equipment/Inventory split; see
+## docs/equipment-and-storage.md). "panel-items-title" above doubles as this
 ## tab's heading.
 
-items-bag-title = Torba: { $count }/{ $capacity }
+items-equipment-title = Wyposażenie: { $count }/{ $capacity }
 items-storage-title = Ekwipunek
-items-bag-empty = Twoja torba jest pusta.
+items-equipment-empty = Twoje wyposażenie jest puste.
 items-storage-empty = Ekwipunek jest pusty.
 
 ## Craft panel.

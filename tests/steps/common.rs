@@ -1,9 +1,9 @@
-//! Steps shared across the feature files: game setup, storage/bag contents,
+//! Steps shared across the feature files: game setup, storage/equipment contents,
 //! the craft menu, and the "nothing was logged" check. Feature-specific
 //! actions and assertions live in the matching `tests/steps/<area>.rs`.
 //!
 //! State is forced through the crate's public surface only — the `pub`
-//! fields `player.inventory` / `player.bag` / `player.coordinates`,
+//! fields `player.inventory` / `player.equipment` / `player.coordinates`,
 //! `Player::grant_recipe`, `Map::from_terrain` — and read back through
 //! public getters and `viewmodel`. See `docs/functional-tests.md`.
 
@@ -25,9 +25,9 @@ async fn has_in_storage(world: &mut GameWorld, count: u32, name: String) {
     world.game.player.inventory.insert(item(&name), count);
 }
 
-#[given(regex = r"^the player has (\d+) (.+) in the bag$")]
-async fn has_in_bag(world: &mut GameWorld, count: u32, name: String) {
-    world.game.player.bag.insert(item(&name), count);
+#[given(regex = r"^the player has (\d+) (.+) in the equipment$")]
+async fn has_in_equipment(world: &mut GameWorld, count: u32, name: String) {
+    world.game.player.equipment.insert(item(&name), count);
 }
 
 #[given("the player is away from the village")]
@@ -61,16 +61,19 @@ async fn storage_contains(world: &mut GameWorld, count: u32, name: String) {
     assert_eq!(have, count, "storage holds {have} {name}, expected {count}");
 }
 
-#[then(regex = r"^(?:the )?bag contains (\d+) (.+)$")]
-async fn bag_contains(world: &mut GameWorld, count: u32, name: String) {
+#[then(regex = r"^(?:the )?equipment contains (\d+) (.+)$")]
+async fn equipment_contains(world: &mut GameWorld, count: u32, name: String) {
     let have = world
         .game
         .player
-        .bag
+        .equipment
         .get(&item(&name))
         .copied()
         .unwrap_or(0);
-    assert_eq!(have, count, "bag holds {have} {name}, expected {count}");
+    assert_eq!(
+        have, count,
+        "equipment holds {have} {name}, expected {count}"
+    );
 }
 
 #[then("craft menu is empty")]

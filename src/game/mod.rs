@@ -185,9 +185,9 @@ impl Game {
     }
 
     /// Searches the player's current tile. Each item the roll turns up is
-    /// added to the bag if there's room; one that doesn't fit is lost —
-    /// logged as `BagFull` rather than `Found`, since nothing was actually
-    /// gained (see docs/bag-and-storage.md).
+    /// added to the equipment if there's room; one that doesn't fit is lost —
+    /// logged as `EquipmentFull` rather than `Found`, since nothing was actually
+    /// gained (see docs/equipment-and-storage.md).
     pub fn search(&mut self) {
         let coords = self.player.coordinates;
         let Some(tile) = self.map.get_tile(coords) else {
@@ -196,42 +196,42 @@ impl Game {
         let found = tile.roll_found_items(&mut rand::rng());
 
         for (item, source) in found {
-            if self.player.add_to_bag(item, 1) {
+            if self.player.add_to_equipment(item, 1) {
                 self.log(EventKind::Found { item, source });
             } else {
-                self.log(EventKind::BagFull { item });
+                self.log(EventKind::EquipmentFull { item });
             }
         }
         self.map.update_tile_last_search_time(coords);
     }
 
     /// Hunts the player's current tile: needs a Wooden Bow *and* an Arrow in
-    /// the bag — gear must be carried to be used in the field, unlike a
+    /// the equipment — gear must be carried to be used in the field, unlike a
     /// craft/experiment tool sitting in storage at the village — spends the
     /// Arrow, then rolls the tile's game. Like `search` there's no terrain
     /// gate — a tile with no fauna just comes back empty. Each hit is added
-    /// to the bag if there's room; one that doesn't fit is lost, logged as
-    /// `BagFull` rather than folded into the haul. A hunt that brings back
+    /// to the equipment if there's room; one that doesn't fit is lost, logged as
+    /// `EquipmentFull` rather than folded into the haul. A hunt that brings back
     /// at least one *kept* item counts toward an open quest; a wasted arrow,
-    /// or a catch the bag had no room for, does not.
+    /// or a catch the equipment had no room for, does not.
     pub fn hunt(&mut self) {
         let coords = self.player.coordinates;
         if self.map.get_tile(coords).is_none() {
             return;
         }
-        if !self.player.has_item_in_bag(Item::WoodenBow) {
+        if !self.player.has_item_in_equipment(Item::WoodenBow) {
             self.log(EventKind::HuntUnprepared {
                 missing: Item::WoodenBow,
             });
             return;
         }
-        if !self.player.has_item_in_bag(Item::Arrow) {
+        if !self.player.has_item_in_equipment(Item::Arrow) {
             self.log(EventKind::HuntUnprepared {
                 missing: Item::Arrow,
             });
             return;
         }
-        self.player.spend_from_bag(Item::Arrow, 1);
+        self.player.spend_from_equipment(Item::Arrow, 1);
 
         let catch = self
             .map
@@ -243,10 +243,10 @@ impl Game {
         } else {
             let mut gained = Vec::new();
             for &item in &catch {
-                if self.player.add_to_bag(item, 1) {
+                if self.player.add_to_equipment(item, 1) {
                     gained.push(item);
                 } else {
-                    self.log(EventKind::BagFull { item });
+                    self.log(EventKind::EquipmentFull { item });
                 }
             }
             if !gained.is_empty() {
@@ -273,7 +273,7 @@ impl Game {
     }
 
     /// Crafts a known recipe by name. Consumables are drawn from storage
-    /// first, the bag for any remainder (`docs/bag-and-storage.md`) — tools
+    /// first, the equipment for any remainder (`docs/equipment-and-storage.md`) — tools
     /// stay storage-only, a tool is kept at the workshop where it's used.
     /// Does nothing away from the Village (or a future workshop) — see
     /// [`at_craftable_location`](Self::at_craftable_location). Not logged:
@@ -308,7 +308,8 @@ impl Game {
             return;
         }
 
-        self.player.spend_all_storage_then_bag(recipe.consumables());
+        self.player
+            .spend_all_storage_then_equipment(recipe.consumables());
 
         // Logged before `grant_item`, whose `note_quest_event` may log the
         // quest's own completion line right behind it — the event log reads
@@ -323,7 +324,7 @@ impl Game {
     }
 
     /// Tries the given items as an experiment — drawn from storage first,
-    /// the bag for any remainder, same as `craft`. Does nothing away from
+    /// the equipment for any remainder, same as `craft`. Does nothing away from
     /// the Village (or a future workshop), same as `craft` — see
     /// [`at_craftable_location`](Self::at_craftable_location).
     pub fn experiment(&mut self, items: &[(Item, u32)]) {
@@ -345,7 +346,7 @@ impl Game {
             return;
         }
 
-        self.player.spend_all_storage_then_bag(items);
+        self.player.spend_all_storage_then_equipment(items);
 
         let Some(recipe) = find_matching(items) else {
             self.log(EventKind::ExperimentFailed {
@@ -379,7 +380,7 @@ impl Game {
     }
 
     /// Takes one `item` apart, returning the consumables of the recipe it
-    /// decomposes into. `item` itself may be held in storage or the bag
+    /// decomposes into. `item` itself may be held in storage or the equipment
     /// (storage first); the recovered consumables always go to storage.
     /// Does nothing if no recipe lets `item` be taken apart, the player is
     /// not carrying one (in either pool), or they're away from the Village
@@ -397,18 +398,18 @@ impl Game {
             return;
         }
 
-        self.player.spend_storage_then_bag(item, 1);
+        self.player.spend_storage_then_equipment(item, 1);
         self.player.add_all_to_inventory(recipe.consumables());
 
         self.log(EventKind::Disassembled { item });
     }
 
-    /// Moves `amount` of `item` from the bag to storage. Does nothing away
+    /// Moves `amount` of `item` from the equipment to storage. Does nothing away
     /// from the Village (or a future workshop) — see
     /// [`at_craftable_location`](Self::at_craftable_location) — or if the
-    /// bag doesn't hold `amount`. Not logged: a transfer is the player's own
+    /// equipment doesn't hold `amount`. Not logged: a transfer is the player's own
     /// bookkeeping between two pools they already own, not a result the game
-    /// produced — see docs/bag-and-storage.md.
+    /// produced — see docs/equipment-and-storage.md.
     #[allow(dead_code)] // wired up by the gui's Items tab (next commit)
     pub fn transfer_to_storage(&mut self, item: Item, amount: u32) {
         if !self.at_craftable_location() {
@@ -417,26 +418,26 @@ impl Game {
         self.player.transfer_to_storage(item, amount);
     }
 
-    /// Moves `amount` of `item` from storage to the bag. Does nothing away
-    /// from the Village, or if storage doesn't hold `amount`, or if the bag
+    /// Moves `amount` of `item` from storage to the equipment. Does nothing away
+    /// from the Village, or if storage doesn't hold `amount`, or if the equipment
     /// has no room for it. Not logged — see
     /// [`transfer_to_storage`](Self::transfer_to_storage).
     #[allow(dead_code)] // wired up by the gui's Items tab (next commit)
-    pub fn transfer_to_bag(&mut self, item: Item, amount: u32) {
+    pub fn transfer_to_equipment(&mut self, item: Item, amount: u32) {
         if !self.at_craftable_location() {
             return;
         }
-        self.player.transfer_to_bag(item, amount);
+        self.player.transfer_to_equipment(item, amount);
     }
 
-    /// Drops `amount` of `item` from the bag — allowed anywhere. Does
-    /// nothing if the bag doesn't hold `amount`.
+    /// Drops `amount` of `item` from the equipment — allowed anywhere. Does
+    /// nothing if the equipment doesn't hold `amount`.
     #[allow(dead_code)] // wired up by the gui's Items tab (next commit)
-    pub fn drop_from_bag(&mut self, item: Item, amount: u32) {
-        if self.player.bag_count(item) < amount {
+    pub fn drop_from_equipment(&mut self, item: Item, amount: u32) {
+        if self.player.equipment_count(item) < amount {
             return;
         }
-        self.player.spend_from_bag(item, amount);
+        self.player.spend_from_equipment(item, amount);
         self.log(EventKind::Dropped { item });
     }
 
@@ -612,194 +613,209 @@ mod tests {
         assert!(!game.at_craftable_location());
     }
 
-    // --- Bag and storage ---------------------------------------------------
+    // --- Equipment and storage ---------------------------------------------------
     //
     // `Player.inventory` is the unlimited village Storage (unchanged in
     // role — every craft/experiment/disassemble/quest-reward test in this
-    // file already exercises it). `Player.bag` is new: a capacity-limited
+    // file already exercises it). `Player.equipment` is new: a capacity-limited
     // pool the player carries, tested directly here. See
-    // docs/bag-and-storage.md.
+    // docs/equipment-and-storage.md.
 
     #[test]
-    fn bag_total_sums_every_item_in_the_bag() {
+    fn equipment_total_sums_every_item_in_the_equipment() {
         let mut game = Game::default();
-        assert_eq!(game.player.bag_total(), 0);
+        assert_eq!(game.player.equipment_total(), 0);
 
-        game.player.add_to_bag(Item::Branch, 3);
-        game.player.add_to_bag(Item::Stone, 2);
+        game.player.add_to_equipment(Item::Branch, 3);
+        game.player.add_to_equipment(Item::Stone, 2);
 
-        assert_eq!(game.player.bag_total(), 5);
+        assert_eq!(game.player.equipment_total(), 5);
     }
 
     #[test]
-    fn add_to_bag_fits_within_capacity() {
+    fn add_to_equipment_fits_within_capacity() {
         let mut game = Game::default();
 
         assert!(
             game.player
-                .add_to_bag(Item::Branch, player::BAG_BASE_CAPACITY)
+                .add_to_equipment(Item::Branch, player::EQUIPMENT_BASE_CAPACITY)
         );
 
         assert_eq!(
-            game.player.bag_count(Item::Branch),
-            player::BAG_BASE_CAPACITY
+            game.player.equipment_count(Item::Branch),
+            player::EQUIPMENT_BASE_CAPACITY
         );
-        assert_eq!(game.player.bag_total(), player::BAG_BASE_CAPACITY);
+        assert_eq!(
+            game.player.equipment_total(),
+            player::EQUIPMENT_BASE_CAPACITY
+        );
     }
 
     #[test]
-    fn add_to_bag_rejects_an_amount_that_would_exceed_capacity() {
+    fn add_to_equipment_rejects_an_amount_that_would_exceed_capacity() {
         let mut game = Game::default();
         game.player
-            .add_to_bag(Item::Branch, player::BAG_BASE_CAPACITY - 1);
+            .add_to_equipment(Item::Branch, player::EQUIPMENT_BASE_CAPACITY - 1);
 
         // one more than fits: rejected entirely, not partially added
-        assert!(!game.player.add_to_bag(Item::Stone, 2));
+        assert!(!game.player.add_to_equipment(Item::Stone, 2));
 
-        assert_eq!(game.player.bag_count(Item::Stone), 0);
-        assert_eq!(game.player.bag_total(), player::BAG_BASE_CAPACITY - 1);
+        assert_eq!(game.player.equipment_count(Item::Stone), 0);
+        assert_eq!(
+            game.player.equipment_total(),
+            player::EQUIPMENT_BASE_CAPACITY - 1
+        );
     }
 
     #[test]
-    fn a_satchel_in_the_bag_raises_its_capacity_by_fifty() {
+    fn a_satchel_in_the_equipment_raises_its_capacity_by_fifty() {
         let mut game = Game::default();
-        assert_eq!(game.player.bag_progress().1, player::BAG_BASE_CAPACITY);
+        assert_eq!(
+            game.player.equipment_progress().1,
+            player::EQUIPMENT_BASE_CAPACITY
+        );
 
-        game.player.bag.insert(Item::Satchel, 1);
-        assert_eq!(game.player.bag_progress().1, player::BAG_BASE_CAPACITY + 50);
+        game.player.equipment.insert(Item::Satchel, 1);
+        assert_eq!(
+            game.player.equipment_progress().1,
+            player::EQUIPMENT_BASE_CAPACITY + 50
+        );
 
         // flat, not per-satchel
-        game.player.bag.insert(Item::Satchel, 3);
-        assert_eq!(game.player.bag_progress().1, player::BAG_BASE_CAPACITY + 50);
+        game.player.equipment.insert(Item::Satchel, 3);
+        assert_eq!(
+            game.player.equipment_progress().1,
+            player::EQUIPMENT_BASE_CAPACITY + 50
+        );
     }
 
     #[test]
-    fn add_to_bag_accepts_a_total_past_the_base_cap_while_a_satchel_is_carried() {
+    fn add_to_equipment_accepts_a_total_past_the_base_cap_while_a_satchel_is_carried() {
         let mut game = Game::default();
-        game.player.bag.insert(Item::Satchel, 1); // capacity now 100
+        game.player.equipment.insert(Item::Satchel, 1); // capacity now 100
 
         // 1 (satchel) + 99 == 100, exactly the raised capacity
-        assert!(game.player.add_to_bag(Item::Branch, 99));
-        assert!(!game.player.add_to_bag(Item::Stone, 1));
+        assert!(game.player.add_to_equipment(Item::Branch, 99));
+        assert!(!game.player.add_to_equipment(Item::Stone, 1));
     }
 
     #[test]
-    fn dropping_the_satchel_can_leave_the_bag_over_the_base_cap() {
+    fn dropping_the_satchel_can_leave_the_equipment_over_the_base_cap() {
         let mut game = Game::default();
-        game.player.bag.insert(Item::Satchel, 1);
-        game.player.add_to_bag(Item::Branch, 80); // 81/100, fine
+        game.player.equipment.insert(Item::Satchel, 1);
+        game.player.add_to_equipment(Item::Branch, 80); // 81/100, fine
 
-        game.player.spend_from_bag(Item::Satchel, 1); // capacity drops back to 50
+        game.player.spend_from_equipment(Item::Satchel, 1); // capacity drops back to 50
 
-        assert!(game.player.bag_total() > player::BAG_BASE_CAPACITY);
+        assert!(game.player.equipment_total() > player::EQUIPMENT_BASE_CAPACITY);
         // over capacity: no room for anything until the player offloads
-        assert!(!game.player.add_to_bag(Item::Stone, 1));
+        assert!(!game.player.add_to_equipment(Item::Stone, 1));
     }
 
     #[test]
-    fn has_item_in_bag_and_bag_count_reflect_the_bag_not_storage() {
+    fn has_item_in_equipment_and_equipment_count_reflect_the_equipment_not_storage() {
         let mut game = Game::default();
-        game.player.inventory.insert(Item::Branch, 5); // storage, not bag
+        game.player.inventory.insert(Item::Branch, 5); // storage, not equipment
 
-        assert!(!game.player.has_item_in_bag(Item::Branch));
-        assert_eq!(game.player.bag_count(Item::Branch), 0);
+        assert!(!game.player.has_item_in_equipment(Item::Branch));
+        assert_eq!(game.player.equipment_count(Item::Branch), 0);
 
-        game.player.add_to_bag(Item::Branch, 1);
+        game.player.add_to_equipment(Item::Branch, 1);
 
-        assert!(game.player.has_item_in_bag(Item::Branch));
-        assert_eq!(game.player.bag_count(Item::Branch), 1);
+        assert!(game.player.has_item_in_equipment(Item::Branch));
+        assert_eq!(game.player.equipment_count(Item::Branch), 1);
     }
 
     #[test]
-    fn transfer_to_storage_moves_items_from_bag_to_storage() {
+    fn transfer_to_storage_moves_items_from_equipment_to_storage() {
         let mut game = Game::default();
-        game.player.add_to_bag(Item::Vine, 5);
+        game.player.add_to_equipment(Item::Vine, 5);
 
         assert!(game.player.transfer_to_storage(Item::Vine, 3));
 
-        assert_eq!(game.player.bag_count(Item::Vine), 2);
+        assert_eq!(game.player.equipment_count(Item::Vine), 2);
         assert_eq!(game.player.inventory.get(&Item::Vine), Some(&3));
     }
 
     #[test]
-    fn transfer_to_storage_fails_without_enough_in_the_bag() {
+    fn transfer_to_storage_fails_without_enough_in_the_equipment() {
         let mut game = Game::default();
-        game.player.add_to_bag(Item::Vine, 1);
+        game.player.add_to_equipment(Item::Vine, 1);
 
         assert!(!game.player.transfer_to_storage(Item::Vine, 2));
 
-        assert_eq!(game.player.bag_count(Item::Vine), 1);
+        assert_eq!(game.player.equipment_count(Item::Vine), 1);
         assert!(game.player.inventory.is_empty());
     }
 
     #[test]
-    fn transfer_to_bag_moves_items_from_storage_to_bag() {
+    fn transfer_to_equipment_moves_items_from_storage_to_equipment() {
         let mut game = Game::default();
         game.player.inventory.insert(Item::Vine, 5);
 
-        assert!(game.player.transfer_to_bag(Item::Vine, 3));
+        assert!(game.player.transfer_to_equipment(Item::Vine, 3));
 
         assert_eq!(game.player.inventory.get(&Item::Vine), Some(&2));
-        assert_eq!(game.player.bag_count(Item::Vine), 3);
+        assert_eq!(game.player.equipment_count(Item::Vine), 3);
     }
 
     #[test]
-    fn transfer_to_bag_fails_without_enough_in_storage() {
+    fn transfer_to_equipment_fails_without_enough_in_storage() {
         let mut game = Game::default();
         game.player.inventory.insert(Item::Vine, 1);
 
-        assert!(!game.player.transfer_to_bag(Item::Vine, 2));
+        assert!(!game.player.transfer_to_equipment(Item::Vine, 2));
 
         assert_eq!(game.player.inventory.get(&Item::Vine), Some(&1));
-        assert!(game.player.bag.is_empty());
+        assert!(game.player.equipment.is_empty());
     }
 
     #[test]
-    fn transfer_to_bag_fails_when_the_bag_has_no_room_and_leaves_storage_untouched() {
+    fn transfer_to_equipment_fails_when_the_equipment_has_no_room_and_leaves_storage_untouched() {
         let mut game = Game::default();
         game.player.inventory.insert(Item::Vine, 5);
         game.player
-            .add_to_bag(Item::Branch, player::BAG_BASE_CAPACITY); // bag full
+            .add_to_equipment(Item::Branch, player::EQUIPMENT_BASE_CAPACITY); // equipment full
 
-        assert!(!game.player.transfer_to_bag(Item::Vine, 1));
+        assert!(!game.player.transfer_to_equipment(Item::Vine, 1));
 
         // storage untouched — nothing left in limbo
         assert_eq!(game.player.inventory.get(&Item::Vine), Some(&5));
-        assert_eq!(game.player.bag_count(Item::Vine), 0);
+        assert_eq!(game.player.equipment_count(Item::Vine), 0);
     }
 
     #[test]
-    fn spend_from_bag_removes_exhausted_entries() {
+    fn spend_from_equipment_removes_exhausted_entries() {
         let mut game = Game::default();
-        game.player.add_to_bag(Item::Vine, 2);
+        game.player.add_to_equipment(Item::Vine, 2);
 
-        game.player.spend_from_bag(Item::Vine, 2);
+        game.player.spend_from_equipment(Item::Vine, 2);
 
-        assert_eq!(game.player.bag.get(&Item::Vine), None);
+        assert_eq!(game.player.equipment.get(&Item::Vine), None);
     }
 
     #[test]
-    fn spend_storage_then_bag_draws_storage_first() {
+    fn spend_storage_then_equipment_draws_storage_first() {
         let mut game = Game::default();
         game.player.inventory.insert(Item::Vine, 3);
-        game.player.add_to_bag(Item::Vine, 5);
+        game.player.add_to_equipment(Item::Vine, 5);
 
-        game.player.spend_storage_then_bag(Item::Vine, 3);
+        game.player.spend_storage_then_equipment(Item::Vine, 3);
 
         assert_eq!(game.player.inventory.get(&Item::Vine), None);
-        assert_eq!(game.player.bag_count(Item::Vine), 5); // untouched
+        assert_eq!(game.player.equipment_count(Item::Vine), 5); // untouched
     }
 
     #[test]
-    fn spend_storage_then_bag_spills_the_remainder_into_the_bag() {
+    fn spend_storage_then_equipment_spills_the_remainder_into_the_equipment() {
         let mut game = Game::default();
         game.player.inventory.insert(Item::Vine, 2);
-        game.player.add_to_bag(Item::Vine, 5);
+        game.player.add_to_equipment(Item::Vine, 5);
 
-        game.player.spend_storage_then_bag(Item::Vine, 4);
+        game.player.spend_storage_then_equipment(Item::Vine, 4);
 
         assert_eq!(game.player.inventory.get(&Item::Vine), None);
-        assert_eq!(game.player.bag_count(Item::Vine), 3); // 5 - (4 - 2)
+        assert_eq!(game.player.equipment_count(Item::Vine), 3); // 5 - (4 - 2)
     }
 
     #[test]
@@ -808,22 +824,22 @@ mod tests {
         assert!(!game.player.has_item_combined(Item::Vine));
 
         game.player.inventory.insert(Item::Vine, 2);
-        game.player.add_to_bag(Item::Vine, 3);
+        game.player.add_to_equipment(Item::Vine, 3);
 
         assert_eq!(game.player.combined_count(Item::Vine), 5);
         assert!(game.player.has_item_combined(Item::Vine));
     }
 
-    // The village gate on `Game::transfer_to_storage` / `transfer_to_bag` /
-    // `drop_from_storage`, and that `drop_from_bag` has none, are covered by
-    // `tests/features/bag-storage.feature`.
+    // The village gate on `Game::transfer_to_storage` / `transfer_to_equipment` /
+    // `drop_from_storage`, and that `drop_from_equipment` has none, are covered by
+    // `tests/features/equipment-storage.feature`.
 
     #[test]
-    fn drop_from_bag_without_enough_does_nothing() {
+    fn drop_from_equipment_without_enough_does_nothing() {
         let mut game = Game::default();
         let before = game.events().len();
 
-        game.drop_from_bag(Item::Vine, 1);
+        game.drop_from_equipment(Item::Vine, 1);
 
         assert_eq!(game.events().len(), before);
     }
@@ -895,9 +911,9 @@ mod tests {
 
         game.search();
 
-        // found items go into the bag, not storage
-        assert_eq!(game.player.bag.get(&Item::Branch), Some(&1));
-        assert_eq!(game.player.bag.get(&Item::Stone), Some(&1));
+        // found items go into the equipment, not storage
+        assert_eq!(game.player.equipment.get(&Item::Branch), Some(&1));
+        assert_eq!(game.player.equipment.get(&Item::Stone), Some(&1));
         assert!(game.player.inventory.is_empty());
         assert_eq!(game.events().len(), before + 2);
 
@@ -913,11 +929,11 @@ mod tests {
     }
 
     #[test]
-    fn a_full_bag_loses_the_search_find_and_logs_bag_full_instead() {
+    fn a_full_equipment_loses_the_search_find_and_logs_equipment_full_instead() {
         let mut game = Game::default();
         game.player
-            .bag
-            .insert(Item::Stone, player::BAG_BASE_CAPACITY); // no room left
+            .equipment
+            .insert(Item::Stone, player::EQUIPMENT_BASE_CAPACITY); // no room left
         let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
         let mut tile = MapTile::with_terrain(TerrainType::Forest); // yields Branch
         for (probability, _) in tile.items.values_mut() {
@@ -929,13 +945,13 @@ mod tests {
 
         assert_eq!(
             last_event(&game).kind(),
-            &EventKind::BagFull { item: Item::Branch }
+            &EventKind::EquipmentFull { item: Item::Branch }
         );
-        assert_eq!(game.player.bag.get(&Item::Branch), None);
+        assert_eq!(game.player.equipment.get(&Item::Branch), None);
     }
 
     /// Puts the player on a Meadow tile whose game is a sure thing (every
-    /// probability forced to `1.0`) and hands them a bow *in the bag*, so a
+    /// probability forced to `1.0`) and hands them a bow *in the equipment*, so a
     /// hunt's outcome turns only on whether they carry an arrow too.
     fn armed_on_a_meadow() -> Game {
         let mut game = Game::default();
@@ -945,21 +961,21 @@ mod tests {
             *probability = 1.0;
         }
         game.map.tiles[ty][tx] = tile;
-        game.player.bag.insert(Item::WoodenBow, 1);
+        game.player.equipment.insert(Item::WoodenBow, 1);
         game
     }
 
     #[test]
     fn a_successful_hunt_spends_one_arrow_keeps_the_bow_and_logs_the_haul() {
         let mut game = armed_on_a_meadow();
-        game.player.bag.insert(Item::Arrow, 2);
+        game.player.equipment.insert(Item::Arrow, 2);
 
         game.hunt();
 
-        assert_eq!(game.player.bag.get(&Item::Arrow), Some(&1));
-        assert_eq!(game.player.bag.get(&Item::WoodenBow), Some(&1));
+        assert_eq!(game.player.equipment.get(&Item::Arrow), Some(&1));
+        assert_eq!(game.player.equipment.get(&Item::WoodenBow), Some(&1));
         for item in [Item::Meat, Item::Hide, Item::Bone, Item::Fur] {
-            assert_eq!(game.player.bag.get(&item), Some(&1), "{item:?}");
+            assert_eq!(game.player.equipment.get(&item), Some(&1), "{item:?}");
         }
         assert!(matches!(last_event(&game).kind(), EventKind::Hunted { .. }));
     }
@@ -969,24 +985,24 @@ mod tests {
         let mut game = Game::default();
         let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
         game.map.tiles[ty][tx] = MapTile::with_terrain(TerrainType::Deadland);
-        game.player.bag.insert(Item::WoodenBow, 1);
-        game.player.bag.insert(Item::Arrow, 1);
+        game.player.equipment.insert(Item::WoodenBow, 1);
+        game.player.equipment.insert(Item::Arrow, 1);
 
         game.hunt();
 
-        assert_eq!(game.player.bag.get(&Item::Arrow), None);
+        assert_eq!(game.player.equipment.get(&Item::Arrow), None);
         assert_eq!(last_event(&game).kind(), &EventKind::HuntMissed);
     }
 
     #[test]
-    fn a_hunt_that_only_partly_fits_logs_bag_full_and_hunted_and_still_counts() {
+    fn a_hunt_that_only_partly_fits_logs_equipment_full_and_hunted_and_still_counts() {
         let mut game = armed_on_a_meadow();
-        game.player.bag.insert(Item::Arrow, 1);
+        game.player.equipment.insert(Item::Arrow, 1);
         // room for exactly one more item beyond the bow+arrow already carried
-        let carried = game.player.bag_total();
+        let carried = game.player.equipment_total();
         game.player
-            .bag
-            .insert(Item::Branch, player::BAG_BASE_CAPACITY - carried - 1);
+            .equipment
+            .insert(Item::Branch, player::EQUIPMENT_BASE_CAPACITY - carried - 1);
 
         game.player
             .restore_quest_state(None, 0, vec![QuestID::CraftAxe]);
@@ -996,7 +1012,9 @@ mod tests {
 
         let kinds: Vec<&EventKind> = game.events().iter().map(Event::kind).collect();
         assert!(
-            kinds.iter().any(|k| matches!(k, EventKind::BagFull { .. })),
+            kinds
+                .iter()
+                .any(|k| matches!(k, EventKind::EquipmentFull { .. })),
             "one catch didn't fit"
         );
         assert!(
@@ -1176,13 +1194,13 @@ mod tests {
     }
 
     /// Accepts "Stock Up for Hard Times" and hands the player a bow — in the
-    /// bag, since hunting gear must be carried.
+    /// equipment, since hunting gear must be carried.
     fn game_with_the_stock_up_quest_open() -> Game {
         let mut game = Game::default();
         game.player
             .restore_quest_state(None, 0, vec![QuestID::CraftAxe]);
         game.accept_quest(QuestID::StockUp).unwrap();
-        game.player.bag.insert(Item::WoodenBow, 1);
+        game.player.equipment.insert(Item::WoodenBow, 1);
         game
     }
 
@@ -1201,7 +1219,7 @@ mod tests {
     #[test]
     fn five_successful_hunts_complete_the_stock_up_quest() {
         let mut game = game_with_the_stock_up_quest_open();
-        game.player.bag.insert(Item::Arrow, 5);
+        game.player.equipment.insert(Item::Arrow, 5);
 
         for _ in 0..5 {
             sure_hunt(&mut game);
@@ -1215,7 +1233,7 @@ mod tests {
     #[test]
     fn hunts_short_of_the_goal_leave_the_stock_up_quest_open() {
         let mut game = game_with_the_stock_up_quest_open();
-        game.player.bag.insert(Item::Arrow, 3);
+        game.player.equipment.insert(Item::Arrow, 3);
 
         for _ in 0..3 {
             sure_hunt(&mut game);
@@ -1228,7 +1246,7 @@ mod tests {
     #[test]
     fn a_hunt_that_catches_nothing_does_not_count_toward_the_stock_up_quest() {
         let mut game = game_with_the_stock_up_quest_open();
-        game.player.bag.insert(Item::Arrow, 1);
+        game.player.equipment.insert(Item::Arrow, 1);
         // a barren tile: the hunt still spends the arrow, but catches nothing
         let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
         game.map.tiles[ty][tx] = MapTile::with_terrain(TerrainType::Deadland);

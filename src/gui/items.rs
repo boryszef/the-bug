@@ -1,4 +1,4 @@
-//! The Items tab: the player's Bag (left) and Inventory/storage (right)
+//! The Items tab: the player's Equipment (left) and Inventory/storage (right)
 //! side by side. Mirrors `gui::experiment`'s two-column layout; unlike
 //! Experiment there's no running selection to hold, so this is a plain
 //! function like `gui::craft`/`gui::disassemble`, not a struct.
@@ -17,16 +17,16 @@ pub(super) enum Outcome {
     Idle,
     /// Run `game.transfer_to_storage(item, 1)`.
     TransferToStorage(Item),
-    /// Run `game.transfer_to_bag(item, 1)`.
-    TransferToBag(Item),
-    /// Run `game.drop_from_bag(item, 1)`.
-    DropFromBag(Item),
+    /// Run `game.transfer_to_equipment(item, 1)`.
+    TransferToEquipment(Item),
+    /// Run `game.drop_from_equipment(item, 1)`.
+    DropFromEquipment(Item),
     /// Run `game.drop_from_storage(item, 1)`.
     DropFromStorage(Item),
 }
 
 /// Draws the two columns. `at_village` gates transfer (both directions) and
-/// dropping from storage; dropping from the bag is always enabled — the
+/// dropping from storage; dropping from the equipment is always enabled — the
 /// player can lighten their load anywhere, but can only visit the storage
 /// (or move things into/out of it) at the Village.
 pub(super) fn render(
@@ -47,16 +47,16 @@ pub(super) fn render(
     let mut outcome = Outcome::Idle;
     egui::ScrollArea::vertical().show(ui, |ui| {
         ui.columns(2, |columns| {
-            let (carried, capacity) = overview.bag_progress;
+            let (carried, capacity) = overview.equipment_progress;
             columns[0].strong(i18n::ui_args(
-                "items-bag-title",
+                "items-equipment-title",
                 lang,
                 HashMap::from([("count", carried.into()), ("capacity", capacity.into())]),
             ));
-            if overview.bag.is_empty() {
-                columns[0].label(i18n::ui("items-bag-empty", lang));
+            if overview.equipment.is_empty() {
+                columns[0].label(i18n::ui("items-equipment-empty", lang));
             }
-            for &(item, quantity) in &overview.bag {
+            for &(item, quantity) in &overview.equipment {
                 columns[0].horizontal(|ui| {
                     ui.label(i18n::item_with_quantity(item, quantity, lang));
                     // "→": move one unit to storage. Monospace, like the
@@ -70,7 +70,7 @@ pub(super) fn render(
                     }
                     // "x": drop one unit, allowed anywhere.
                     if ui.button("x").clicked() {
-                        outcome = Outcome::DropFromBag(item);
+                        outcome = Outcome::DropFromEquipment(item);
                     }
                 });
             }
@@ -82,13 +82,13 @@ pub(super) fn render(
             for &(item, quantity) in &overview.storage {
                 columns[1].horizontal(|ui| {
                     ui.label(i18n::item_with_quantity(item, quantity, lang));
-                    // "←": move one unit to the bag. Monospace, same reason
+                    // "←": move one unit to the equipment. Monospace, same reason
                     // as "→" above.
                     if ui
                         .add_enabled(at_village, Button::new(RichText::new("←").monospace()))
                         .clicked()
                     {
-                        outcome = Outcome::TransferToBag(item);
+                        outcome = Outcome::TransferToEquipment(item);
                     }
                     if ui.add_enabled(at_village, Button::new("x")).clicked() {
                         outcome = Outcome::DropFromStorage(item);
