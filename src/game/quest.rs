@@ -75,7 +75,7 @@ pub(super) const QUESTS: &[Quest] = &[
             count: 1,
         },
         reward_xp: 10,
-        reward_items: &[],
+        reward_items: &[(Item::CircuitBoard, 1)],
     },
     Quest {
         id: QuestID::CraftAxe,
@@ -85,7 +85,7 @@ pub(super) const QUESTS: &[Quest] = &[
             count: 1,
         },
         reward_xp: 20,
-        reward_items: &[],
+        reward_items: &[(Item::SolarPanel, 1)],
     },
     Quest {
         id: QuestID::StockUp,
@@ -95,7 +95,7 @@ pub(super) const QUESTS: &[Quest] = &[
             count: 5,
         },
         reward_xp: 30,
-        reward_items: &[],
+        reward_items: &[(Item::Microcontroller, 1)],
     },
 ];
 

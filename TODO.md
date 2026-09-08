@@ -10,13 +10,10 @@
   * implement "bridge" POI - requires intersection of river and road, allows new items (eg. steel bolt, rusty metal)
 * EPIC: more complex game mechanics
   * implement workshops as additional craftable locations alongside the Village (docs/village-crafting.md)
+  * quests should have closing narrative, sometimes revealing part of the story, sometimes commenting the reward item
 * EPIC: the story
   * add more quests
   * items should become enhancers and can be used in the game: axe allows to chop wood, metal detector improves the odds of finding metal-containing items (bow→hunt / arrows-spent done)
-  * BUG: Metal Detector and Solar Charger are permanently uncraftable — their
-    inputs (Microcontroller, Solar Panel, Circuit Board) have no source (no
-    recipe, no terrain/POI search); give them one, most likely in Ruins
-    (docs/code-review-2026-09.md)
 
 ## DONE
 
