@@ -1,46 +1,63 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <title>Ruins — broken masonry, reclaimed by growth</title>
+  <title>Ruins — a broken concrete building, half a century of collapse</title>
 
   <ellipse cx="31" cy="53" rx="24" ry="3.4" fill="#241c12" opacity="0.16"/>
 
-  <!-- rubble mound at the base -->
-  <path d="M5 53 Q12 47 22 48 Q32 46 42 48 Q51 47 58 53 Z"
+  <!-- rubble spill at the base -->
+  <path d="M5 53 Q12 48 21 49 Q32 47 41 49 Q51 48 58 53 Z"
         fill="#b3a68b" stroke="#463a2b" stroke-width="1" stroke-linejoin="round"/>
-
-  <!-- broken lintel resting across the gap -->
-  <path d="M17 18 L47 20.5 L47 26.5 L17 24 Z"
-        fill="#c2b596" stroke="#463a2b" stroke-width="1.1" stroke-linejoin="round"/>
-  <path d="M23 19.3 L23 24.7 M34 20.2 L34 25.6" stroke="#7d715a" stroke-width="0.8"/>
-
-  <!-- tall wall fragment (left), jagged broken top -->
-  <path d="M11 53 L11 16 L14.5 12.5 L18 15.5 L21.5 11 L25 16 L25 53 Z"
-        fill="#cdc2ab" stroke="#463a2b" stroke-width="1.2" stroke-linejoin="round"/>
-  <path d="M15 41 L15 30 Q15 26.5 18.5 26.5 Q22 26.5 22 30 L22 41 Z"
-        fill="#2b2620" stroke="#463a2b" stroke-width="1"/>
-
-  <!-- shorter fragment (right) -->
-  <path d="M41 53 L41 26 L44 21 L47 26.5 L48.5 23 L51 28.5 L51 53 Z"
-        fill="#c6baa0" stroke="#463a2b" stroke-width="1.1" stroke-linejoin="round"/>
-
-  <!-- a fallen block in front -->
-  <path d="M27 53 L27.5 46 L38 44.5 L38.5 51.5 L30 53 Z"
+  <path d="M25 53 L26.5 47.5 L35 46 L37 52 L30 53 Z"
         fill="#bdb096" stroke="#463a2b" stroke-width="1" stroke-linejoin="round"/>
-  <path d="M27.5 46 L38 44.5 L38.2 46 L27.7 47.4 Z" fill="#ddd2ba"/>
 
-  <!-- cracks -->
-  <g stroke="#7d715a" stroke-width="0.9" fill="none" stroke-linecap="round" opacity="0.85">
-    <path d="M18 44 L20 34 L18 24"/>
-    <path d="M45 44 L46.5 35 L45.5 29"/>
+  <!-- cantilevered floor slab, snapped off -->
+  <path d="M33 30 L47 31.5 L48 35.5 L44 35 L46 37.5 L33 36 Z"
+        fill="#c6bca6" stroke="#463a2b" stroke-width="1.1" stroke-linejoin="round"/>
+  <g stroke="#5a5145" stroke-width="1" fill="none" stroke-linecap="round">
+    <path d="M47 31.8 q3 -1 3.4 -3.4"/>
+    <path d="M46 34 q2.6 0.4 4 -0.6"/>
   </g>
 
-  <!-- vine on the left fragment -->
-  <path d="M23 53 Q19 46 22.5 39 Q26 32 22.5 25"
+  <!-- main structure: a corner of a concrete tower, jagged broken top -->
+  <path d="M11 53 L11 17 L15 17 L15 12 L20 16 L24 12.5 L27 16.5 L31 13 L34 17 L34 53 Z"
+        fill="#cbc4b4" stroke="#463a2b" stroke-width="1.3" stroke-linejoin="round"/>
+
+  <!-- exposed rebar at the break -->
+  <g stroke="#5a5145" stroke-width="0.8" fill="none" stroke-linecap="round">
+    <path d="M15.5 12.5 q-0.8 -2.4 0.2 -3.6"/>
+    <path d="M20 15.5 q-0.3 -2.2 0.6 -3.4"/>
+    <path d="M24 12.5 q0.2 -2.4 1.2 -3.2"/>
+    <path d="M31 13 q-0.4 -2 0.8 -3"/>
+  </g>
+
+  <!-- window openings and an open ground floor -->
+  <g fill="#241f1a" stroke="#463a2b" stroke-width="1">
+    <rect x="14" y="22" width="6" height="7.5"/>
+    <rect x="25" y="22" width="6" height="7.5"/>
+    <rect x="14" y="34" width="6" height="7.5"/>
+    <path d="M22 53 L22 45 L27 45 L27 53 Z"/>
+  </g>
+
+  <!-- shorter freestanding wall fragment, leaning -->
+  <path d="M40 53 L38.5 26 L45.5 23.5 L48.5 52 Z"
+        fill="#c3bca6" stroke="#463a2b" stroke-width="1.1" stroke-linejoin="round"/>
+  <path d="M41 31 L44.8 29.8 L45.6 39.5 L41.8 40.5 Z"
+        fill="#241f1a" stroke="#463a2b" stroke-width="0.9"/>
+
+  <!-- cracks -->
+  <g stroke="#7d715a" stroke-width="0.9" fill="none" stroke-linecap="round" opacity="0.8">
+    <path d="M17 44 L19 36 L17.5 30"/>
+    <path d="M31 45 L32 38 L30.5 33"/>
+  </g>
+
+  <!-- growth creeping back over it -->
+  <path d="M33 53 Q29 47 32 40 Q35 33 31.5 27"
         fill="none" stroke="#5b7a37" stroke-width="1.2" stroke-linecap="round"/>
-  <circle cx="20.6" cy="43" r="1.3" fill="#6b8a3f"/>
-  <circle cx="25" cy="33.5" r="1.3" fill="#6b8a3f"/>
+  <circle cx="30.4" cy="44" r="1.3" fill="#6b8a3f"/>
+  <circle cx="34" cy="34" r="1.3" fill="#6b8a3f"/>
+  <path d="M8 53 q3 -5 1.5 -10" fill="none" stroke="#5b7a37" stroke-width="1.1" stroke-linecap="round"/>
 
   <!-- volume: highlight left, shade right -->
-  <path d="M11 53 L11 16 L14.5 12.5 L15 14 L13.5 21 L13.5 53 Z" fill="#ffffff" opacity="0.08"/>
-  <path d="M23 53 L23 15.5 L25 16 L25 53 Z" fill="#000000" opacity="0.10"/>
-  <path d="M49 53 L49 27 L51 28.5 L51 53 Z" fill="#000000" opacity="0.10"/>
+  <path d="M11 53 L11 17 L15 17 L15 13 L13.5 20 L13.5 53 Z" fill="#ffffff" opacity="0.08"/>
+  <path d="M32 53 L32 15.5 L34 17 L34 53 Z" fill="#000000" opacity="0.10"/>
+  <path d="M46 53 L44.7 24.2 L45.5 23.5 L48.5 52 Z" fill="#000000" opacity="0.10"/>
 </svg>
