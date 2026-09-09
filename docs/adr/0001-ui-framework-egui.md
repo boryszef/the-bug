@@ -112,19 +112,38 @@ shipped pixels deterministic, and still leaves the SVGs editable.
 - **Terrain fills stay procedural** — `viewmodel::map::terrain_rgb` +
   `painter.rect_filled`, plus the wavy edge-trickle. Only the POI *mark*
   becomes an image.
-- **`tui` is unchanged** — it keeps `Poi::symbol` / `TerrainType::symbol`
-  glyphs; `assets/` and the `image` dep are `#[cfg(feature = "gui")]`.
 - `viewmodel::map::TileView` is unchanged — it already carries `poi`, which
   is all the renderer needs.
+
+  > At the time this was written a `tui` front end still existed and this
+  > bullet noted `assets/` + the `image` dep would be `#[cfg(feature =
+  > "gui")]`. ADR 0004 retired the `tui` and removed the `gui`/`tui` Cargo
+  > features, so there is no gate: `assets/` and `image` are unconditional.
 
 ### Consequences
 
 - New `assets/icons/` directory (SVG + generated PNG, both committed) and
   `scripts/render-icons.sh` + a short `docs/icons.md` on the pipeline.
-- One new `gui`-only runtime dependency: `image` (png only).
+- One runtime dependency for the PNG decode: `image` (png feature only).
+  `eframe` already pulls `image` in transitively with the same feature set, so
+  declaring it directly adds no crates.
 - `docs/gui-map.md` #3 and `docs/map-improvements.md` "Not emoji" are updated
   to point here; the procedural `draw_*_icon` helpers and their geometry
   tests in `src/gui/map.rs` are removed when the image path lands.
 - Not decided here: item icons' exact set, and whether the map ever needs
   more than one raster size per icon (texture filtering on a single 256px
   source is expected to be enough across the zoom range).
+
+### Landed (2026-09-09)
+
+The runtime path above is now wired (`docs/icons.md`):
+
+- `image = { version = "0.25.10", default-features = false, features =
+  ["png"] }` is a direct dependency.
+- `src/gui/map.rs` owns a `PoiIcons` struct — one `egui::TextureHandle` per
+  POI kind, decoded from the `include_bytes!`'d PNGs and uploaded once in
+  `MapView::new(&egui::Context)` (called from the `eframe` app-creator).
+- The POI branch of the tile loop draws `painter.image(...)` into a square
+  `POI_ICON_RATIO` of the tile; `draw_cave_icon` / `draw_ruins_icon` /
+  `draw_village_icon` and their geometry helpers (`arch_points`,
+  `ruins_parts`, `village_hut`, `village_door`) and tests are gone.

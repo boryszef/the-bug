@@ -18,7 +18,9 @@ predefined-map and road/river work land on top without reworking it.
 ## Scope decisions
 
 - **Render technique — hybrid.** Draw procedurally now (`Painter` filled
-  rectangles), no image assets. Route tile data through a
+  rectangles), no image assets. (POI *marks* became raster `painter.image`
+  later — ADR 0001 amendment, `docs/icons.md`; terrain fills stay procedural.)
+  Route tile data through a
   presentation-agnostic descriptor (`viewmodel::map::TileView`) so a
   sprite/texture backend can replace the drawing code later without touching
   `game/` or the (future) connection logic.
@@ -68,8 +70,10 @@ a small struct holding only transient UI state, no game data.
 
 - `MapView { center: egui::Vec2, tile_px: f32 }` — `center` is the world
   coordinate under the middle of the viewport; `tile_px` is the pixel size
-  of one tile (zoom). `Default` centres on `(0, 0)` at a fixed default
-  `tile_px`.
+  of one tile (zoom). Centres on `(0, 0)` at a fixed default `tile_px`.
+  (Later gained a `PoiIcons` field, so construction moved from `Default` to
+  `MapView::new(&egui::Context)` — the POI icon textures upload there. See
+  `docs/icons.md`.)
 - `MapView::ui(&mut self, ui, tiles: impl Iterator<Item = TileView>, player: (i32, i32))`
   — allocates a painter over the available area, applies drag to `center`
   and scroll/zoom to `tile_px` (clamped), culls to the visible tile range,
@@ -116,7 +120,9 @@ a small struct holding only transient UI state, no game data.
    dead-end all emerge from which segments are drawn). Save format gains a
    parallel, versioned feature grid.
 3. **Sprite atlas (optional):** swap procedural drawing for `painter.image`
-   + atlas UV keyed on the edge mask; `TileView` unchanged.
+   + atlas UV keyed on the edge mask; `TileView` unchanged. (Partly realised:
+   the POI *marks* are raster `painter.image` as of the ADR 0001 amendment —
+   `docs/icons.md`. Terrain fills stay procedural.)
 
 ## Code
 

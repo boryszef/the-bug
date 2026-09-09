@@ -1,8 +1,8 @@
 # Icons (map POI, later items)
 
-The `gui` will draw point-of-interest marks from raster images rather than
+The `gui` draws point-of-interest marks from raster images rather than
 procedural `egui::Painter` shapes — see `docs/adr/0001` "Amendment: raster
-icon assets" for the why and the runtime plan.
+icon assets" for the why.
 
 ## Layout
 
@@ -29,17 +29,30 @@ Needs `rsvg-convert` (`apt install librsvg2-bin`, preferred) or `inkscape`.
 
 | POI | file | subject |
 |---|---|---|
-| Village | `village` | two Mongolian-style gers (yurts) — felt cones, wooden crown wheels, a painted door |
+| Village | `village` | two Mongolian-style gers (yurts) — felt domes, small wooden crown wheels, a painted door |
 | Cave | `cave` | a rocky knoll with a dark arched mouth, grass on top |
-| Ruins | `ruins` | broken masonry — two wall fragments, a fallen lintel, rubble, a creeping vine |
+| Ruins | `ruins` | a broken 21st-century concrete building — a storey or two of jagged wall, empty window openings, exposed rebar, a snapped-off floor slab, rubble, growth creeping back over it |
 
 `Poi::Bridge` gets one when it lands; item icons will follow the same pipeline.
 
-## Not wired yet
+## Runtime wiring
 
-`src/gui/map.rs` still draws the procedural `draw_village_icon` /
-`draw_cave_icon` / `draw_ruins_icon` shapes. Replacing those with
-`painter.image` — plus the `image` crate to decode the PNGs into a cached
-`egui` texture per icon — is the next step (ADR amendment, "Consequences").
-`tui` is unaffected: it keeps `Poi::symbol` glyphs, and `assets/` + the image
-dep are `#[cfg(feature = "gui")]`.
+`src/gui/map.rs`:
+
+- `image = { version = "0.25.10", default-features = false, features =
+  ["png"] }` is a direct dependency (`eframe` already pulls the same crate +
+  feature in transitively, so it costs nothing).
+- `struct PoiIcons` holds one `egui::TextureHandle` per `Poi` kind. Each PNG
+  is `include_bytes!`'d, decoded with `image::load_from_memory_with_format`,
+  and uploaded via `ctx.load_texture(_, _, TextureOptions::LINEAR)` — the
+  256 px source is only ever minified onto 12–96 px tiles, so linear
+  filtering, not nearest.
+- `PoiIcons` is built once in `MapView::new(&egui::Context)`, called from the
+  `eframe` app-creator closure (`src/gui/mod.rs`). It lives on `MapView`.
+- In the tile loop, a POI tile draws `painter.image(handle.id(),
+  poi_icon_rect(centre, tile_px), …)` — a square `POI_ICON_RATIO` of the tile,
+  centred — instead of the old `draw_*_icon` polygon calls. `POI_ICON_MIN_PX`
+  still gates it out when zoomed too far.
+
+A decode failure `panic!`s: the bytes are compiled in, so a bad PNG is a
+broken asset in the tree, not a runtime condition.

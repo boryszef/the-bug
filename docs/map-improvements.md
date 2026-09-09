@@ -29,7 +29,11 @@ last and get their own docs.
 
 > Increment 3 (`docs/map-pois.md`) re-keyed this off `tile.poi` instead of
 > `tile.terrain` and added the village. A later pass redrew all three shapes
-> and added a second ink — described below.
+> and added a second ink — described below. Superseded 2026-09-09: the
+> procedural two-ink marks were replaced by raster PNGs
+> (`assets/icons/*.png`), drawn with `painter.image`. See `docs/icons.md` and
+> `docs/adr/0001` "Amendment: raster icon assets". The rest of this section is
+> kept as the record of what the procedural marks were.
 
 `src/gui/map.rs` only — pure rendering, no `game`/`viewmodel` change.
 
@@ -54,9 +58,10 @@ assertable output — same rule as `MapView::ui`).
 `Poi::symbol()` returns `🪨` / `🏙` / `🛖` and the `tui` prints those on its
 canvas. The `gui` does **not** reuse them: egui 0.36 renders emoji monochrome,
 its bundled fonts may not even carry `🪨` (U+1FAA8, 2020), and the repo has no
-`FontDefinitions` customisation. Drawn shapes are reliable and match the
+`FontDefinitions` customisation. Drawn shapes were reliable and matched the
 "procedural, no image assets" choice from `docs/adr/0001` / `docs/gui-map.md` —
-two flat inks, no gradients or sprites.
+two flat inks, no gradients or sprites. (That choice was later amended: POI
+marks are raster PNGs as of the ADR 0001 amendment — `docs/icons.md`.)
 
 ## 2. Wavy borders (field terrains)
 
