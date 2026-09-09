@@ -50,7 +50,7 @@ fn app_creator(
             game,
             language,
             panel: Panel::default(),
-            map_view: MapView::default(),
+            map_view: MapView::new(&cc.egui_ctx),
             experiment: Experiment::default(),
         }))
     }
@@ -64,7 +64,9 @@ pub fn run(game: Game, language: Language) -> eframe::Result<()> {
         "the-bug",
         eframe::NativeOptions {
             viewport: egui::ViewportBuilder::default()
-                .with_inner_size([1280.0, 800.0])
+                // Tall enough that a fresh 23×23 map fits at the default zoom,
+                // with the 320-wide side panel alongside it.
+                .with_inner_size([1280.0, 1000.0])
                 .with_min_inner_size([800.0, 600.0]),
             ..Default::default()
         },

@@ -3911,6 +3911,7 @@ dependencies = [
  "getrandom 0.4.3",
  "i18n-embed",
  "i18n-embed-fl",
+ "image",
  "pollster 0.4.0",
  "rand",
  "rust-embed",

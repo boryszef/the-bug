@@ -22,6 +22,9 @@ eframe = "0.36.1"
 fluent = "0.17.0"
 i18n-embed = { version = "0.16.0", features = ["fluent-system", "desktop-requester"] }
 i18n-embed-fl = "0.10.1"
+# Decodes the bundled POI icon PNGs (docs/icons.md). `eframe` already pulls
+# this crate in with the same feature set, so it costs no extra build.
+image = { version = "0.25.10", default-features = false, features = ["png"] }
 rand = "0.10.2"
 # `debug-embed`: embed the `.ftl` locales in debug builds too (release
 # already does) — a debug wasm build has no filesystem to read them from.

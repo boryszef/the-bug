@@ -6,14 +6,17 @@
 
 use std::ops::RangeInclusive;
 
-use eframe::egui::{Color32, Key, Painter, Pos2, Rect, RichText, Sense, Shape, Stroke, Ui, Vec2};
+use eframe::egui::{
+    self, Color32, Key, Painter, Pos2, Rect, RichText, Sense, TextureHandle, TextureOptions, Ui,
+    Vec2,
+};
 
 use crate::game::{Direction, Poi, TerrainType};
 use crate::i18n::{self, Language};
 use crate::viewmodel::map::{TileView, terrain_rgb};
 
 /// Pixel size of one tile at the default zoom.
-const DEFAULT_TILE_PX: f32 = 24.0;
+const DEFAULT_TILE_PX: f32 = 36.0;
 /// Zoom clamp: the smallest and largest a tile may be drawn.
 const MIN_TILE_PX: f32 = 6.0;
 const MAX_TILE_PX: f32 = 96.0;
@@ -24,24 +27,22 @@ const SCROLL_ZOOM_RATE: f32 = 0.002;
 const PLAYER_MARKER_RATIO: f32 = 0.3;
 const PLAYER_MARKER_COLOR: Color32 = Color32::from_rgb(0xff, 0xd0, 0x2f);
 
-/// The lit ink for the point-of-interest icons — a pale bone that reads on any
-/// of the terrain fills a POI can sit on (dark deadland included).
-const POI_ICON_COLOR: Color32 = Color32::from_rgb(0xe4, 0xdd, 0xcf);
-/// The shadow ink — a cave mouth, a doorway, the far side of a ruin. Drawn on
-/// top of the lit shapes, so it only has to read against [`POI_ICON_COLOR`].
-const POI_ICON_SHADOW: Color32 = Color32::from_rgb(0x37, 0x2e, 0x24);
-/// POI icon extent as a fraction of the tile.
-const POI_ICON_RATIO: f32 = 0.6;
+/// Side of the square a POI icon is drawn into, as a fraction of the tile.
+/// The icon PNG carries its own internal padding and a ground shadow, so this
+/// frame runs close to the whole tile.
+const POI_ICON_RATIO: f32 = 0.9;
 /// Below this tile size the POI icon is skipped — it would just be noise.
 const POI_ICON_MIN_PX: f32 = 12.0;
+/// UV rect covering the whole icon texture.
+const POI_ICON_UV: Rect = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
 
 /// Wavy-border "trickle": how many teeth of the neighbour's colour reach in
 /// along a shared edge, where along the edge they sit (fraction), how deep
 /// they go (fraction of the tile), and how wide each is (fraction of the tile).
-const TRICKLE_TEETH: usize = 2;
-const TRICKLE_OFFSETS: [f32; TRICKLE_TEETH] = [0.32, 0.68];
-const TRICKLE_DEPTHS: [f32; TRICKLE_TEETH] = [0.22, 0.12];
-const TRICKLE_TOOTH_W: f32 = 0.26;
+const TRICKLE_TEETH: usize = 3;
+const TRICKLE_OFFSETS: [f32; TRICKLE_TEETH] = [0.2, 0.5, 0.8];
+const TRICKLE_DEPTHS: [f32; TRICKLE_TEETH] = [0.14, 0.09, 0.12];
+const TRICKLE_TOOTH_W: f32 = 0.16;
 
 /// What the Map tab wants `App` to do to `game` after one frame — from an
 /// on-screen button or its keyboard accelerator. Mirrors how the other gui
@@ -53,24 +54,28 @@ pub(super) enum MapCommand {
     Hunt,
 }
 
-/// Transient pan/zoom state for the map tab.
+/// Transient pan/zoom state for the map tab, plus the POI icon textures
+/// (uploaded once in [`MapView::new`]).
 pub struct MapView {
     /// World coordinate under the centre of the viewport.
     center: Vec2,
     /// Pixel size of one tile.
     tile_px: f32,
-}
-
-impl Default for MapView {
-    fn default() -> Self {
-        MapView {
-            center: Vec2::ZERO,
-            tile_px: DEFAULT_TILE_PX,
-        }
-    }
+    /// One texture per POI kind, drawn on the point-of-interest tiles.
+    icons: PoiIcons,
 }
 
 impl MapView {
+    /// Centred on the origin at the default zoom, with the POI icon PNGs
+    /// decoded and uploaded as textures.
+    pub fn new(ctx: &egui::Context) -> Self {
+        MapView {
+            center: Vec2::ZERO,
+            tile_px: DEFAULT_TILE_PX,
+            icons: PoiIcons::load(ctx),
+        }
+    }
+
     /// Draws the movement/search/hunt controls and, below them, the tile grid:
     /// a filled square per visible tile, then the player marker. Consumes
     /// drag (pan) and scroll or pinch (zoom) over the grid. Returns the
@@ -149,22 +154,23 @@ impl MapView {
 
             // A POI tile stays a clean square so its icon reads clearly;
             // everywhere else the border trickles into its neighbours.
-            if tile.poi.is_none() {
-                draw_edge_trickle(
+            match tile.poi {
+                Some(poi) if self.tile_px >= POI_ICON_MIN_PX => {
+                    painter.image(
+                        self.icons.for_poi(poi).id(),
+                        poi_icon_rect(rect.center(), self.tile_px),
+                        POI_ICON_UV,
+                        Color32::WHITE,
+                    );
+                }
+                Some(_) => {}
+                None => draw_edge_trickle(
                     &painter,
                     rect.center(),
                     self.tile_px,
                     tile.terrain,
                     &tile.neighbours,
-                );
-            } else if self.tile_px >= POI_ICON_MIN_PX {
-                let c = rect.center();
-                match tile.poi {
-                    Some(Poi::Cave) => draw_cave_icon(&painter, c, self.tile_px),
-                    Some(Poi::Ruins) => draw_ruins_icon(&painter, c, self.tile_px),
-                    Some(Poi::Village) => draw_village_icon(&painter, c, self.tile_px),
-                    None => {}
-                }
+                ),
             }
         }
 
@@ -223,44 +229,60 @@ fn tile_rect(wx: i32, wy: i32, viewport: Rect, center: Vec2, tile_px: f32) -> Re
     Rect::from_center_size(middle, Vec2::splat(tile_px))
 }
 
-/// A cave: a bone arch with a darker arched opening cut into it — a cave mouth.
-fn draw_cave_icon(painter: &Painter, center: Pos2, tile_px: f32) {
-    let size = tile_px * POI_ICON_RATIO;
-    let baseline = center.y + size / 2.0;
-    painter.add(Shape::convex_polygon(
-        arch_points(center.x, baseline, size / 2.0, size * 0.95),
-        POI_ICON_COLOR,
-        Stroke::NONE,
-    ));
-    painter.add(Shape::convex_polygon(
-        arch_points(center.x, baseline, size * 0.28, size * 0.58),
-        POI_ICON_SHADOW,
-        Stroke::NONE,
-    ));
+/// The screen square a POI icon is drawn into: side [`POI_ICON_RATIO`] of the
+/// tile, centred on the tile. Mirrors [`tile_rect`].
+fn poi_icon_rect(center: Pos2, tile_px: f32) -> Rect {
+    Rect::from_center_size(center, Vec2::splat(tile_px * POI_ICON_RATIO))
 }
 
-/// Ruins: a standing column and a broken one, a lintel across the top, and a
-/// shaded inner face for depth.
-fn draw_ruins_icon(painter: &Painter, center: Pos2, tile_px: f32) {
-    let ruin = ruins_parts(center, tile_px * POI_ICON_RATIO);
-    for column in ruin.columns {
-        painter.rect_filled(column, 0.0, POI_ICON_COLOR);
+/// One uploaded texture per POI kind, decoded once in [`MapView::new`] from the
+/// PNGs bundled at compile time. See `docs/icons.md`.
+struct PoiIcons {
+    cave: TextureHandle,
+    ruins: TextureHandle,
+    village: TextureHandle,
+}
+
+impl PoiIcons {
+    fn load(ctx: &egui::Context) -> Self {
+        PoiIcons {
+            cave: load_icon(
+                ctx,
+                "poi-cave",
+                include_bytes!("../../assets/icons/cave.png"),
+            ),
+            ruins: load_icon(
+                ctx,
+                "poi-ruins",
+                include_bytes!("../../assets/icons/ruins.png"),
+            ),
+            village: load_icon(
+                ctx,
+                "poi-village",
+                include_bytes!("../../assets/icons/village.png"),
+            ),
+        }
     }
-    painter.rect_filled(ruin.lintel, 0.0, POI_ICON_COLOR);
-    painter.rect_filled(ruin.shade, 0.0, POI_ICON_SHADOW);
+
+    fn for_poi(&self, poi: Poi) -> &TextureHandle {
+        match poi {
+            Poi::Cave => &self.cave,
+            Poi::Ruins => &self.ruins,
+            Poi::Village => &self.village,
+        }
+    }
 }
 
-/// The village: a little hut — a body under a triangular roof, with a dark
-/// doorway.
-fn draw_village_icon(painter: &Painter, center: Pos2, tile_px: f32) {
-    let (roof, body) = village_hut(center, tile_px * POI_ICON_RATIO);
-    painter.rect_filled(body, 0.0, POI_ICON_COLOR);
-    painter.add(Shape::convex_polygon(
-        roof.to_vec(),
-        POI_ICON_COLOR,
-        Stroke::NONE,
-    ));
-    painter.rect_filled(village_door(body), 0.0, POI_ICON_SHADOW);
+/// Decode a compile-time-bundled PNG and upload it as an egui texture. The
+/// bytes are embedded by `include_bytes!`, so a decode failure means a broken
+/// asset in the tree, not a runtime condition.
+fn load_icon(ctx: &egui::Context, name: &str, png: &[u8]) -> TextureHandle {
+    let rgba = image::load_from_memory_with_format(png, image::ImageFormat::Png)
+        .expect("bundled POI icon PNG is valid")
+        .to_rgba8();
+    let size = [rgba.width() as usize, rgba.height() as usize];
+    let color = egui::ColorImage::from_rgba_unmultiplied(size, rgba.as_raw());
+    ctx.load_texture(name, color, TextureOptions::LINEAR)
 }
 
 /// For each edge whose neighbour is a *different* terrain, paints a few teeth
@@ -312,91 +334,6 @@ fn edge_teeth(center: Pos2, tile_px: f32, edge: usize) -> [Rect; TRICKLE_TEETH] 
             ),
         }
     })
-}
-
-/// Points tracing the upper half of an ellipse — the outline of a filled arch —
-/// from the left foot of the span (`cx - rx`, `baseline_y`) up and over to the
-/// right foot (`cx + rx`, `baseline_y`). The polygon's own closing edge along
-/// the baseline finishes the silhouette.
-fn arch_points(cx: f32, baseline_y: f32, rx: f32, ry: f32) -> Vec<Pos2> {
-    const SEGMENTS: usize = 16;
-    (0..=SEGMENTS)
-        .map(|i| {
-            let angle = std::f32::consts::PI * i as f32 / SEGMENTS as f32;
-            Pos2::new(cx - rx * angle.cos(), baseline_y - ry * angle.sin())
-        })
-        .collect()
-}
-
-/// The village hut: `(roof triangle, body rect)` for an icon box `size` on a
-/// side centred on `center`. The body is the lower ~55%, the roof the upper
-/// ~55% (they overlap a little at the eaves).
-fn village_hut(center: Pos2, size: f32) -> ([Pos2; 3], Rect) {
-    let h = size / 2.0;
-    let eaves = center.y - h * 0.1;
-    let body = Rect::from_min_max(
-        Pos2::new(center.x - h * 0.7, eaves),
-        Pos2::new(center.x + h * 0.7, center.y + h),
-    );
-    let roof = [
-        Pos2::new(center.x, center.y - h),
-        Pos2::new(center.x - h, eaves),
-        Pos2::new(center.x + h, eaves),
-    ];
-    (roof, body)
-}
-
-/// The dark doorway at the foot of the hut `body` — centred, a third of its
-/// width, a bit over half its height.
-fn village_door(body: Rect) -> Rect {
-    let w = body.width() * 0.32;
-    let height = body.height() * 0.55;
-    Rect::from_min_max(
-        Pos2::new(body.center().x - w / 2.0, body.max.y - height),
-        Pos2::new(body.center().x + w / 2.0, body.max.y),
-    )
-}
-
-/// A ruined structure: a full-height column, a broken (shorter) one with a
-/// gap between, a lintel resting across the top of the tall column, and a
-/// shadow strip down its inner face. For an icon box `size` centred on `center`.
-struct RuinsShape {
-    /// `[full-height, broken]`.
-    columns: [Rect; 2],
-    lintel: Rect,
-    shade: Rect,
-}
-
-fn ruins_parts(center: Pos2, size: f32) -> RuinsShape {
-    let h = size / 2.0;
-    let baseline = center.y + h;
-    let top = center.y - h;
-    let column_w = size * 0.24;
-    let gap = size * 0.18;
-    let left_x = center.x - gap / 2.0 - column_w;
-    let right_x = center.x + gap / 2.0;
-
-    let tall = Rect::from_min_max(
-        Pos2::new(left_x, top),
-        Pos2::new(left_x + column_w, baseline),
-    );
-    let broken = Rect::from_min_max(
-        Pos2::new(right_x, center.y - h * 0.1),
-        Pos2::new(right_x + column_w, baseline),
-    );
-    let lintel = Rect::from_min_max(
-        Pos2::new(left_x, top),
-        Pos2::new(right_x + column_w * 0.4, top + size * 0.16),
-    );
-    let shade = Rect::from_min_max(
-        Pos2::new(left_x + column_w - size * 0.07, top + size * 0.16),
-        Pos2::new(left_x + column_w, baseline),
-    );
-    RuinsShape {
-        columns: [tall, broken],
-        lintel,
-        shade,
-    }
 }
 
 /// The inclusive ranges of world tile coordinates (x, then y) that can be at
@@ -479,30 +416,15 @@ mod tests {
     }
 
     #[test]
-    fn arch_points_trace_a_dome_from_one_foot_to_the_other() {
-        let (cx, baseline, rx, ry) = (100.0_f32, 60.0_f32, 10.0_f32, 16.0_f32);
-        let pts = arch_points(cx, baseline, rx, ry);
+    fn poi_icon_rect_is_a_centred_square_inside_the_tile() {
+        let c = Pos2::new(4.0, -2.0);
+        let tile_px = 40.0;
+        let r = poi_icon_rect(c, tile_px);
 
-        assert!(pts.len() >= 3);
-        let first = *pts.first().unwrap();
-        let last = *pts.last().unwrap();
-        assert!((first.x - (cx - rx)).abs() < 1e-3 && (first.y - baseline).abs() < 1e-3);
-        assert!((last.x - (cx + rx)).abs() < 1e-3 && (last.y - baseline).abs() < 1e-3);
-
-        // every point sits within the arch's bounding half-ellipse, above the
-        // baseline, and the span runs strictly left to right
-        for p in &pts {
-            assert!(p.x >= cx - rx - 1e-3 && p.x <= cx + rx + 1e-3);
-            assert!(p.y <= baseline + 1e-3 && p.y >= baseline - ry - 1e-3);
-        }
-        for w in pts.windows(2) {
-            assert!(w[0].x < w[1].x + 1e-3, "left to right");
-        }
-        let apex = pts.iter().min_by(|a, b| a.y.total_cmp(&b.y)).unwrap();
-        assert!(
-            apex.y < baseline - ry * 0.9,
-            "the top of the dome reaches up"
-        );
+        assert!((r.center() - c).length() < 1e-3, "centred on the tile");
+        assert!((r.width() - r.height()).abs() < 1e-3, "square");
+        assert!((r.width() - tile_px * POI_ICON_RATIO).abs() < 1e-3);
+        assert!(r.width() <= tile_px + 1e-3, "stays within the tile");
     }
 
     #[test]
@@ -549,70 +471,6 @@ mod tests {
                 "west teeth sit on the left edge"
             );
             assert!(t.max.x < c.x, "reach inward from the left");
-        }
-    }
-
-    #[test]
-    fn ruins_parts_are_two_columns_on_a_baseline_with_a_lintel_on_the_taller() {
-        let c = Pos2::new(0.0, 0.0);
-        let size = 24.0;
-        let half = size / 2.0 + 1e-3;
-        let RuinsShape {
-            columns: [tall, broken],
-            lintel,
-            shade,
-        } = ruins_parts(c, size);
-
-        assert!((tall.max.y - broken.max.y).abs() < 1e-3, "share a baseline");
-        assert!(
-            tall.height() > broken.height() + 1e-3,
-            "one is broken short"
-        );
-        assert!(
-            tall.max.x <= broken.min.x + 1e-3,
-            "tall on the left, a gap between"
-        );
-
-        assert!(lintel.min.y <= tall.min.y + 1e-3, "lintel rests on the top");
-        assert!(
-            lintel.min.x <= tall.min.x + 1e-3 && lintel.max.x > tall.max.x,
-            "lintel bridges out from the tall column"
-        );
-        assert!(
-            shade.min.x >= tall.min.x - 1e-3 && shade.max.x <= tall.max.x + 1e-3,
-            "shade runs down the tall column's face"
-        );
-
-        for r in [tall, broken, lintel, shade] {
-            assert!((r.min.x - c.x).abs() <= half && (r.max.x - c.x).abs() <= half);
-            assert!((r.min.y - c.y).abs() <= half && (r.max.y - c.y).abs() <= half);
-        }
-    }
-
-    #[test]
-    fn village_hut_has_a_roof_above_a_body_with_a_door_at_its_foot() {
-        let c = Pos2::new(0.0, 0.0);
-        let size = 20.0;
-        let ([apex, rl, rr], body) = village_hut(c, size);
-        let door = village_door(body);
-
-        assert!(apex.y < body.min.y, "roof apex above the body");
-        assert!(rl.x < c.x && rr.x > c.x, "roof spans the centre");
-        assert!(
-            body.min.x > rl.x && body.max.x < rr.x,
-            "body narrower than the roof"
-        );
-        assert!(
-            (door.max.y - body.max.y).abs() < 1e-3,
-            "door sits on the ground"
-        );
-        assert!(
-            door.min.x > body.min.x && door.max.x < body.max.x && door.min.y > body.min.y,
-            "door is inside the lower body"
-        );
-        for p in [apex, rl, rr, body.min, body.max] {
-            assert!((p.x - c.x).abs() <= size / 2.0 + 1e-3);
-            assert!((p.y - c.y).abs() <= size / 2.0 + 1e-3);
         }
     }
 }
