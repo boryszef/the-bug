@@ -7,6 +7,7 @@
 * EPIC: the web build (docs/adr/0005-web-build.md)
   * a CI workflow — run cargo test / clippy / fmt on push (deploy.yml only builds+publishes)
 * EPIC: improve the map
+  * User sprite should be an icon too, not just a yellow dot.
   * implement roads and rivers
   * implement "bridge" POI - requires intersection of river and road, allows new items (eg. steel bolt, rusty metal)
 * EPIC: more complex game mechanics

@@ -41,7 +41,7 @@ const POI_ICON_UV: Rect = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
 /// they go (fraction of the tile), and how wide each is (fraction of the tile).
 const TRICKLE_TEETH: usize = 3;
 const TRICKLE_OFFSETS: [f32; TRICKLE_TEETH] = [0.2, 0.5, 0.8];
-const TRICKLE_DEPTHS: [f32; TRICKLE_TEETH] = [0.14, 0.09, 0.12];
+const TRICKLE_DEPTHS: [f32; TRICKLE_TEETH] = [0.09, 0.14, 0.10];
 const TRICKLE_TOOTH_W: f32 = 0.16;
 
 /// What the Map tab wants `App` to do to `game` after one frame — from an
