@@ -41,9 +41,9 @@ wording; a variant with no `.ftl` message would compile but render
 |---|---|---|
 | Waking up | `Awoke` | `You wake up and decide to go for a walk.` |
 | Searching a tile | `Found` | `You find a Branch in the Forest.` |
-| Hunting a tile | `Hunted` / `HuntMissed` / `HuntUnprepared` | `Hunt: 1 Meat + 1 Hide.` / `Hunt: the quarry got away.` / `You need a Wooden Bow to hunt.` |
-| Crafting | `Crafted` / `CraftShortage` / `CraftMissingTool` / `UnknownRecipe` | `You craft a Cord.` / `You don't have enough Vine to craft a Cord.` |
-| Experimenting | `Experimented` / `ExperimentFailed` / `ExperimentShortage` / `ExperimentMissingTool` | see below |
+| Hunting a tile | `Hunted` / `HuntMissed` | `Hunt: 1 Meat + 1 Hide.` / `Hunt: the quarry got away.` |
+| Crafting | `Crafted` | `You craft a Cord.` |
+| Experimenting | `Experimented` / `ExperimentFailed` / `ExperimentMissingTool` | see below |
 | Disassembling | `Disassembled` | `You take apart a Stone Axe, recovering 1 Branch + 1 Stone + 1 Cord.` |
 | Accepting/completing a quest | `QuestAccepted` / `QuestCompleted` | — |
 | **Walking** | — | *not logged* |
@@ -54,7 +54,6 @@ wording; a variant with no `.ftl` message would compile but render
 Experiment: 2 Vine -> Cord (new recipe!)
 Experiment: 2 Vine -> Cord
 Experiment: 1 Branch + 1 Vine -> nothing
-Experiment: 5 Stone -> not enough Stone (have 1, need 5)
 ```
 
 Inputs are sorted by item and joined with ` + ` (`i18n::describe_items`).

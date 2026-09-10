@@ -40,24 +40,22 @@ mod tests {
 
     #[test]
     fn returns_newest_first_and_respects_count() {
+        // `Game::default()` already seeds one `Awoke` event; a single real
+        // craft on top of it gives two distinct, order-checkable kinds.
         let mut game = Game::default();
-        game.craft("aaa"); // unknown recipe -> deterministic log line
-        game.craft("bbb");
+        game.player.grant_recipe("Cord");
+        game.player.inventory.insert(crate::game::Item::Vine, 2);
+        game.craft("Cord");
 
         let recent: Vec<RecentEvent> = recent(&game, 2).collect();
         assert_eq!(recent.len(), 2);
         assert_eq!(
             recent[0].kind,
-            &EventKind::UnknownRecipe {
-                recipe: "bbb".to_string()
+            &EventKind::Crafted {
+                output: crate::game::Item::Cord
             }
         );
-        assert_eq!(
-            recent[1].kind,
-            &EventKind::UnknownRecipe {
-                recipe: "aaa".to_string()
-            }
-        );
+        assert_eq!(recent[1].kind, &EventKind::Awoke);
     }
 
     #[test]
@@ -74,14 +72,9 @@ mod tests {
 
     #[test]
     fn recent_exposes_the_event_kind() {
-        let mut game = Game::default();
-        game.craft("whatever");
-        assert_eq!(
-            recent(&game, 1).next().unwrap().kind,
-            &EventKind::UnknownRecipe {
-                recipe: "whatever".to_string()
-            }
-        );
+        // A fresh game already carries its one `Awoke` event.
+        let game = Game::default();
+        assert_eq!(recent(&game, 1).next().unwrap().kind, &EventKind::Awoke);
     }
 
     #[test]

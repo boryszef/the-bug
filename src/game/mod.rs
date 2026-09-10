@@ -221,15 +221,9 @@ impl Game {
             return;
         }
         if !self.player.has_item_in_equipment(Item::WoodenBow) {
-            self.log(EventKind::HuntUnprepared {
-                missing: Item::WoodenBow,
-            });
             return;
         }
         if !self.player.has_item_in_equipment(Item::Arrow) {
-            self.log(EventKind::HuntUnprepared {
-                missing: Item::Arrow,
-            });
             return;
         }
         self.player.spend_from_equipment(Item::Arrow, 1);
@@ -287,25 +281,14 @@ impl Game {
         }
 
         let Some(recipe) = self.player.find_known_recipe(recipe_name) else {
-            self.log(EventKind::UnknownRecipe {
-                recipe: recipe_name.to_string(),
-            });
             return;
         };
 
-        if let Some((item, ..)) = self.player.first_shortage(recipe.consumables()) {
-            self.log(EventKind::CraftShortage {
-                needed: item,
-                output: recipe.output(),
-            });
+        if self.player.first_shortage(recipe.consumables()).is_some() {
             return;
         }
 
-        if let Some(tool) = self.player.first_missing_tool(recipe.tools()) {
-            self.log(EventKind::CraftMissingTool {
-                tool,
-                output: recipe.output(),
-            });
+        if self.player.first_missing_tool(recipe.tools()).is_some() {
             return;
         }
 
@@ -337,13 +320,7 @@ impl Game {
             return;
         }
 
-        if let Some((item, available, needed)) = self.player.first_shortage(items) {
-            self.log(EventKind::ExperimentShortage {
-                items: items.to_vec(),
-                missing: item,
-                available,
-                needed,
-            });
+        if self.player.first_shortage(items).is_some() {
             return;
         }
 
@@ -521,20 +498,6 @@ mod tests {
 
     #[test]
     fn experiment_logs_are_precise() {
-        // shortage: shows have / need
-        let mut game = Game::default();
-        game.player.inventory.insert(Item::Stone, 1);
-        game.experiment(&[(Item::Stone, 5)]);
-        assert_eq!(
-            last_event(&game).kind(),
-            &EventKind::ExperimentShortage {
-                items: vec![(Item::Stone, 5)],
-                missing: Item::Stone,
-                available: 1,
-                needed: 5,
-            }
-        );
-
         // failure: shows the items tried
         let mut game = Game::default();
         game.player.inventory.insert(Item::Branch, 1);
@@ -575,6 +538,17 @@ mod tests {
         let mut game = Game::default();
         let before = game.events().len();
         game.experiment(&[]);
+        assert_eq!(game.events().len(), before);
+    }
+
+    #[test]
+    fn experiment_shortage_does_not_log() {
+        let mut game = Game::default();
+        game.player.inventory.insert(Item::Stone, 1);
+        let before = game.events().len();
+
+        game.experiment(&[(Item::Stone, 5)]); // short by 4: a pure refusal
+
         assert_eq!(game.events().len(), before);
     }
 
@@ -898,6 +872,17 @@ mod tests {
     }
 
     #[test]
+    fn craft_shortage_does_not_log() {
+        let mut game = Game::default();
+        game.player.grant_recipe("Stone Axe");
+        let before = game.events().len();
+
+        game.craft("Stone Axe"); // empty inventory: a pure refusal
+
+        assert_eq!(game.events().len(), before);
+    }
+
+    #[test]
     fn recipe_progress_reports_known_and_craftable_total() {
         let mut game = Game::default();
         let craftable = RECIPES.iter().filter(|r| r.craftable()).count();
@@ -1098,7 +1083,9 @@ mod tests {
         let mut game = Game::default();
         assert!(game.events()[0].elapsed() < Duration::from_secs(1));
 
-        game.craft("Cord"); // unknown recipe -> one log line
+        game.player.grant_recipe("Cord");
+        game.player.inventory.insert(Item::Vine, 4);
+        game.craft("Cord");
         game.craft("Cord");
 
         let elapsed: Vec<Duration> = game.events().iter().map(Event::elapsed).collect();

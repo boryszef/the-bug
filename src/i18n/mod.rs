@@ -152,48 +152,6 @@ pub fn event(kind: &EventKind, lang: Language) -> String {
             "event-quest-completed",
             quest = quest_name(*quest, lang)
         ),
-        EventKind::UnknownRecipe { recipe } => {
-            fl!(loader, "event-unknown-recipe", recipe = recipe.as_str())
-        }
-        EventKind::CraftShortage { needed, output } => {
-            // "not enough of X" wants X in the plural genitive case in
-            // Polish (a shortage of a countable noun); "to make Y" wants Y
-            // in the accusative (direct object of "zrobić"). English has no
-            // case to apply, so both stay nominative.
-            let needed_arg = match lang {
-                Language::English => self::item(*needed, lang),
-                Language::Polish => item_attr(*needed, "genitive-plural", lang),
-            };
-            let output_arg = match lang {
-                Language::English => self::item(*output, lang),
-                Language::Polish => item_attr(*output, "accusative", lang),
-            };
-            fl!(
-                loader,
-                "event-craft-shortage",
-                needed = needed_arg,
-                output = output_arg
-            )
-        }
-        EventKind::CraftMissingTool { tool, output } => {
-            // "you need an X" wants X in the genitive in Polish (object of
-            // "potrzebujesz"); "to make Y" wants Y in the accusative (object of
-            // "zrobić"). English stays nominative for both.
-            let tool_arg = match lang {
-                Language::English => self::item(*tool, lang),
-                Language::Polish => item_attr(*tool, "genitive", lang),
-            };
-            let output_arg = match lang {
-                Language::English => self::item(*output, lang),
-                Language::Polish => item_attr(*output, "accusative", lang),
-            };
-            fl!(
-                loader,
-                "event-craft-missing-tool",
-                tool = tool_arg,
-                output = output_arg
-            )
-        }
         EventKind::Crafted { output } => {
             // "You craft Y" wants Y in the accusative in Polish (direct
             // object of "Tworzysz").
@@ -202,27 +160,6 @@ pub fn event(kind: &EventKind, lang: Language) -> String {
                 Language::Polish => item_attr(*output, "accusative", lang),
             };
             fl!(loader, "event-crafted", output = output_arg)
-        }
-        EventKind::ExperimentShortage {
-            items,
-            missing,
-            available,
-            needed,
-        } => {
-            let available: u32 = *available;
-            let needed: u32 = *needed;
-            let missing_arg = match lang {
-                Language::English => self::item(*missing, lang),
-                Language::Polish => item_attr(*missing, "genitive-plural", lang),
-            };
-            fl!(
-                loader,
-                "event-experiment-shortage",
-                items = describe_items(items, lang),
-                missing = missing_arg,
-                available = available,
-                needed = needed
-            )
         }
         EventKind::ExperimentFailed { items } => fl!(
             loader,
@@ -260,15 +197,6 @@ pub fn event(kind: &EventKind, lang: Language) -> String {
             fl!(loader, "event-hunted", items = describe_items(items, lang))
         }
         EventKind::HuntMissed => fl!(loader, "event-hunt-missed"),
-        EventKind::HuntUnprepared { missing } => {
-            // "you need a X" wants X in the genitive in Polish (object of
-            // "potrzebujesz"); English stays nominative.
-            let missing_arg = match lang {
-                Language::English => self::item(*missing, lang),
-                Language::Polish => item_attr(*missing, "genitive", lang),
-            };
-            fl!(loader, "event-hunt-unprepared", missing = missing_arg)
-        }
         EventKind::EquipmentFull { item } => {
             // "no room for X" wants X in the accusative in Polish (object of
             // "na" in "miejsca na X"); English stays nominative.
@@ -410,7 +338,7 @@ pub fn ui_args(id: &str, lang: Language, args: HashMap<&str, FluentValue>) -> St
 
 /// A sorted, `" + "`-joined rendering of a set of items with quantities, e.g.
 /// `"1 Branch + 1 Stone + 1 Cord"` — used inside event messages that carry a
-/// runtime list ([`EventKind::ExperimentShortage`] and friends).
+/// runtime list ([`EventKind::ExperimentFailed`] and friends).
 fn describe_items(items: &[(Item, u32)], lang: Language) -> String {
     let mut sorted = items.to_vec();
     sorted.sort_by_key(|&(item, _)| item);
@@ -502,33 +430,6 @@ mod tests {
     }
 
     #[test]
-    fn event_renders_craft_shortage_in_polish_with_plural_genitive_and_accusative() {
-        let text = event(
-            &EventKind::CraftShortage {
-                needed: Item::Branch,
-                output: Item::Arrow,
-            },
-            Language::Polish,
-        );
-        assert_eq!(text, "Masz za mało gałęzi, aby zrobić Strzałę.");
-    }
-
-    #[test]
-    fn event_renders_craft_missing_tool_in_polish_with_genitive_tool_and_accusative_output() {
-        let text = event(
-            &EventKind::CraftMissingTool {
-                tool: Item::StoneAxe,
-                output: Item::WoodenBow,
-            },
-            Language::Polish,
-        );
-        assert_eq!(
-            text,
-            "Potrzebujesz kamiennego topora, aby zrobić Drewniany Łuk."
-        );
-    }
-
-    #[test]
     fn experiment_missing_tool_names_neither_the_tool_nor_the_output() {
         // `1 Branch` matches the Arrow recipe (tool: Stone Axe) — but an
         // experiment must not spoil either the product or the tool.
@@ -595,24 +496,7 @@ mod tests {
             EventKind::QuestCompleted {
                 quest: QuestID::CraftAxe,
             },
-            EventKind::UnknownRecipe {
-                recipe: "Widget".to_string(),
-            },
-            EventKind::CraftShortage {
-                needed: Item::Branch,
-                output: Item::Arrow,
-            },
-            EventKind::CraftMissingTool {
-                tool: Item::StoneAxe,
-                output: Item::WoodenBow,
-            },
             EventKind::Crafted { output: Item::Cord },
-            EventKind::ExperimentShortage {
-                items: vec![(Item::Stone, 5)],
-                missing: Item::Stone,
-                available: 1,
-                needed: 5,
-            },
             EventKind::ExperimentFailed {
                 items: vec![(Item::Vine, 1), (Item::Branch, 1)],
             },
@@ -631,9 +515,6 @@ mod tests {
                 items: vec![(Item::Meat, 1), (Item::Hide, 1)],
             },
             EventKind::HuntMissed,
-            EventKind::HuntUnprepared {
-                missing: Item::Arrow,
-            },
             EventKind::EquipmentFull { item: Item::Branch },
             EventKind::Dropped { item: Item::Vine },
         ];

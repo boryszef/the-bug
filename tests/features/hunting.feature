@@ -8,18 +8,18 @@ Feature: Hunting
     Given a new game
     And the player has 3 Arrow in the equipment
     When the player hunts
-    Then the hunt reports a missing "Wooden Bow"
+    Then no event was logged
     And the equipment contains 3 Arrow
 
   Scenario: Hunting with a bow but no arrows is refused
     Given a new game
     And the player has 1 Wooden Bow in the equipment
     When the player hunts
-    Then the hunt reports a missing "Arrow"
+    Then no event was logged
 
   Scenario: Hunting gear must be carried, not left in storage
     Given a new game
     And the player has 1 Wooden Bow in storage
     And the player has 3 Arrow in storage
     When the player hunts
-    Then the hunt reports a missing "Wooden Bow"
+    Then no event was logged

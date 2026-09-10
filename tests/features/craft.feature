@@ -41,7 +41,7 @@ Feature: Crafting
     Then storage contains 0 Wooden Bow
     And storage contains 1 Branch
     And storage contains 1 Cord
-    And the craft is refused for want of a "Stone Axe"
+    And no event was logged
 
   Scenario: A craft keeps the tool it used
     Given a new game
@@ -68,4 +68,4 @@ Feature: Crafting
   Scenario: Crafting an unknown recipe is refused
     Given a new game
     When the player crafts "Cord"
-    Then the craft is refused as an unknown recipe
+    Then no event was logged

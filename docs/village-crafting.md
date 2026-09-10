@@ -30,13 +30,15 @@ held):
   `first_shortage`.
 - **`disassemble`**: before its `disassembly_for(item)` lookup.
 
-**No event is logged for this**, by design — see `TODO.md`'s "review events"
-note: an event is a record of something the game produced (a find, a craft,
-a quest completing), not a reaction to the player's own doing. Being away
+**No event is logged for this**, by design — see `docs/event-worthiness.md`:
+an event is a record of something the game produced (a find, a craft, a
+quest completing), not a reaction to the player's own doing. Being away
 from the village when you click Craft isn't something that happened *to*
-you; walk back and click again. `CraftMissingTool`/`CraftShortage`/
-`UnknownRecipe`/`HuntUnprepared` predate this principle and are unaffected —
-this feature doesn't touch them, only sets the precedent for anything new.
+you; walk back and click again. At the time this feature shipped,
+`CraftMissingTool`/`CraftShortage`/`UnknownRecipe`/`HuntUnprepared` predated
+this principle and were left unaffected, folded into `TODO.md`'s "review
+events" note as follow-up work; that follow-up has since landed and removed
+all four (`docs/event-worthiness.md`).
 
 ### gui: the buttons themselves are disabled
 
@@ -74,8 +76,8 @@ guard.
   `Option<Poi>` allow-list) without touching the three call sites or the
   gui's button-disabling. Not built now — no workshop POI exists yet.
   `TODO.md` carries the follow-on.
-- **Broader event-system review.** `TODO.md`'s "review events" note is a
+- **Broader event-system review.** `TODO.md`'s "review events" note was a
   wider epic (event lines should only ever record game-originated results,
-  never a reflection of the player's own action) that this feature honors
-  for its own new check but doesn't otherwise act on — existing events tied
-  to a refused player action stay as they are.
+  never a reflection of the player's own action) that this feature honored
+  for its own new check without otherwise acting on it yet. That follow-up
+  has since landed — see `docs/event-worthiness.md`.

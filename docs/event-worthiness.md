@@ -13,10 +13,13 @@ plus a second one: a random roll merits a record even when it comes up
 empty — *if* the attempt cost the player something regardless of how the
 roll came out.
 
-Nothing in `src/` changes here. Several existing `EventKind` variants don't
-comply (marked **candidate** in the table below) — they're deliberately left
-alone, folded into the "review events" TODO item as concrete follow-up work
-rather than done piecemeal now.
+Nothing in `src/` changed when this rule was first written down. Several
+existing `EventKind` variants didn't comply (marked **removed** in the
+table below, originally **candidate**) — left alone at first, folded into
+the "review events" TODO item as concrete follow-up work rather than done
+piecemeal; that follow-up has since landed and deleted all five, end to
+end (the enum variants, their `i18n::event()` arms, `.ftl` strings, and
+`gui::event_color` arms).
 
 ## The rule
 
@@ -68,19 +71,19 @@ and stays silent for the same reason.
 | `Hunted` | yes | yes | keep |
 | `HuntMissed` | yes (arrow already spent — `hunt` spends it *before* rolling) | yes, costly | keep — rule 1 and rule 2 agree |
 | `ExperimentMissingTool` | yes (items already spent by the time the tool check runs) | no | keep — rule 1 |
-| `UnknownRecipe` | no | no | **candidate** — a pure refusal, same shape as the village check |
-| `CraftShortage` | no (checked before spending) | no | **candidate** |
-| `CraftMissingTool` (from `craft`) | no (checked before spending) | no | **candidate** |
-| `ExperimentShortage` | no (checked before spending) | no | **candidate** |
-| `HuntUnprepared` | no (returns before spending the arrow) | no | **candidate** |
+| `UnknownRecipe` | no | no | **removed** — a pure refusal, same shape as the village check |
+| `CraftShortage` | no (checked before spending) | no | **removed** |
+| `CraftMissingTool` (from `craft`) | no (checked before spending) | no | **removed** |
+| `ExperimentShortage` | no (checked before spending) | no | **removed** |
+| `HuntUnprepared` | no (returns before spending the arrow) | no | **removed** |
 
 `CraftMissingTool` and `ExperimentMissingTool` used to be one variant
 (`CraftMissingTool`) logged from both `craft` and `experiment` with opposite
-verdicts — `craft` catches it before spending (a candidate for removal),
-`experiment` only after the combination is spent (a keeper). It was split
-when the experiment message had to stop naming the recipe it would have
-produced (`docs/recipe-tools.md`); the two justifications now live on two
-variants.
+verdicts — `craft` caught it before spending (removed), `experiment` only
+after the combination is spent (a keeper, still named `ExperimentMissingTool`
+today). It was split when the experiment message had to stop naming the
+recipe it would have produced (`docs/recipe-tools.md`); `craft`'s refusal is
+now simply silent, with no variant of its own at all.
 
 ## Not a gap: search's silent miss
 
@@ -99,10 +102,19 @@ this one is correctly silent. Worth writing down explicitly since it's
 exactly the kind of case someone would otherwise flag as an inconsistency
 later (as an earlier draft of this note did).
 
+## Done: the five refusal-candidates
+
+Removed — both the `self.log(...)` call at each of the five sites (`craft`,
+`experiment`, `hunt`) and the now-permanently-unreachable `EventKind`
+variants themselves, end to end (enum, `i18n::event()` match arms, `.ftl`
+strings, `gui::event_color`). Every one of the five had the shape `if
+<refusal> { self.log(...); return; }` — surgical to remove, since the
+`if`/`return;` guard was already independent of the log call, matching the
+`at_craftable_location` guard `docs/village-crafting.md` had already
+established the pattern for.
+
 ## Out of scope (for now)
 
-- Acting on the five refusal-candidates above — removing their log lines.
-  `TODO.md`'s "review events" line carries these as concrete follow-up items.
 - A code-level mechanism that enforces this rule (e.g. `Game::log` refusing
   a call unless paired with an actual mutation) — worth considering if a
   future variant gets the classification wrong again, but not built now.

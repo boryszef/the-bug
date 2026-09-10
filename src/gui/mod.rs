@@ -329,17 +329,12 @@ fn event_color(kind: &EventKind) -> Option<Color32> {
         EventKind::QuestAccepted { .. } | EventKind::QuestCompleted { .. } => {
             Some(Color32::MAGENTA)
         }
-        EventKind::UnknownRecipe { .. }
-        | EventKind::CraftShortage { .. }
-        | EventKind::CraftMissingTool { .. }
-        | EventKind::Crafted { .. }
+        EventKind::Crafted { .. }
         | EventKind::Disassembled { .. }
         | EventKind::HuntMissed
-        | EventKind::HuntUnprepared { .. }
         | EventKind::EquipmentFull { .. }
         | EventKind::Dropped { .. } => Some(Color32::YELLOW),
-        EventKind::ExperimentShortage { .. }
-        | EventKind::ExperimentFailed { .. }
+        EventKind::ExperimentFailed { .. }
         | EventKind::ExperimentMissingTool { .. }
         | EventKind::Experimented { .. } => Some(Color32::CYAN),
     }

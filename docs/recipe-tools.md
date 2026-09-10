@@ -21,19 +21,19 @@ Both `Game::craft` (a known recipe) and `Game::experiment` (matching a recipe by
 its consumables) enforce tools:
 
 - **craft** checks consumables, then tools, then spends — so a missing tool
-  leaves the consumables untouched. Logs
-  `EventKind::CraftMissingTool { tool, output }` → "You need a Stone Axe to
-  craft a Wooden Bow." (Polish: `tool` genitive, `output` accusative, like
-  `CraftShortage`.) The player chose the recipe by name, so naming both is
-  fine.
+  leaves the consumables untouched and refuses silently: nothing was spent,
+  nothing changed, so nothing is logged (`docs/event-worthiness.md`). The
+  player chose the recipe by name, so a naming refusal message would have
+  been safe either way, but there's simply no event to name it in.
 - **experiment** spends the combination first (every failed experiment does),
   then, if the consumables matched a recipe but a tool is missing, logs
   `EventKind::ExperimentMissingTool { items }` → "Experiment: 1 Branch ->
   you're missing a tool" **without** learning the recipe, producing the
   output, or naming the tool. The player is *discovering* — either name
   would give the recipe away (a 1-Branch combo that needs a Stone Axe is
-  unmistakably the Arrow). This is a deliberate split from
-  `CraftMissingTool`.
+  unmistakably the Arrow). Unlike `craft`'s refusal this one *is* logged —
+  the consumables are already spent by the time the tool check runs, a real
+  state change the silent `craft` case never has.
 
 Same "reveal nothing" principle, positive side: while the player is building
 an Experiment selection, `Player::experiment_would_discover(items)` (reusing
@@ -66,14 +66,13 @@ Every other recipe has `tools: &[]`.
 - `src/game/recipe.rs` — `Recipe.tools` field + `tools()` accessor; `tools: &[]`
   on every `RECIPES` entry except Arrow / Wooden Bow (`&[Item::StoneAxe]`).
 - `src/game/player.rs` — `first_missing_tool(&[Item]) -> Option<Item>`.
-- `src/game/event.rs` — `EventKind::CraftMissingTool { tool, output }` (craft)
-  and `EventKind::ExperimentMissingTool { items }` (experiment, added later —
-  the experiment message must not reveal the recipe).
+- `src/game/event.rs` — `EventKind::ExperimentMissingTool { items }`
+  (experiment; the message must not reveal the recipe). `craft`'s tool
+  refusal has no variant — it's silent, like its other refusals.
 - `src/game/mod.rs` — the tool check in `craft` and `experiment`.
-- `src/i18n/mod.rs` + `locales/{en,pl}/main.ftl` — `event-craft-missing-tool`,
-  `event-experiment-missing-tool`.
-- `src/gui/mod.rs` — event-log colour (`CraftMissingTool` yellow with the
-  craft family, `ExperimentMissingTool` cyan with the experiment family).
+- `src/i18n/mod.rs` + `locales/{en,pl}/main.ftl` — `event-experiment-missing-tool`.
+- `src/gui/mod.rs` — event-log colour (`ExperimentMissingTool` cyan with the
+  experiment family).
 - `src/viewmodel/crafting.rs` — `CraftTool`, `CraftOption.tools`, `enabled`.
 - `src/gui/craft.rs`, `src/tui/craft.rs` — rendering.
 

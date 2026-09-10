@@ -18,27 +18,12 @@ pub enum EventKind {
     QuestAccepted { quest: QuestID },
     /// Completed the open quest.
     QuestCompleted { quest: QuestID },
-    /// Tried to craft a recipe by a name the player doesn't know.
-    UnknownRecipe { recipe: String },
-    /// Knew the recipe for `output` but didn't have enough `needed`.
-    CraftShortage { needed: Item, output: Item },
-    /// Knew the recipe for `output` (or matched it while experimenting) but
-    /// wasn't holding the required `tool`.
-    CraftMissingTool { tool: Item, output: Item },
     /// Successfully crafted `output`.
     Crafted { output: Item },
-    /// Tried to experiment with `items` but didn't have enough of `missing`
-    /// (`available` on hand, `needed` for the attempt).
-    ExperimentShortage {
-        items: Vec<(Item, u32)>,
-        missing: Item,
-        available: u32,
-        needed: u32,
-    },
     /// Experimented with `items`; no recipe matched.
     ExperimentFailed { items: Vec<(Item, u32)> },
     /// Experimented with `items` and the combination *did* match a recipe,
-    /// but a required tool wasn't held. Unlike `CraftMissingTool` this names
+    /// but a required tool wasn't held. Unlike a crafting refusal this names
     /// neither the tool nor the output — the player is discovering, and
     /// either would give the recipe away.
     ExperimentMissingTool { items: Vec<(Item, u32)> },
@@ -57,8 +42,6 @@ pub enum EventKind {
     /// Loosed an arrow on a hunt but brought nothing back — bad luck, or a
     /// tile with no game (deadland).
     HuntMissed,
-    /// Tried to hunt without the gear: `missing` is the Wooden Bow or an Arrow.
-    HuntUnprepared { missing: Item },
     /// Found or caught `item`, but the equipment had no room left for it —
     /// the item is lost, not gained.
     EquipmentFull { item: Item },

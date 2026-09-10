@@ -22,8 +22,10 @@ Bow becomes useful (it lets you hunt) and Arrows get spent doing it.
   turns up nothing. (An earlier draft gated on terrain; dropped for symmetry
   with search.)
 - **Gear.** A hunt needs a `WoodenBow` *held* (not consumed) and **spends one
-  `Arrow`**. Missing either logs `EventKind::HuntUnprepared { missing }` and
-  spends nothing — the checks come before the spend, like `Game::craft`.
+  `Arrow`**. Missing either refuses silently — no event, no spend — the
+  checks come before the spend, like `Game::craft`'s own refusals
+  (`docs/event-worthiness.md`: a pure refusal changes nothing, so there's
+  nothing to log).
 - **Yield.** Each of the tile's `hunt_items` is rolled independently against its
   base probability, decayed by `last_hunt_time` through the shared
   `adjust_probability` helper (re-hunting the same spot right away rarely pays).
@@ -50,12 +52,12 @@ button is always clickable; `Game::hunt` decides and logs the outcome
 - `src/game/map.rs` — `HUNT_ITEMS`, `tile_hunt_items`, `MapTile.hunt_items` +
   `MapTile.last_hunt_time`, `roll_hunted_items`, `Map::update_tile_last_hunt_time`;
   `adjust_probability`'s parameter renamed `last_used` (serves both).
-- `src/game/event.rs` — `Hunted`, `HuntMissed`, `HuntUnprepared` variants.
+- `src/game/event.rs` — `Hunted`, `HuntMissed` variants.
 - `src/game/quest.rs` — `EventTypeID::Hunt`.
 - `src/game/mod.rs` — `Game::hunt()`.
 - `src/i18n/` — `item-{meat,bone,hide,fur}` (en + pl with case attributes),
-  `event-hunted` / `event-hunt-missed` / `event-hunt-unprepared`,
-  `action-hunt`, `footer-map` (tui) gains `h hunt`.
+  `event-hunted` / `event-hunt-missed`, `action-hunt`, `footer-map` (tui)
+  gains `h hunt`.
 - `src/gui/map.rs` + `src/gui/mod.rs` + `src/tui/app.rs` — the `h` key / button
   and event-log colours.
 

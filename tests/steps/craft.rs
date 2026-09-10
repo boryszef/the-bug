@@ -21,26 +21,3 @@ async fn craft_is_logged(world: &mut GameWorld, name: String) {
         "last event is not a craft of {name}"
     );
 }
-
-#[then("the craft is refused as an unknown recipe")]
-async fn refused_unknown(world: &mut GameWorld) {
-    assert!(
-        matches!(
-            world.game.events().last().map(|e| e.kind()),
-            Some(EventKind::UnknownRecipe { .. })
-        ),
-        "last event is not an unknown-recipe refusal"
-    );
-}
-
-#[then(regex = r#"^the craft is refused for want of a "([^"]+)"$"#)]
-async fn refused_missing_tool(world: &mut GameWorld, tool: String) {
-    let want = item(&tool);
-    assert!(
-        matches!(
-            world.game.events().last().map(|e| e.kind()),
-            Some(EventKind::CraftMissingTool { tool, .. }) if *tool == want
-        ),
-        "last event is not a missing-{tool} refusal"
-    );
-}
