@@ -225,10 +225,10 @@ village-required-hint = Musisz być w osadzie, aby to zrobić.
 ## docs/equipment-and-storage.md). "panel-items-title" above doubles as this
 ## tab's heading.
 
-items-equipment-title = Wyposażenie: { $count }/{ $capacity }
-items-storage-title = Ekwipunek
-items-equipment-empty = Twoje wyposażenie jest puste.
-items-storage-empty = Ekwipunek jest pusty.
+items-equipment-title = Ekwipunek: { $count }/{ $capacity }
+items-storage-title = Magazyn
+items-equipment-empty = Twój ekwipunek jest pusty.
+items-storage-empty = Magazyn jest pusty.
 
 ## Experiment panel.
 
@@ -256,5 +256,12 @@ action-experiment = Eksperymentuj
 action-accept = Przyjmij
 action-search = Szukaj (s)
 action-hunt = Poluj (h)
+action-theme-light = Jasny
+action-theme-dark = Ciemny
+font-size-label = Czcionka:
+font-size-small = Mała
+font-size-medium = Średnia
+font-size-large = Duża
+font-size-extra-large = Bardzo duża
 gui-hint = [ ] zmiana kart   q wyjście
 gui-hint-map = przeciągnij, aby przesunąć   przewiń, aby przybliżyć

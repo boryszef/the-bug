@@ -52,6 +52,8 @@ fn app_creator(
             panel: Panel::default(),
             map_view: MapView::new(&cc.egui_ctx),
             experiment: Experiment::default(),
+            theme: egui::Theme::Dark,
+            font_size: FontSize::Medium,
         }))
     }
 }
@@ -105,17 +107,95 @@ fn title_id(panel: Panel) -> &'static str {
     }
 }
 
+/// The `action-theme-*` message id for `theme`'s toggle-button label. Mirrors
+/// [`title_id`]. See `docs/accessibility.md`.
+fn theme_label_id(theme: egui::Theme) -> &'static str {
+    match theme {
+        egui::Theme::Light => "action-theme-light",
+        egui::Theme::Dark => "action-theme-dark",
+    }
+}
+
+/// A base text-size preset, applied to every built-in `egui::TextStyle` via
+/// [`apply_font_size`]. Purely an egui rendering concern — no game or
+/// viewmodel logic — so it lives here, not in `viewmodel`. See
+/// `docs/accessibility.md`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum FontSize {
+    Small,
+    Medium,
+    Large,
+    ExtraLarge,
+}
+
+impl FontSize {
+    const ALL: [FontSize; 4] = [
+        FontSize::Small,
+        FontSize::Medium,
+        FontSize::Large,
+        FontSize::ExtraLarge,
+    ];
+
+    /// Multiplier applied to egui's own default `TextStyle` sizes.
+    fn scale(self) -> f32 {
+        match self {
+            FontSize::Small => 0.85,
+            FontSize::Medium => 1.0,
+            FontSize::Large => 1.2,
+            FontSize::ExtraLarge => 1.45,
+        }
+    }
+
+    /// The `font-size-*` message id for this preset's dropdown label.
+    fn label_id(self) -> &'static str {
+        match self {
+            FontSize::Small => "font-size-small",
+            FontSize::Medium => "font-size-medium",
+            FontSize::Large => "font-size-large",
+            FontSize::ExtraLarge => "font-size-extra-large",
+        }
+    }
+}
+
+/// Rebuilds every built-in `TextStyle`'s size from egui's own defaults
+/// (`Small=9.0, Body=13.0, Button=13.0, Heading=18.0, Monospace=13.0`) times
+/// `size.scale()`, for both the light and dark `Style`. Recomputed from the
+/// fixed base every call — rebuilding is cheap, and starting fresh each time
+/// avoids any compounding drift from scaling an already-scaled style.
+fn apply_font_size(ctx: &egui::Context, size: FontSize) {
+    let scale = size.scale();
+    let base = [
+        (egui::TextStyle::Small, 9.0),
+        (egui::TextStyle::Body, 13.0),
+        (egui::TextStyle::Button, 13.0),
+        (egui::TextStyle::Heading, 18.0),
+        (egui::TextStyle::Monospace, 13.0),
+    ];
+    ctx.all_styles_mut(|style| {
+        for (text_style, base_size) in &base {
+            if let Some(font_id) = style.text_styles.get_mut(text_style) {
+                font_id.size = base_size * scale;
+            }
+        }
+    });
+}
+
 struct App {
     game: Game,
     language: Language,
     panel: Panel,
     map_view: MapView,
     experiment: Experiment,
+    theme: egui::Theme,
+    font_size: FontSize,
 }
 
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        ctx.set_theme(self.theme);
+        apply_font_size(&ctx, self.font_size);
+
         if ctx.input(|i| i.key_pressed(Key::OpenBracket)) {
             self.panel = self.panel.prev();
         }
@@ -134,6 +214,26 @@ impl eframe::App for App {
                         self.panel = panel;
                     }
                 }
+
+                ui.separator();
+                for theme in [egui::Theme::Light, egui::Theme::Dark] {
+                    let label = i18n::ui(theme_label_id(theme), self.language);
+                    if ui.selectable_label(self.theme == theme, label).clicked() {
+                        self.theme = theme;
+                    }
+                }
+
+                ui.separator();
+                ui.label(i18n::ui("font-size-label", self.language));
+                egui::ComboBox::from_id_salt("font_size")
+                    .selected_text(i18n::ui(self.font_size.label_id(), self.language))
+                    .show_ui(ui, |ui| {
+                        for size in FontSize::ALL {
+                            let label = i18n::ui(size.label_id(), self.language);
+                            ui.selectable_value(&mut self.font_size, size, label);
+                        }
+                    });
+
                 if ui.button(i18n::ui("action-quit", self.language)).clicked() {
                     ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                 }
@@ -146,7 +246,7 @@ impl eframe::App for App {
             .show(ui, |ui| {
                 render_player(&self.game, self.language, ui);
                 ui.separator();
-                render_events(&self.game, self.language, ui);
+                render_events(&self.game, self.language, self.theme, ui);
             });
 
         egui::Panel::bottom("hint_bar").show(ui, |ui| {
@@ -308,34 +408,50 @@ fn render_player(game: &Game, lang: Language, ui: &mut Ui) {
     ));
 }
 
-fn render_events(game: &Game, lang: Language, ui: &mut Ui) {
+fn render_events(game: &Game, lang: Language, theme: egui::Theme, ui: &mut Ui) {
     ui.heading(i18n::ui("panel-events-title", lang));
 
     for event in viewmodel::events::recent(game, 10) {
         let text = format!("[{}] {}", event.timestamp, i18n::event(event.kind, lang));
-        match event_color(event.kind) {
+        match event_color(event.kind, theme) {
             Some(color) => ui.label(RichText::new(text).color(color)),
             None => ui.label(text),
         };
     }
 }
 
-/// The colour an event-log line gets based on its kind; `None` keeps the
-/// default text color.
-fn event_color(kind: &EventKind) -> Option<Color32> {
+/// The colour an event-log line gets based on its kind and the active
+/// theme; `None` keeps the default text color. Each semantic colour has a
+/// bright dark-mode variant and a darker, more saturated light-mode
+/// variant — the dark-mode set reads fine on egui's dark background as-is,
+/// but the same bright colours are washed out and hard to read on a light
+/// background, so light mode gets its own, higher-contrast set.
+fn event_color(kind: &EventKind, theme: egui::Theme) -> Option<Color32> {
+    let (green, magenta, yellow, cyan) = match theme {
+        egui::Theme::Dark => (
+            Color32::from_rgb(0, 255, 0),
+            Color32::from_rgb(255, 0, 255),
+            Color32::from_rgb(255, 255, 0),
+            Color32::from_rgb(0, 255, 255),
+        ),
+        egui::Theme::Light => (
+            Color32::from_rgb(0, 110, 0),
+            Color32::from_rgb(150, 0, 150),
+            Color32::from_rgb(130, 90, 0),
+            Color32::from_rgb(0, 120, 120),
+        ),
+    };
     match kind {
         EventKind::Awoke => None,
-        EventKind::Found { .. } | EventKind::Hunted { .. } => Some(Color32::GREEN),
-        EventKind::QuestAccepted { .. } | EventKind::QuestCompleted { .. } => {
-            Some(Color32::MAGENTA)
-        }
+        EventKind::Found { .. } | EventKind::Hunted { .. } => Some(green),
+        EventKind::QuestAccepted { .. } | EventKind::QuestCompleted { .. } => Some(magenta),
         EventKind::Crafted { .. }
         | EventKind::Disassembled { .. }
         | EventKind::HuntMissed
         | EventKind::EquipmentFull { .. }
-        | EventKind::Dropped { .. } => Some(Color32::YELLOW),
+        | EventKind::Dropped { .. } => Some(yellow),
         EventKind::ExperimentFailed { .. }
         | EventKind::ExperimentMissingTool { .. }
-        | EventKind::Experimented { .. } => Some(Color32::CYAN),
+        | EventKind::Experimented { .. } => Some(cyan),
     }
 }
