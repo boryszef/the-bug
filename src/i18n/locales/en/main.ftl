@@ -21,6 +21,7 @@ event-hunted = Hunt: { $items }.
 event-hunt-missed = Hunt: the quarry got away.
 event-equipment-full = You have no room left for the { $item }.
 event-dropped = You drop a { $item }.
+event-leveled-up = You levelled up! You are now level { $level }.
 
 ## Item names (nominative), src/game/item.rs's Item.
 

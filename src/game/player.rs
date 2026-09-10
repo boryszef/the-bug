@@ -16,6 +16,27 @@ pub(super) const EQUIPMENT_BASE_CAPACITY: u32 = 50;
 /// any number of Satchels grants it once.
 const SATCHEL_BONUS: u32 = 50;
 
+/// XP granted the first time an experiment discovers a recipe. See
+/// [`Player::learn_recipe`] and `docs/progression.md`.
+pub(super) const RECIPE_DISCOVERY_XP: u32 = 10;
+
+/// Player level for a given XP total: level 1 below 100 XP, then level N
+/// (N >= 2) once XP reaches `100 * 3^(N-2)` — each threshold triples the
+/// last (100, 300, 900, 2700, ...). `checked_mul` stops the loop rather
+/// than overflowing/looping forever at extreme XP. See `docs/progression.md`.
+fn level_for_xp(xp: u32) -> u32 {
+    let mut level = 1;
+    let mut threshold: u32 = 100;
+    while xp >= threshold {
+        level += 1;
+        let Some(next) = threshold.checked_mul(3) else {
+            break;
+        };
+        threshold = next;
+    }
+    level
+}
+
 #[derive(Debug)]
 pub struct Player {
     pub level: u32,
@@ -336,24 +357,29 @@ impl Player {
         true
     }
 
-    /// Adds `amount` to the player's experience.
-    pub(super) fn add_experience(&mut self, amount: u32) {
+    /// Adds `amount` to the player's experience, bumping `level` if this
+    /// crosses a threshold (`level_for_xp`, `docs/progression.md`). Returns
+    /// the new level if it changed, so `Game::grant_award` can log a
+    /// level-up.
+    pub(super) fn add_experience(&mut self, amount: u32) -> Option<u32> {
         self.experience += amount;
+        let new_level = level_for_xp(self.experience);
+        (new_level > self.level).then(|| {
+            self.level = new_level;
+            new_level
+        })
     }
 
-    /// Records a successful craft, granting a point of experience every
-    /// tenth one.
-    pub(super) fn record_successful_craft(&mut self) {
+    /// Records a successful craft. Returns the XP earned — a point every
+    /// tenth craft, `0` otherwise — for the caller to grant via
+    /// `Game::grant_award`.
+    pub(super) fn record_successful_craft(&mut self) -> u32 {
         self.crafts_completed += 1;
         if self.crafts_completed.is_multiple_of(10) {
-            self.add_experience(1);
+            1
+        } else {
+            0
         }
-    }
-
-    /// Grants `xp` experience and each of `items` to the inventory.
-    pub(super) fn grant_reward(&mut self, xp: u32, items: &[(Item, u32)]) {
-        self.add_experience(xp);
-        self.add_all_to_inventory(items);
     }
 
     /// Marks the craftable recipe with the given name as known — used when
@@ -373,15 +399,23 @@ impl Player {
         }
     }
 
-    /// Marks `recipe` as known if it wasn't already, granting the discovery
-    /// bonus. Returns whether it was newly learned (vs. already known).
-    pub(super) fn learn_recipe(&mut self, recipe: Recipe) -> bool {
+    /// Marks `recipe` as known if it wasn't already. Returns whether it was
+    /// newly learned (vs. already known), and the XP earned —
+    /// `RECIPE_DISCOVERY_XP` if newly learned, `0` otherwise — for the
+    /// caller to grant via `Game::grant_award`.
+    pub(super) fn learn_recipe(&mut self, recipe: Recipe) -> (bool, u32) {
         let newly_learned = !self.recipes.contains(&recipe);
         if newly_learned {
             self.recipes.push(recipe);
-            self.add_experience(10);
         }
-        newly_learned
+        (
+            newly_learned,
+            if newly_learned {
+                RECIPE_DISCOVERY_XP
+            } else {
+                0
+            },
+        )
     }
 }
 
@@ -430,5 +464,44 @@ impl super::RestoreState for Player {
             saved.quests_completed,
         );
         Ok(player)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn level_for_xp_matches_every_threshold_boundary() {
+        for (xp, level) in [
+            (0, 1),
+            (99, 1),
+            (100, 2),
+            (299, 2),
+            (300, 3),
+            (899, 3),
+            (900, 4),
+        ] {
+            assert_eq!(level_for_xp(xp), level, "xp={xp}");
+        }
+    }
+
+    #[test]
+    fn add_experience_leaves_level_alone_below_a_threshold() {
+        let mut player = Player::default();
+        assert_eq!(player.add_experience(99), None);
+        assert_eq!(player.level, 1);
+    }
+
+    #[test]
+    fn add_experience_bumps_level_and_reports_it_on_crossing_a_threshold() {
+        let mut player = Player::default();
+        assert_eq!(player.add_experience(100), Some(2));
+        assert_eq!(player.level, 2);
+
+        // Already past the level-3 threshold on the next call: no further
+        // change, so no report.
+        assert_eq!(player.add_experience(0), None);
+        assert_eq!(player.level, 2);
     }
 }

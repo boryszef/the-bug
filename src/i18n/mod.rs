@@ -215,6 +215,10 @@ pub fn event(kind: &EventKind, lang: Language) -> String {
             };
             fl!(loader, "event-dropped", item = item_arg)
         }
+        EventKind::LeveledUp { level } => {
+            let level: u32 = *level;
+            fl!(loader, "event-leveled-up", level = level)
+        }
     }
 }
 
@@ -517,6 +521,7 @@ mod tests {
             EventKind::HuntMissed,
             EventKind::EquipmentFull { item: Item::Branch },
             EventKind::Dropped { item: Item::Vine },
+            EventKind::LeveledUp { level: 3 },
         ];
 
         for kind in &samples {

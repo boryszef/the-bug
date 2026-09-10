@@ -40,6 +40,14 @@ pub struct Game {
     started: Instant,
 }
 
+/// What a [`Game::grant_award`] call is granting. Currently just XP — kept
+/// as an enum so another award kind has a natural place to join later, not
+/// because more are needed now.
+#[derive(Debug)]
+enum GrantType {
+    Experience(u32),
+}
+
 impl Default for Game {
     fn default() -> Self {
         let player = Player::default();
@@ -158,15 +166,29 @@ impl Game {
     /// `Player::completed_quests()`, and clears `open_quest`/`quest_progress`.
     fn complete_open_quest(&mut self, quest: &'static Quest) {
         self.player.complete_quest(quest.id);
-        self.player
-            .grant_reward(quest.reward_xp, quest.reward_items);
+        self.player.add_all_to_inventory(quest.reward_items);
         self.log(EventKind::QuestCompleted { quest: quest.id });
+        self.grant_award(GrantType::Experience(quest.reward_xp));
     }
 
     /// Appends an event to the log, timestamped with the current session
     /// elapsed time.
     fn log(&mut self, kind: EventKind) {
         self.events.push(Event::new(kind, self.started.elapsed()));
+    }
+
+    /// Applies `grant` and logs whatever it causes. The one place
+    /// craft/experiment/quest-completion route an award through, so "what
+    /// happens when XP is granted" — including a level-up — lives in
+    /// exactly one spot instead of being checked at each call site.
+    fn grant_award(&mut self, grant: GrantType) {
+        match grant {
+            GrantType::Experience(amount) => {
+                if let Some(level) = self.player.add_experience(amount) {
+                    self.log(EventKind::LeveledUp { level });
+                }
+            }
+        }
     }
 
     pub fn walk(&mut self, dir: Direction) {
@@ -304,7 +326,8 @@ impl Game {
         });
         self.grant_item(recipe.output(), 1);
 
-        self.player.record_successful_craft();
+        let craft_xp = self.player.record_successful_craft();
+        self.grant_award(GrantType::Experience(craft_xp));
     }
 
     /// Tries the given items as an experiment — drawn from storage first,
@@ -346,7 +369,7 @@ impl Game {
             return;
         }
 
-        let newly_learned = self.player.learn_recipe(*recipe);
+        let (newly_learned, learn_xp) = self.player.learn_recipe(*recipe);
 
         // Logged before `grant_item`, same reasoning as in `craft` above.
         self.log(EventKind::Experimented {
@@ -355,6 +378,7 @@ impl Game {
             newly_learned,
         });
         self.grant_item(recipe.output(), 1);
+        self.grant_award(GrantType::Experience(learn_xp));
     }
 
     /// Takes one `item` apart, returning the consumables of the recipe it
@@ -925,6 +949,34 @@ mod tests {
     }
 
     #[test]
+    fn tenth_craft_crossing_a_level_threshold_logs_leveled_up() {
+        let mut game = Game::default();
+        game.player.grant_recipe("Cord");
+        game.player.experience = 99;
+        game.player.crafts_completed = 9;
+        game.player.inventory.insert(Item::Vine, 2);
+
+        game.craft("Cord"); // 10th craft: +1 XP -> 100, crossing the level-2 threshold
+
+        assert_eq!(game.player.level, 2);
+        assert_eq!(last_event(&game).kind(), &EventKind::LeveledUp { level: 2 });
+    }
+
+    #[test]
+    fn a_craft_that_does_not_cross_a_level_threshold_does_not_log_leveled_up() {
+        let mut game = Game::default();
+        game.player.grant_recipe("Cord");
+        game.player.crafts_completed = 9;
+        game.player.inventory.insert(Item::Vine, 2);
+        let before = game.events().len();
+
+        game.craft("Cord"); // 10th craft: +1 XP, nowhere near a threshold
+
+        assert_eq!(game.player.level, 1);
+        assert_eq!(game.events().len(), before + 1); // just Crafted, no LeveledUp
+    }
+
+    #[test]
     fn search_yields_terrain_and_poi_items_and_names_each_source() {
         let mut game = Game::default();
         let (tx, ty) = game.map.world_to_tile(game.player.coordinates);
@@ -1135,6 +1187,19 @@ mod tests {
                 quest: FIXTURE_QUEST.id
             }
         );
+    }
+
+    #[test]
+    fn quest_completion_crossing_a_level_threshold_logs_leveled_up() {
+        let mut game = Game::default();
+        game.player
+            .restore_quest_state(Some(FIXTURE_QUEST.id), 1, vec![]);
+        game.player.experience = 95; // FIXTURE_QUEST grants 7 XP -> 102, crossing 100
+
+        game.complete_open_quest(&FIXTURE_QUEST);
+
+        assert_eq!(game.player.level, 2);
+        assert_eq!(last_event(&game).kind(), &EventKind::LeveledUp { level: 2 });
     }
 
     #[test]

@@ -46,6 +46,7 @@ wording; a variant with no `.ftl` message would compile but render
 | Experimenting | `Experimented` / `ExperimentFailed` / `ExperimentMissingTool` | see below |
 | Disassembling | `Disassembled` | `You take apart a Stone Axe, recovering 1 Branch + 1 Stone + 1 Cord.` |
 | Accepting/completing a quest | `QuestAccepted` / `QuestCompleted` | — |
+| Crossing a level threshold (from a craft/experiment/quest XP grant) | `LeveledUp` | `You levelled up! You are now level 2.` |
 | **Walking** | — | *not logged* |
 
 ### Experiment lines (one per attempt, precise)

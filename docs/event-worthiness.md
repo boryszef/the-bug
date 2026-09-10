@@ -71,6 +71,7 @@ and stays silent for the same reason.
 | `Hunted` | yes | yes | keep |
 | `HuntMissed` | yes (arrow already spent — `hunt` spends it *before* rolling) | yes, costly | keep — rule 1 and rule 2 agree |
 | `ExperimentMissingTool` | yes (items already spent by the time the tool check runs) | no | keep — rule 1 |
+| `LeveledUp` | yes (level increased) | no | keep — rule 1 |
 | `UnknownRecipe` | no | no | **removed** — a pure refusal, same shape as the village check |
 | `CraftShortage` | no (checked before spending) | no | **removed** |
 | `CraftMissingTool` (from `craft`) | no (checked before spending) | no | **removed** |

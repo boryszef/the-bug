@@ -47,6 +47,8 @@ pub enum EventKind {
     EquipmentFull { item: Item },
     /// Dropped one unit of `item`, from the equipment or from storage.
     Dropped { item: Item },
+    /// Reached a new level (see `docs/progression.md`).
+    LeveledUp { level: u32 },
 }
 
 /// One entry in the event log: what happened, and how far into the session

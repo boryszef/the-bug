@@ -455,7 +455,9 @@ fn event_color(kind: &EventKind, theme: egui::Theme) -> Option<Color32> {
     };
     match kind {
         EventKind::Awoke => None,
-        EventKind::Found { .. } | EventKind::Hunted { .. } => Some(success_color(theme)),
+        EventKind::Found { .. } | EventKind::Hunted { .. } | EventKind::LeveledUp { .. } => {
+            Some(success_color(theme))
+        }
         EventKind::QuestAccepted { .. } | EventKind::QuestCompleted { .. } => Some(magenta),
         EventKind::Crafted { .. }
         | EventKind::Disassembled { .. }
