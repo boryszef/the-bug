@@ -52,6 +52,16 @@ is unchanged — only the four colour values themselves are theme-dependent.
 `render_events` takes `theme` as a parameter now, threaded from
 `App.theme` at its one call site in `App::ui`.
 
+The green half of that pair is pulled out as its own `pub(super)
+success_color(theme) -> Color32` (`src/gui/mod.rs`), so it's one function
+tuned once rather than two independent shades of green. The Experiment
+panel's "Looks good!" hint (`src/gui/experiment.rs`, shown above the Run
+button when the current selection matches an undiscovered recipe —
+`docs/recipe-tools.md`) had the same bright-`Color32::GREEN`-on-white
+problem and now calls the same `success_color`; `Experiment::render` gained
+a `theme: egui::Theme` parameter for it, threaded from `self.theme` at its
+one call site.
+
 ### Not emoji
 
 Both controls use plain i18n text labels, not icon buttons (no 🌙/☀). This
@@ -64,9 +74,12 @@ render in egui"). Same reasoning applies here.
 ## Scope
 
 - `src/gui/mod.rs` — `App.theme`/`App.font_size` fields; `FontSize` enum;
-  `theme_label_id`/`apply_font_size`; the toolbar controls in `App::ui`.
-  Lives here, not `viewmodel`, since it's pure egui rendering configuration
-  (`egui::Theme`/`TextStyle`), not UI-agnostic game logic.
+  `theme_label_id`/`apply_font_size`/`success_color`; the toolbar controls
+  in `App::ui`. Lives here, not `viewmodel`, since it's pure egui rendering
+  configuration (`egui::Theme`/`TextStyle`/`Color32`), not UI-agnostic game
+  logic.
+- `src/gui/experiment.rs` — `Experiment::render` takes `theme` to colour
+  the "Looks good!" hint via `super::success_color`.
 - `src/i18n/locales/{en,pl}/main.ftl` — `action-theme-light`,
   `action-theme-dark`, `font-size-label`, `font-size-{small,medium,large,
   extra-large}`. Looked up at runtime via `i18n::ui(id, lang)`, the same

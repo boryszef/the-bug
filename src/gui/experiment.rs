@@ -2,11 +2,13 @@
 //! recipe. Mouse-driven — the only state is the running [`ItemSelection`];
 //! there is no cursor.
 
-use eframe::egui::{self, Button, Color32, RichText, Ui};
+use eframe::egui::{self, Button, RichText, Ui};
 
 use crate::game::Item;
 use crate::i18n::{self, Language};
 use crate::viewmodel::selection::ItemSelection;
+
+use super::success_color;
 
 #[derive(Default)]
 pub(super) struct Experiment {
@@ -30,7 +32,8 @@ impl Experiment {
     /// on its own. `looks_promising` answers "would running this combination
     /// discover a recipe" for the current selection — that means an unknown
     /// recipe whose required tools the player is also holding — a plain
-    /// yes/no hint, shown regardless of `at_village`.
+    /// yes/no hint, shown regardless of `at_village`. `theme` colours that
+    /// hint via [`super::success_color`].
     pub(super) fn render(
         &mut self,
         ui: &mut Ui,
@@ -38,6 +41,7 @@ impl Experiment {
         at_village: bool,
         looks_promising: impl Fn(&[(Item, u32)]) -> bool,
         lang: Language,
+        theme: egui::Theme,
     ) -> Outcome {
         ui.heading(i18n::ui("panel-experiment-title", lang));
 
@@ -86,7 +90,8 @@ impl Experiment {
 
             if promising {
                 ui.label(
-                    RichText::new(i18n::ui("experiment-promising", lang)).color(Color32::GREEN),
+                    RichText::new(i18n::ui("experiment-promising", lang))
+                        .color(success_color(theme)),
                 );
             }
 

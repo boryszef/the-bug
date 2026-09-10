@@ -280,6 +280,7 @@ impl eframe::App for App {
                     at_village,
                     |items| player.experiment_would_discover(items),
                     self.language,
+                    self.theme,
                 );
                 if let experiment::Outcome::Run(items) = outcome {
                     self.game.experiment(&items);
@@ -420,6 +421,19 @@ fn render_events(game: &Game, lang: Language, theme: egui::Theme, ui: &mut Ui) {
     }
 }
 
+/// The "something good happened" green, theme-aware: a bright dark-mode
+/// variant and a darker, more saturated light-mode variant, since the
+/// bright one is washed out and hard to read on a light background. Shared
+/// by [`event_color`] (a find/hunt haul) and the Experiment panel's "Looks
+/// good!" hint (`src/gui/experiment.rs`) — one green, not two independently
+/// tuned ones.
+pub(super) fn success_color(theme: egui::Theme) -> Color32 {
+    match theme {
+        egui::Theme::Dark => Color32::from_rgb(0, 255, 0),
+        egui::Theme::Light => Color32::from_rgb(0, 110, 0),
+    }
+}
+
 /// The colour an event-log line gets based on its kind and the active
 /// theme; `None` keeps the default text color. Each semantic colour has a
 /// bright dark-mode variant and a darker, more saturated light-mode
@@ -427,15 +441,13 @@ fn render_events(game: &Game, lang: Language, theme: egui::Theme, ui: &mut Ui) {
 /// but the same bright colours are washed out and hard to read on a light
 /// background, so light mode gets its own, higher-contrast set.
 fn event_color(kind: &EventKind, theme: egui::Theme) -> Option<Color32> {
-    let (green, magenta, yellow, cyan) = match theme {
+    let (magenta, yellow, cyan) = match theme {
         egui::Theme::Dark => (
-            Color32::from_rgb(0, 255, 0),
             Color32::from_rgb(255, 0, 255),
             Color32::from_rgb(255, 255, 0),
             Color32::from_rgb(0, 255, 255),
         ),
         egui::Theme::Light => (
-            Color32::from_rgb(0, 110, 0),
             Color32::from_rgb(150, 0, 150),
             Color32::from_rgb(130, 90, 0),
             Color32::from_rgb(0, 120, 120),
@@ -443,7 +455,7 @@ fn event_color(kind: &EventKind, theme: egui::Theme) -> Option<Color32> {
     };
     match kind {
         EventKind::Awoke => None,
-        EventKind::Found { .. } | EventKind::Hunted { .. } => Some(green),
+        EventKind::Found { .. } | EventKind::Hunted { .. } => Some(success_color(theme)),
         EventKind::QuestAccepted { .. } | EventKind::QuestCompleted { .. } => Some(magenta),
         EventKind::Crafted { .. }
         | EventKind::Disassembled { .. }
