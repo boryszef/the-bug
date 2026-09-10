@@ -35,8 +35,8 @@ predefined-map and road/river work land on top without reworking it.
 
 - The **Map** tab's central area shows the map as a grid of coloured
   squares, one per tile, colour determined by terrain type.
-- The player's position is marked with a distinct marker (filled circle)
-  drawn on top of its tile.
+- The player's position is marked with a distinct icon drawn on top of its
+  tile (originally a filled circle; see `docs/icons.md`).
 - **Pan:** dragging inside the map area moves the view.
 - **Zoom:** scroll wheel / pinch changes tile size, clamped to a min and max
   so the map can't vanish or fill the screen with one tile.
@@ -71,13 +71,13 @@ a small struct holding only transient UI state, no game data.
 - `MapView { center: egui::Vec2, tile_px: f32 }` — `center` is the world
   coordinate under the middle of the viewport; `tile_px` is the pixel size
   of one tile (zoom). Centres on `(0, 0)` at a fixed default `tile_px`.
-  (Later gained a `PoiIcons` field, so construction moved from `Default` to
-  `MapView::new(&egui::Context)` — the POI icon textures upload there. See
-  `docs/icons.md`.)
+  (Later gained a `PoiIcons` field and a `player_icon` texture, so
+  construction moved from `Default` to `MapView::new(&egui::Context)` — the
+  icon textures upload there. See `docs/icons.md`.)
 - `MapView::ui(&mut self, ui, tiles: impl Iterator<Item = TileView>, player: (i32, i32))`
   — allocates a painter over the available area, applies drag to `center`
   and scroll/zoom to `tile_px` (clamped), culls to the visible tile range,
-  draws one `rect_filled` per visible tile, then the player marker.
+  draws one `rect_filled` per visible tile, then the player's icon.
 - Pure helpers, unit-tested (the `ui` method itself isn't — rendering has no
   assertable output here, matching `ARCHITECTURE.md`'s "UI changes" note):
   - `world_to_screen` — the tile-to-pixel transform, with the Y flip (world

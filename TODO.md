@@ -7,7 +7,6 @@
 * EPIC: the web build (docs/adr/0005-web-build.md)
   * a CI workflow — run cargo test / clippy / fmt on push (deploy.yml only builds+publishes)
 * EPIC: improve the map
-  * User sprite should be an icon too, not just a yellow dot.
   * implement roads and rivers
   * implement "bridge" POI - requires intersection of river and road, allows new items (eg. steel bolt, rusty metal)
 * EPIC: more complex game mechanics
@@ -45,6 +44,7 @@
   * Search button should have a shortcut `[s]` printed
   * higher quality POI symbols — procedural two-ink icons (arched cave, columned ruins, hut with a doorway)
   * raster POI icons — Cave/Ruins/Village drawn from `assets/icons/*.png` via `painter.image` (one cached egui texture each), replacing the procedural two-ink shapes (docs/icons.md, ADR 0001 amendment)
+  * player sprite — the player marker is a raster icon (`assets/icons/player.png`, a hooded scavenger) drawn via `painter.image`, replacing the plain yellow dot; ungated by zoom unlike POI icons (docs/icons.md)
 * generate the map with the mapgen clustering algorithm, moved in-crate to `src/mapgen/` and tuned by consts in `src/game/map.rs` (affinity 0.75); standalone `tools/mapgen` retired (docs/mapgen.md)
 * front end chosen at build time: `gui` (default) / `tui` (legacy, frozen) Cargo features, mutually exclusive; `--gui` flag removed (docs/adr/0002)
 * create alternative egui/eframe UI (map + movement + Experiment/Craft/Disassemble/Quests panels — parity with the tui; see docs/gui-frontend.md)

@@ -23,9 +23,11 @@ const MAX_TILE_PX: f32 = 96.0;
 /// How fast a scroll tick zooms, as a fraction of the current tile size per
 /// scroll unit.
 const SCROLL_ZOOM_RATE: f32 = 0.002;
-/// Player marker radius, as a fraction of the tile size.
-const PLAYER_MARKER_RATIO: f32 = 0.3;
-const PLAYER_MARKER_COLOR: Color32 = Color32::from_rgb(0xff, 0xd0, 0x2f);
+/// Side of the square the player's icon is drawn into, as a fraction of the
+/// tile. Smaller than `POI_ICON_RATIO` so it still reads as a marker
+/// standing on the tile rather than covering it entirely — this matters most
+/// when the player is on a POI tile, where it's drawn on top of that icon.
+const PLAYER_ICON_RATIO: f32 = 0.7;
 
 /// Side of the square a POI icon is drawn into, as a fraction of the tile.
 /// The icon PNG carries its own internal padding and a ground shadow, so this
@@ -54,8 +56,8 @@ pub(super) enum MapCommand {
     Hunt,
 }
 
-/// Transient pan/zoom state for the map tab, plus the POI icon textures
-/// (uploaded once in [`MapView::new`]).
+/// Transient pan/zoom state for the map tab, plus the POI and player icon
+/// textures (uploaded once in [`MapView::new`]).
 pub struct MapView {
     /// World coordinate under the centre of the viewport.
     center: Vec2,
@@ -63,24 +65,31 @@ pub struct MapView {
     tile_px: f32,
     /// One texture per POI kind, drawn on the point-of-interest tiles.
     icons: PoiIcons,
+    /// The player's marker, drawn on top of everything else.
+    player_icon: TextureHandle,
 }
 
 impl MapView {
-    /// Centred on the origin at the default zoom, with the POI icon PNGs
-    /// decoded and uploaded as textures.
+    /// Centred on the origin at the default zoom, with the POI and player
+    /// icon PNGs decoded and uploaded as textures.
     pub fn new(ctx: &egui::Context) -> Self {
         MapView {
             center: Vec2::ZERO,
             tile_px: DEFAULT_TILE_PX,
             icons: PoiIcons::load(ctx),
+            player_icon: load_icon(
+                ctx,
+                "player",
+                include_bytes!("../../assets/icons/player.png"),
+            ),
         }
     }
 
     /// Draws the movement/search/hunt controls and, below them, the tile grid:
-    /// a filled square per visible tile, then the player marker. Consumes
-    /// drag (pan) and scroll or pinch (zoom) over the grid. Returns the
-    /// player's requested action, from a button or its keyboard accelerator
-    /// (arrow keys / `s` / `h`).
+    /// a filled square per visible tile, then the player's icon on top.
+    /// Consumes drag (pan) and scroll or pinch (zoom) over the grid. Returns
+    /// the player's requested action, from a button or its keyboard
+    /// accelerator (arrow keys / `s` / `h`).
     pub fn ui(
         &mut self,
         ui: &mut Ui,
@@ -158,7 +167,7 @@ impl MapView {
                 Some(poi) if self.tile_px >= POI_ICON_MIN_PX => {
                     painter.image(
                         self.icons.for_poi(poi).id(),
-                        poi_icon_rect(rect.center(), self.tile_px),
+                        icon_rect(rect.center(), self.tile_px, POI_ICON_RATIO),
                         POI_ICON_UV,
                         Color32::WHITE,
                     );
@@ -180,10 +189,11 @@ impl MapView {
             self.center,
             self.tile_px,
         );
-        painter.circle_filled(
-            marker,
-            self.tile_px * PLAYER_MARKER_RATIO,
-            PLAYER_MARKER_COLOR,
+        painter.image(
+            self.player_icon.id(),
+            icon_rect(marker, self.tile_px, PLAYER_ICON_RATIO),
+            POI_ICON_UV,
+            Color32::WHITE,
         );
 
         command.or_else(|| read_map_keys(ui))
@@ -229,10 +239,10 @@ fn tile_rect(wx: i32, wy: i32, viewport: Rect, center: Vec2, tile_px: f32) -> Re
     Rect::from_center_size(middle, Vec2::splat(tile_px))
 }
 
-/// The screen square a POI icon is drawn into: side [`POI_ICON_RATIO`] of the
-/// tile, centred on the tile. Mirrors [`tile_rect`].
-fn poi_icon_rect(center: Pos2, tile_px: f32) -> Rect {
-    Rect::from_center_size(center, Vec2::splat(tile_px * POI_ICON_RATIO))
+/// The screen square an icon (POI or player) is drawn into: a `ratio`-sized
+/// fraction of the tile, centred on the tile. Mirrors [`tile_rect`].
+fn icon_rect(center: Pos2, tile_px: f32, ratio: f32) -> Rect {
+    Rect::from_center_size(center, Vec2::splat(tile_px * ratio))
 }
 
 /// One uploaded texture per POI kind, decoded once in [`MapView::new`] from the
@@ -416,15 +426,18 @@ mod tests {
     }
 
     #[test]
-    fn poi_icon_rect_is_a_centred_square_inside_the_tile() {
+    fn icon_rect_is_a_centred_square_inside_the_tile() {
         let c = Pos2::new(4.0, -2.0);
         let tile_px = 40.0;
-        let r = poi_icon_rect(c, tile_px);
 
-        assert!((r.center() - c).length() < 1e-3, "centred on the tile");
-        assert!((r.width() - r.height()).abs() < 1e-3, "square");
-        assert!((r.width() - tile_px * POI_ICON_RATIO).abs() < 1e-3);
-        assert!(r.width() <= tile_px + 1e-3, "stays within the tile");
+        for ratio in [POI_ICON_RATIO, PLAYER_ICON_RATIO] {
+            let r = icon_rect(c, tile_px, ratio);
+
+            assert!((r.center() - c).length() < 1e-3, "centred on the tile");
+            assert!((r.width() - r.height()).abs() < 1e-3, "square");
+            assert!((r.width() - tile_px * ratio).abs() < 1e-3);
+            assert!(r.width() <= tile_px + 1e-3, "stays within the tile");
+        }
     }
 
     #[test]
