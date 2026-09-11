@@ -42,11 +42,15 @@ The current schedule: accepting "The Digital Civilization" (`ExploreRuins`)
 unlocks Map; accepting "What the Ruins Kept" (`OldCivilization`, which
 depends on `ExploreRuins`) unlocks Items — this is the quest that teaches
 `search`, and Items is where the player sees what they've found; accepting
-"Trouble in the East" (`CraftAxe`, which depends on `OldCivilization`)
-unlocks Experiment; *completing* it unlocks Craft and Disassemble (by then
-the player has actually discovered the Stone Axe recipe via Experiment, so
-being able to craft it directly and take things apart both make sense).
-"Stock Up for Hard Times" (`StockUp`) unlocks nothing further today.
+"Follow the Thread" (`CraftCord`, which depends on `OldCivilization`)
+unlocks Experiment, and *completing* it (by experimenting Vine into Cord)
+unlocks Craft — by then the player has successfully experimented once, so
+direct crafting makes sense; "Trouble in the East" (`CraftAxe`, which
+depends on `CraftCord`) unlocks nothing itself — a pure story/reward beat
+between the quests that do the gating; accepting "One Man's Trash"
+(`DisassembleUmbrella`, which depends on `CraftAxe`) unlocks Disassemble.
+"Stock Up for Hard Times" (`StockUp`, which depends on
+`DisassembleUmbrella`) unlocks nothing further today.
 
 `viewmodel::panel::Panel` gains `required_unlock()` (private — the
 Panel-to-Unlocked mapping), `is_visible(unlocked)`, and
@@ -63,12 +67,13 @@ is unlocked at game start.
 
 ## What is *not* built here
 
-- No per-action gating within a tab — e.g. `search` itself isn't gated,
-  only the tabs that surface its results. `OldCivilization` teaches search
-  by requiring a specific find, but that's ordinary quest-condition
-  plumbing (`EventTypeID::FindItem`, fired from `Game::search()`); it
-  didn't need a new kind of gate, only a new `Unlocked` variant (`Items`)
-  for what it reveals.
+- No per-action gating within a tab — e.g. `search`/`disassemble` aren't
+  themselves gated, only the tabs that surface their results.
+  `OldCivilization`/`DisassembleUmbrella` teach search/disassembly by
+  requiring a specific outcome, but that's ordinary quest-condition
+  plumbing (`EventTypeID::FindItem`/`DisassembleItem`, fired from
+  `Game::search()`/`disassemble()`); neither needed a new kind of gate,
+  only an `Unlocked` variant for what it reveals.
 - No gating of the always-visible left column (player stats, event feed) or
   the theme/font-size controls — those aren't tabs, and cutting them off
   would remove feedback a new player still needs.
@@ -93,7 +98,9 @@ is unlocked at game start.
   populated in the `QUESTS` table.
 - `src/game/mod.rs` — the unlock loops in `accept_quest`/
   `complete_open_quest`; `Game::search()` firing
-  `EventTypeID::FindItem(item)` for the `OldCivilization` quest.
+  `EventTypeID::FindItem(item)` for the `OldCivilization` quest;
+  `Game::disassemble()` firing `EventTypeID::DisassembleItem(item)` for the
+  `DisassembleUmbrella` quest.
 - `src/game/map.rs` — `Map::guarantee_find`, a `pub` test-support method
   that forces a guaranteed find so a `search()`-gated quest can be driven
   from a functional test (see `docs/functional-tests.md`).

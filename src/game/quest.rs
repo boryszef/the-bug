@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 pub enum QuestID {
     ExploreRuins,
     OldCivilization,
+    CraftCord,
     CraftAxe,
+    DisassembleUmbrella,
     StockUp,
 }
 
@@ -29,6 +31,7 @@ pub enum QuestError {
 pub(super) enum EventTypeID {
     FindItem(Item),
     CraftItem(Item),
+    DisassembleItem(Item),
     VisitTerrain(TerrainType),
     VisitPoi(Poi),
     /// One successful hunt — a hunt that brought at least one thing back.
@@ -100,20 +103,44 @@ pub(super) const QUESTS: &[Quest] = &[
         unlocks_on_complete: &[],
     },
     Quest {
-        id: QuestID::CraftAxe,
+        id: QuestID::CraftCord,
         dependencies: &[QuestID::OldCivilization],
+        condition: QuestCondition {
+            event: EventTypeID::CraftItem(Item::Cord),
+            count: 1,
+        },
+        reward_xp: 15,
+        reward_items: &[],
+        unlocks_on_accept: &[Unlocked::Experiment],
+        unlocks_on_complete: &[Unlocked::Craft],
+    },
+    Quest {
+        id: QuestID::CraftAxe,
+        dependencies: &[QuestID::CraftCord],
         condition: QuestCondition {
             event: EventTypeID::CraftItem(Item::StoneAxe),
             count: 1,
         },
         reward_xp: 20,
         reward_items: &[(Item::SolarPanel, 1)],
-        unlocks_on_accept: &[Unlocked::Experiment],
-        unlocks_on_complete: &[Unlocked::Craft, Unlocked::Disassemble],
+        unlocks_on_accept: &[],
+        unlocks_on_complete: &[],
+    },
+    Quest {
+        id: QuestID::DisassembleUmbrella,
+        dependencies: &[QuestID::CraftAxe],
+        condition: QuestCondition {
+            event: EventTypeID::DisassembleItem(Item::Umbrella),
+            count: 1,
+        },
+        reward_xp: 25,
+        reward_items: &[(Item::Speaker, 1)],
+        unlocks_on_accept: &[Unlocked::Disassemble],
+        unlocks_on_complete: &[],
     },
     Quest {
         id: QuestID::StockUp,
-        dependencies: &[QuestID::CraftAxe],
+        dependencies: &[QuestID::DisassembleUmbrella],
         condition: QuestCondition {
             event: EventTypeID::Hunt,
             count: 5,

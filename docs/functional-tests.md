@@ -96,7 +96,7 @@ scenario by `Given a new game`.
 | `craft.feature` | consumables from storage-then-equipment, tool required but kept, unknown-recipe and missing-tool refusals, the village gate |
 | `disassemble.feature` | parts returned to storage (from storage or equipment), scavenged umbrella, craft-only ignored, parts stacking, the village gate |
 | `hunting.feature` | the deterministic "unprepared" checks — no bow / no arrows / gear only in storage |
-| `quests.feature` | accept rules (opening quest, one-at-a-time, unmet prerequisites), available/completed transitions, completion by crafting or experimenting the target item |
+| `quests.feature` | accept rules (opening quest, one-at-a-time, unmet prerequisites), available/completed transitions, completion by crafting, experimenting, or disassembling the target item, tab-unlock transitions |
 | `equipment-storage.feature` | `Game`-level transfers and drops — the village gate on transfers and drop-from-storage; drop-from-equipment has none |
 
 ## Out of scope (for now)

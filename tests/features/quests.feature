@@ -37,22 +37,36 @@ Feature: Quests
     And "What the Ruins Kept" is available
     And there is no active quest
 
-  Scenario: Completing the search quest unlocks the axe quest
+  Scenario: Completing the search quest unlocks the cord quest
     Given a new game
     And the player has completed "What the Ruins Kept"
     Then "What the Ruins Kept" is completed
+    And "Follow the Thread" is available
+    And there is no active quest
+
+  Scenario: Completing the cord quest unlocks the axe quest
+    Given a new game
+    And the player has completed "Follow the Thread"
+    Then "Follow the Thread" is completed
     And "Trouble in the East" is available
     And there is no active quest
 
-  Scenario: Stock Up unlocks only once the axe quest is done
+  Scenario: Completing the axe quest unlocks the umbrella quest
+    Given a new game
+    And the player has completed "Trouble in the East"
+    Then "Trouble in the East" is completed
+    And "One Man's Trash" is available
+    And there is no active quest
+
+  Scenario: Stock Up unlocks only once the umbrella quest is done
     Given a new game
     Then "Stock Up for Hard Times" is not available
-    Given the player has completed "Trouble in the East"
+    Given the player has completed "One Man's Trash"
     Then "Stock Up for Hard Times" is available
 
   Scenario: Crafting the target item completes the quest
     Given a new game
-    And the player has completed "What the Ruins Kept"
+    And the player has completed "Follow the Thread"
     And the player has accepted "Trouble in the East"
     And the player knows the "Stone Axe" recipe
     And the player has 1 Branch in storage
@@ -64,7 +78,7 @@ Feature: Quests
 
   Scenario: Experimenting the target item also completes the quest
     Given a new game
-    And the player has completed "What the Ruins Kept"
+    And the player has completed "Follow the Thread"
     And the player has accepted "Trouble in the East"
     And the player has 1 Branch in storage
     And the player has 1 Stone in storage
@@ -74,7 +88,7 @@ Feature: Quests
 
   Scenario: Crafting a different item does not advance the quest
     Given a new game
-    And the player has completed "What the Ruins Kept"
+    And the player has completed "Follow the Thread"
     And the player has accepted "Trouble in the East"
     And the player knows the "Cord" recipe
     And the player has 2 Vine in storage
@@ -98,17 +112,37 @@ Feature: Quests
     And "Craft" is not unlocked
     And "Disassemble" is not unlocked
 
-  Scenario: Accepting the axe quest unlocks Experiment
+  Scenario: Accepting the cord quest unlocks Experiment
     Given a new game
     And the player has completed "What the Ruins Kept"
     Then "Experiment" is not unlocked
-    When the player accepts "Trouble in the East"
+    When the player accepts "Follow the Thread"
     Then "Experiment" is unlocked
     And "Craft" is not unlocked
     And "Disassemble" is not unlocked
 
-  Scenario: Completing the axe quest unlocks Craft and Disassemble
+  Scenario: Completing the cord quest unlocks Craft
+    Given a new game
+    And the player has completed "What the Ruins Kept"
+    And the player has accepted "Follow the Thread"
+    And the player has 2 Vine in storage
+    Then "Craft" is not unlocked
+    When the player experiments with 2 Vine
+    Then "Follow the Thread" is completed
+    And "Craft" is unlocked
+
+  Scenario: Accepting the umbrella quest unlocks Disassemble
     Given a new game
     And the player has completed "Trouble in the East"
-    Then "Craft" is unlocked
-    And "Disassemble" is unlocked
+    Then "Disassemble" is not unlocked
+    When the player accepts "One Man's Trash"
+    Then "Disassemble" is unlocked
+
+  Scenario: Disassembling the target item completes the umbrella quest
+    Given a new game
+    And the player has completed "Trouble in the East"
+    And the player has accepted "One Man's Trash"
+    And the player has 1 Umbrella in storage
+    When the player disassembles "Umbrella"
+    Then "One Man's Trash" is completed
+    And there is no active quest

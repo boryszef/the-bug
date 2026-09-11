@@ -73,6 +73,10 @@ poi-village = Village
 
 quest-craft-axe-name = Trouble in the East
 quest-craft-axe-description = Something has been stirring in the east again. Things had been quiet for a while, but trouble always seems to come from that direction. Whatever it is, you'd better be prepared! Head to the forest, the meadow and the cave, gather materials, then experiment with them to learn how craft a stone axe.
+quest-craft-cord-name = Follow the Thread
+quest-craft-cord-description = Wire is handy, but half of what you'll want to build calls for something simpler — a length of good cord. Nobody in the settlement quite remembers how it's done anymore, not properly. Vine's easy enough to gather; try combining a few lengths and see what holds together. Sometimes one thread really does lead to another.
+quest-disassemble-umbrella-name = One Man's Trash
+quest-disassemble-umbrella-description = An old umbrella broken beyond fixing is still worth its parts — every scrap of fabric and every metal pole matters when you're building things from nothing. The ruins are full of junk like that, if you know where to dig. Bring one back and take it apart properly; better in pieces you can use than whole and useless.
 quest-explore-ruins-name = The Digital Civilization
 quest-explore-ruins-description = A passing traveler mentioned some ruins nearby, said to be scattered with old artifacts. Apparently, a few villages once stood on these flats, remnants of a great civilization from roughly 500 years ago — the "Digital Civilization," as the explorers call it. You should go see it for yourself.
 quest-old-civilization-name = What the Ruins Kept

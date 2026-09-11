@@ -185,6 +185,10 @@ poi-village = Osada
 
 quest-craft-axe-name = Kłopoty na wschodzie
 quest-craft-axe-description = Coś znów szykuje się na wschodzie. Od jakiegoś czasu było spokojnie, ale doświadczenie pokazuje, że kłopoty zawsze nadchodzą z tamtej strony. Cokolwiek to jest, lepiej się przygotuj! Idź do lasu, na łąkę i do jaskini, zbierz materiały, a potem poeksperymentuj z nimi i naucz się jak zrobić kamienną siekierę.
+quest-craft-cord-name = Po nitce do kłębka
+quest-craft-cord-description = Miedziany drut się przyda, ale połowa tego, co zechcesz zbudować, wymaga czegoś prostszego — kawałka porządnego sznurka. W osadzie nikt już dobrze nie pamięta, jak się go robi. Winorośl łatwo znaleźć — spróbuj połączyć kilka kawałków i zobacz, co się uda. Czasem naprawdę, jak to mówią, po nitce do kłębka.
+quest-disassemble-umbrella-name = Skarby ze złomu
+quest-disassemble-umbrella-description = Stara, zepsuta do cna parasolka wciąż jest coś warta — każdy skrawek materiału i każdy metalowy drążek ma znaczenie, kiedy budujesz rzeczy z niczego. W ruinach pełno takich śmieci, trzeba tylko wiedzieć, gdzie szukać. Przynieś jedną i porządnie ją rozbierz na części — lepiej w kawałkach, które się przydadzą, niż cała, ale bezużyteczna.
 quest-explore-ruins-name = Cywilizacja Cyfrowa
 quest-explore-ruins-description = Przejezdny podróżny wspomniał o pobliskich ruinach, podobno usianych starymi przedmiotami. Podobno na tych równinach znajdowało się niegdyś kilka wiosek - pozostałości wielkiej cywilizacji sprzed 500 lat — "Cywilizacji Cyfrowej", jak nazywają ją odkrywcy. Powinieneś zobaczyć to na własne oczy.
 quest-old-civilization-name = Co kryją ruiny

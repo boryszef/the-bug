@@ -315,6 +315,8 @@ fn poi_attr(poi: Poi, attr: &str, lang: Language) -> String {
 pub fn quest_name(id: QuestID, lang: Language) -> String {
     let key = match id {
         QuestID::CraftAxe => "quest-craft-axe-name",
+        QuestID::CraftCord => "quest-craft-cord-name",
+        QuestID::DisassembleUmbrella => "quest-disassemble-umbrella-name",
         QuestID::ExploreRuins => "quest-explore-ruins-name",
         QuestID::OldCivilization => "quest-old-civilization-name",
         QuestID::StockUp => "quest-stock-up-name",
@@ -325,6 +327,8 @@ pub fn quest_name(id: QuestID, lang: Language) -> String {
 pub fn quest_description(id: QuestID, lang: Language) -> String {
     let key = match id {
         QuestID::CraftAxe => "quest-craft-axe-description",
+        QuestID::CraftCord => "quest-craft-cord-description",
+        QuestID::DisassembleUmbrella => "quest-disassemble-umbrella-description",
         QuestID::ExploreRuins => "quest-explore-ruins-description",
         QuestID::OldCivilization => "quest-old-civilization-description",
         QuestID::StockUp => "quest-stock-up-description",
@@ -561,6 +565,8 @@ mod tests {
     fn quest_text_renders_in_every_language() {
         for id in [
             QuestID::CraftAxe,
+            QuestID::CraftCord,
+            QuestID::DisassembleUmbrella,
             QuestID::ExploreRuins,
             QuestID::OldCivilization,
             QuestID::StockUp,

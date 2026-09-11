@@ -59,7 +59,9 @@ pub fn quest(name: &str) -> QuestID {
     match name {
         "The Digital Civilization" | "the ruins quest" => QuestID::ExploreRuins,
         "What the Ruins Kept" | "the search quest" => QuestID::OldCivilization,
+        "Follow the Thread" | "the cord quest" => QuestID::CraftCord,
         "Trouble in the East" | "the axe quest" => QuestID::CraftAxe,
+        "One Man's Trash" | "the umbrella quest" => QuestID::DisassembleUmbrella,
         "Stock Up for Hard Times" | "the stock-up quest" => QuestID::StockUp,
         other => panic!("no QuestID mapping for {other:?} — add it to tests/steps/world.rs"),
     }
@@ -121,14 +123,28 @@ pub fn complete_quest(game: &mut Game, id: QuestID) {
             game.map.guarantee_find((0, -1), Item::CopperWire);
             game.search();
         }
-        QuestID::CraftAxe => {
+        QuestID::CraftCord => {
             complete_quest(game, QuestID::OldCivilization);
+            game.player.coordinates = (0, 0); // the village
+            accept_if_needed(game, QuestID::CraftCord);
+            game.player.inventory.insert(Item::Vine, 2);
+            game.experiment(&[(Item::Vine, 2)]);
+        }
+        QuestID::CraftAxe => {
+            complete_quest(game, QuestID::CraftCord);
             game.player.coordinates = (0, 0);
             accept_if_needed(game, QuestID::CraftAxe);
             for (it, n) in [(Item::Branch, 1), (Item::Stone, 1), (Item::Cord, 1)] {
                 game.player.inventory.insert(it, n);
             }
             game.experiment(&[(Item::Branch, 1), (Item::Stone, 1), (Item::Cord, 1)]);
+        }
+        QuestID::DisassembleUmbrella => {
+            complete_quest(game, QuestID::CraftAxe);
+            game.player.coordinates = (0, 0); // the village
+            accept_if_needed(game, QuestID::DisassembleUmbrella);
+            game.player.inventory.insert(Item::Umbrella, 1);
+            game.disassemble(Item::Umbrella);
         }
         QuestID::StockUp => {
             panic!("StockUp completion needs RNG-free hunting — not drivable from a step")

@@ -413,6 +413,7 @@ impl Game {
         self.player.add_all_to_inventory(recipe.consumables());
 
         self.log(EventKind::Disassembled { item });
+        self.note_quest_event(EventTypeID::DisassembleItem(item));
     }
 
     /// Moves `amount` of `item` from the equipment to storage. Does nothing away
@@ -1094,7 +1095,7 @@ mod tests {
             .insert(Item::Branch, player::EQUIPMENT_BASE_CAPACITY - carried - 1);
 
         game.player
-            .restore_quest_state(None, 0, vec![QuestID::CraftAxe]);
+            .restore_quest_state(None, 0, vec![QuestID::DisassembleUmbrella]);
         game.accept_quest(QuestID::StockUp).unwrap();
 
         game.hunt();
@@ -1169,16 +1170,12 @@ mod tests {
         unlocks_on_complete: &[],
     };
 
-    /// A game with `ExploreRuins` and `OldCivilization` already completed,
-    /// so the axe quest — which depends on `OldCivilization` — can be
-    /// accepted.
+    /// A game with `CraftCord` already completed, so the axe quest — which
+    /// depends on it — can be accepted.
     fn game_with_the_axe_quest_unlocked() -> Game {
         let mut game = Game::default();
-        game.player.restore_quest_state(
-            None,
-            0,
-            vec![QuestID::ExploreRuins, QuestID::OldCivilization],
-        );
+        game.player
+            .restore_quest_state(None, 0, vec![QuestID::CraftCord]);
         game
     }
 
@@ -1295,7 +1292,37 @@ mod tests {
     }
 
     #[test]
-    fn stock_up_needs_trouble_in_the_east_first() {
+    fn disassembling_the_target_item_logs_the_disassembly_before_the_quest_completion() {
+        let mut game = Game::default();
+        game.player
+            .restore_quest_state(None, 0, vec![QuestID::CraftAxe]);
+        game.player.inventory.insert(Item::Umbrella, 1);
+        game.accept_quest(QuestID::DisassembleUmbrella).unwrap();
+
+        game.disassemble(Item::Umbrella);
+
+        let kinds: Vec<&EventKind> = game
+            .events()
+            .iter()
+            .rev()
+            .take(2)
+            .map(Event::kind)
+            .collect();
+        assert_eq!(
+            kinds,
+            [
+                &EventKind::QuestCompleted {
+                    quest: QuestID::DisassembleUmbrella
+                },
+                &EventKind::Disassembled {
+                    item: Item::Umbrella
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn stock_up_needs_the_umbrella_quest_first() {
         let mut game = Game::default();
         assert_eq!(
             game.accept_quest(QuestID::StockUp),
@@ -1308,7 +1335,7 @@ mod tests {
     fn game_with_the_stock_up_quest_open() -> Game {
         let mut game = Game::default();
         game.player
-            .restore_quest_state(None, 0, vec![QuestID::CraftAxe]);
+            .restore_quest_state(None, 0, vec![QuestID::DisassembleUmbrella]);
         game.accept_quest(QuestID::StockUp).unwrap();
         game.player.equipment.insert(Item::WoodenBow, 1);
         game
