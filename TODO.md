@@ -2,6 +2,8 @@
 
 ## TODO
 
+* Hide font selection and light/dark mode switch in a dropdown menu; dropdown labeled with a cog icon, adjusted to the right to keep separate from other menu items
+* Flash background of new menu item when they appear for the first time
 * EPIC: the web build (docs/adr/0005-web-build.md)
   * a CI workflow — run cargo test / clippy / fmt on push (deploy.yml only builds+publishes)
 * EPIC: improve the map
@@ -10,6 +12,7 @@
 * EPIC: more complex game mechanics
   * implement workshops as additional craftable locations alongside the Village (docs/village-crafting.md)
   * quests should have closing narrative, sometimes revealing part of the story, sometimes commenting the reward item
+  * level up with increasing XP, when leveling up, uncover next portions of the map. Initially 13x13, then 21x13 to the West, then 34x21 to the north and so on. The whole map should be generated at the beginning of the game, but hidden parts will be inaccessible. Each new block introduces new tiles and POIs - with better resources, but possibly also more dangerous.
 * EPIC: the story
   * add more quests
 
