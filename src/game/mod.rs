@@ -113,6 +113,9 @@ impl Game {
         }
 
         self.player.open_quest_as(id);
+        for &feature in quest.unlocks_on_accept {
+            self.player.unlock(feature);
+        }
         self.log(EventKind::QuestAccepted { quest: id });
         Ok(())
     }
@@ -169,6 +172,9 @@ impl Game {
     fn complete_open_quest(&mut self, quest: &'static Quest) {
         self.player.complete_quest(quest.id);
         self.player.add_all_to_inventory(quest.reward_items);
+        for &feature in quest.unlocks_on_complete {
+            self.player.unlock(feature);
+        }
         self.log(EventKind::QuestCompleted { quest: quest.id });
         self.grant_award(GrantType::Experience(quest.reward_xp));
     }
@@ -1158,6 +1164,8 @@ mod tests {
         },
         reward_xp: 7,
         reward_items: &[(Item::Cord, 2)],
+        unlocks_on_accept: &[],
+        unlocks_on_complete: &[],
     };
 
     /// A game with `ExploreRuins` already completed, so the axe quest — which

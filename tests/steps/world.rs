@@ -1,4 +1,4 @@
-use the_bug::game::{Direction, Game, Item, Map, Poi, QuestError, QuestID, TerrainType};
+use the_bug::game::{Direction, Game, Item, Map, Poi, QuestError, QuestID, TerrainType, Unlocked};
 
 /// The scenario state: one `Game`, recreated fresh per scenario. `Game`
 /// already derives `Debug` and implements `Default`, which is all the
@@ -61,6 +61,19 @@ pub fn quest(name: &str) -> QuestID {
         "Trouble in the East" | "the axe quest" => QuestID::CraftAxe,
         "Stock Up for Hard Times" | "the stock-up quest" => QuestID::StockUp,
         other => panic!("no QuestID mapping for {other:?} — add it to tests/steps/world.rs"),
+    }
+}
+
+/// Resolves a Gherkin tab/feature name to the `Unlocked` variant that gates
+/// it.
+pub fn feature(name: &str) -> Unlocked {
+    match name {
+        "Map" => Unlocked::Map,
+        "Items" => Unlocked::Items,
+        "Craft" => Unlocked::Craft,
+        "Disassemble" => Unlocked::Disassemble,
+        "Experiment" => Unlocked::Experiment,
+        other => panic!("no Unlocked mapping for {other:?} — add it to tests/steps/world.rs"),
     }
 }
 

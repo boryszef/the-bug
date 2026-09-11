@@ -7,7 +7,7 @@ use cucumber::{given, then, when};
 use the_bug::game::QuestError;
 use the_bug::viewmodel;
 
-use crate::steps::world::{GameWorld, quest};
+use crate::steps::world::{GameWorld, feature, quest};
 
 #[given(regex = r#"^the player has accepted "([^"]+)"$"#)]
 async fn has_accepted(world: &mut GameWorld, name: String) {
@@ -99,4 +99,20 @@ async fn quest_is_completed(world: &mut GameWorld, name: String) {
 #[then(regex = r"^the quest progress is (\d+)$")]
 async fn quest_progress_is(world: &mut GameWorld, progress: u32) {
     assert_eq!(world.game.player.quest_progress(), progress);
+}
+
+#[then(regex = r#"^"([^"]+)" is unlocked$"#)]
+async fn feature_is_unlocked(world: &mut GameWorld, name: String) {
+    assert!(
+        world.game.player.is_unlocked(feature(&name)),
+        "{name:?} is not unlocked"
+    );
+}
+
+#[then(regex = r#"^"([^"]+)" is not unlocked$"#)]
+async fn feature_is_not_unlocked(world: &mut GameWorld, name: String) {
+    assert!(
+        !world.game.player.is_unlocked(feature(&name)),
+        "{name:?} is unexpectedly unlocked"
+    );
 }

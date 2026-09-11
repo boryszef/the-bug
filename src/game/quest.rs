@@ -1,5 +1,6 @@
 use super::item::Item;
 use super::map::{Poi, TerrainType};
+use super::unlock::Unlocked;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -56,6 +57,11 @@ pub struct Quest {
     pub(super) condition: QuestCondition,
     pub(super) reward_xp: u32,
     pub(super) reward_items: &'static [(Item, u32)],
+    /// Front-end features unlocked the moment this quest is accepted — see
+    /// docs/tutorial-unlocks.md.
+    pub(super) unlocks_on_accept: &'static [Unlocked],
+    /// Front-end features unlocked once this quest is completed.
+    pub(super) unlocks_on_complete: &'static [Unlocked],
 }
 
 impl Quest {
@@ -76,6 +82,8 @@ pub(super) const QUESTS: &[Quest] = &[
         },
         reward_xp: 10,
         reward_items: &[(Item::CircuitBoard, 1)],
+        unlocks_on_accept: &[Unlocked::Map],
+        unlocks_on_complete: &[],
     },
     Quest {
         id: QuestID::CraftAxe,
@@ -86,6 +94,8 @@ pub(super) const QUESTS: &[Quest] = &[
         },
         reward_xp: 20,
         reward_items: &[(Item::SolarPanel, 1)],
+        unlocks_on_accept: &[Unlocked::Experiment, Unlocked::Items],
+        unlocks_on_complete: &[Unlocked::Craft, Unlocked::Disassemble],
     },
     Quest {
         id: QuestID::StockUp,
@@ -96,6 +106,8 @@ pub(super) const QUESTS: &[Quest] = &[
         },
         reward_xp: 30,
         reward_items: &[(Item::Microcontroller, 1)],
+        unlocks_on_accept: &[],
+        unlocks_on_complete: &[],
     },
 ];
 
@@ -126,6 +138,8 @@ mod tests {
         },
         reward_xp: 7,
         reward_items: &[(Item::Cord, 2)],
+        unlocks_on_accept: &[],
+        unlocks_on_complete: &[],
     };
 
     #[test]

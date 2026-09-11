@@ -74,3 +74,26 @@ Feature: Quests
     When the player crafts "Cord"
     Then the active quest is "Trouble in the East"
     And the quest progress is 0
+
+  Scenario: Accepting the opening quest unlocks the map
+    Given a new game
+    Then "Map" is not unlocked
+    When the player accepts "The Digital Civilization"
+    Then "Map" is unlocked
+
+  Scenario: Accepting the axe quest unlocks Experiment and Items, but not yet Craft or Disassemble
+    Given a new game
+    And the player has completed "The Digital Civilization"
+    Then "Experiment" is not unlocked
+    And "Items" is not unlocked
+    When the player accepts "Trouble in the East"
+    Then "Experiment" is unlocked
+    And "Items" is unlocked
+    And "Craft" is not unlocked
+    And "Disassemble" is not unlocked
+
+  Scenario: Completing the axe quest unlocks Craft and Disassemble
+    Given a new game
+    And the player has completed "Trouble in the East"
+    Then "Craft" is unlocked
+    And "Disassemble" is unlocked

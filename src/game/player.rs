@@ -201,7 +201,6 @@ impl Player {
     }
 
     /// Unlocks `feature`, if it wasn't already.
-    #[allow(dead_code)] // wired up by Game::accept_quest/complete_open_quest (next commit)
     pub(super) fn unlock(&mut self, feature: Unlocked) {
         if !self.unlocked.contains(&feature) {
             self.unlocked.push(feature);
