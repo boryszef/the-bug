@@ -10,23 +10,23 @@ use crate::game::Unlocked;
 /// than restating the order in a match.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Panel {
+    #[default]
+    Quests,
     Map,
+    Items,
     Experiment,
     Craft,
     Disassemble,
-    Items,
-    #[default]
-    Quests,
 }
 
 impl Panel {
     pub const ALL: [Panel; 6] = [
+        Panel::Quests,
         Panel::Map,
+        Panel::Items,
         Panel::Experiment,
         Panel::Craft,
         Panel::Disassemble,
-        Panel::Items,
-        Panel::Quests,
     ];
 
     /// The [`Unlocked`] feature that must be present for this tab to be
@@ -34,12 +34,12 @@ impl Panel {
     /// docs/tutorial-unlocks.md for the schedule that grants each one.
     fn required_unlock(self) -> Option<Unlocked> {
         match self {
+            Panel::Quests => None,
             Panel::Map => Some(Unlocked::Map),
+            Panel::Items => Some(Unlocked::Items),
             Panel::Experiment => Some(Unlocked::Experiment),
             Panel::Craft => Some(Unlocked::Craft),
             Panel::Disassemble => Some(Unlocked::Disassemble),
-            Panel::Items => Some(Unlocked::Items),
-            Panel::Quests => None,
         }
     }
 
@@ -109,22 +109,22 @@ mod tests {
 
     #[test]
     fn next_cycles_through_every_panel_in_order_and_wraps() {
-        assert_eq!(Panel::Map.next(&EVERYTHING), Panel::Experiment);
+        assert_eq!(Panel::Quests.next(&EVERYTHING), Panel::Map);
+        assert_eq!(Panel::Map.next(&EVERYTHING), Panel::Items);
+        assert_eq!(Panel::Items.next(&EVERYTHING), Panel::Experiment);
         assert_eq!(Panel::Experiment.next(&EVERYTHING), Panel::Craft);
         assert_eq!(Panel::Craft.next(&EVERYTHING), Panel::Disassemble);
-        assert_eq!(Panel::Disassemble.next(&EVERYTHING), Panel::Items);
-        assert_eq!(Panel::Items.next(&EVERYTHING), Panel::Quests);
-        assert_eq!(Panel::Quests.next(&EVERYTHING), Panel::Map);
+        assert_eq!(Panel::Disassemble.next(&EVERYTHING), Panel::Quests);
     }
 
     #[test]
     fn prev_cycles_through_every_panel_in_reverse_and_wraps() {
-        assert_eq!(Panel::Map.prev(&EVERYTHING), Panel::Quests);
-        assert_eq!(Panel::Quests.prev(&EVERYTHING), Panel::Items);
-        assert_eq!(Panel::Items.prev(&EVERYTHING), Panel::Disassemble);
+        assert_eq!(Panel::Quests.prev(&EVERYTHING), Panel::Disassemble);
         assert_eq!(Panel::Disassemble.prev(&EVERYTHING), Panel::Craft);
         assert_eq!(Panel::Craft.prev(&EVERYTHING), Panel::Experiment);
-        assert_eq!(Panel::Experiment.prev(&EVERYTHING), Panel::Map);
+        assert_eq!(Panel::Experiment.prev(&EVERYTHING), Panel::Items);
+        assert_eq!(Panel::Items.prev(&EVERYTHING), Panel::Map);
+        assert_eq!(Panel::Map.prev(&EVERYTHING), Panel::Quests);
     }
 
     #[test]
@@ -145,7 +145,7 @@ mod tests {
     #[test]
     fn cycling_skips_locked_panels() {
         let unlocked = [Unlocked::Map];
-        assert_eq!(Panel::visible(&unlocked), [Panel::Map, Panel::Quests]);
+        assert_eq!(Panel::visible(&unlocked), [Panel::Quests, Panel::Map]);
         assert_eq!(Panel::Map.next(&unlocked), Panel::Quests);
         assert_eq!(Panel::Quests.next(&unlocked), Panel::Map);
         assert_eq!(Panel::Map.prev(&unlocked), Panel::Quests);
