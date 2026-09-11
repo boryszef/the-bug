@@ -197,10 +197,10 @@ impl eframe::App for App {
         apply_font_size(&ctx, self.font_size);
 
         if ctx.input(|i| i.key_pressed(Key::OpenBracket)) {
-            self.panel = self.panel.prev();
+            self.panel = self.panel.prev(self.game.player.unlocked());
         }
         if ctx.input(|i| i.key_pressed(Key::CloseBracket)) {
-            self.panel = self.panel.next();
+            self.panel = self.panel.next(self.game.player.unlocked());
         }
         if ctx.input(|i| i.key_pressed(Key::Q)) {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
@@ -208,7 +208,7 @@ impl eframe::App for App {
 
         egui::Panel::top("tabs_and_quit").show(ui, |ui| {
             ui.horizontal(|ui| {
-                for panel in Panel::ALL {
+                for panel in Panel::visible(self.game.player.unlocked()) {
                     let label = i18n::ui(title_id(panel), self.language);
                     if ui.selectable_label(self.panel == panel, label).clicked() {
                         self.panel = panel;
