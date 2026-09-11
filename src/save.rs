@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::game::{
     Event, EventKind, Game, Item, Map, Player, Poi, QuestID, RestoreState, SaveState, TerrainType,
+    Unlocked,
 };
 
 /// The game's semantic version, stamped into every save file.
@@ -97,6 +98,10 @@ pub(crate) struct PlayerState {
     pub(crate) quest_progress: u32,
     #[serde(default)]
     pub(crate) quests_completed: Vec<QuestID>,
+    /// Front-end features unlocked so far. Absent in older / hand-made
+    /// saves — then the player starts with nothing unlocked.
+    #[serde(default)]
+    pub(crate) unlocked: Vec<Unlocked>,
 }
 
 #[derive(Serialize, Deserialize)]

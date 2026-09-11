@@ -4,6 +4,7 @@ mod map;
 mod player;
 mod quest;
 mod recipe;
+mod unlock;
 
 pub use event::{Event, EventKind};
 pub use item::Item;
@@ -11,6 +12,7 @@ pub use map::{Direction, FoundIn, Map, MapTile, Poi, TerrainType};
 pub use player::Player;
 pub use quest::{Quest, QuestError, QuestID};
 pub(crate) use recipe::disassembly_for;
+pub use unlock::Unlocked;
 
 use quest::{EventTypeID, QUESTS, dependencies_met, quest_for};
 use recipe::find_matching;

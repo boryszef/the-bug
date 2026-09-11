@@ -2,6 +2,7 @@ use super::item::Item;
 use super::map::Direction;
 use super::quest::QuestID;
 use super::recipe::{RECIPES, Recipe};
+use super::unlock::Unlocked;
 use std::collections::HashMap;
 use std::io;
 
@@ -60,6 +61,7 @@ pub struct Player {
     /// Meaningless while `open_quest` is `None`.
     quest_progress: u32,
     quests_completed: Vec<QuestID>,
+    unlocked: Vec<Unlocked>,
 }
 
 impl Default for Player {
@@ -75,6 +77,7 @@ impl Default for Player {
             open_quest: None,
             quest_progress: 0,
             quests_completed: Vec::new(),
+            unlocked: Vec::new(),
         }
     }
 }
@@ -185,6 +188,29 @@ impl Player {
         self.open_quest = None;
         self.quest_progress = 0;
         self.quests_completed.push(id);
+    }
+
+    /// Front-end features unlocked so far, in unlock order.
+    pub fn unlocked(&self) -> &[Unlocked] {
+        &self.unlocked
+    }
+
+    /// Whether `feature` has been unlocked.
+    pub fn is_unlocked(&self, feature: Unlocked) -> bool {
+        self.unlocked.contains(&feature)
+    }
+
+    /// Unlocks `feature`, if it wasn't already.
+    #[allow(dead_code)] // wired up by Game::accept_quest/complete_open_quest (next commit)
+    pub(super) fn unlock(&mut self, feature: Unlocked) {
+        if !self.unlocked.contains(&feature) {
+            self.unlocked.push(feature);
+        }
+    }
+
+    /// Sets unlock state directly (used when loading a save).
+    pub(crate) fn restore_unlocked(&mut self, unlocked: Vec<Unlocked>) {
+        self.unlocked = unlocked;
     }
 
     /// Removes `amount` of `item` from the inventory, dropping the entry
@@ -438,6 +464,7 @@ impl super::SaveState for Player {
             open_quest: self.open_quest,
             quest_progress: self.quest_progress,
             quests_completed: self.quests_completed.clone(),
+            unlocked: self.unlocked.clone(),
         }
     }
 }
@@ -463,6 +490,7 @@ impl super::RestoreState for Player {
             saved.quest_progress,
             saved.quests_completed,
         );
+        player.restore_unlocked(saved.unlocked);
         Ok(player)
     }
 }
