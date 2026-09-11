@@ -215,28 +215,33 @@ impl eframe::App for App {
                     }
                 }
 
-                ui.separator();
-                for theme in [egui::Theme::Light, egui::Theme::Dark] {
-                    let label = i18n::ui(theme_label_id(theme), self.language);
-                    if ui.selectable_label(self.theme == theme, label).clicked() {
-                        self.theme = theme;
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button(i18n::ui("action-quit", self.language)).clicked() {
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                     }
-                }
 
-                ui.separator();
-                ui.label(i18n::ui("font-size-label", self.language));
-                egui::ComboBox::from_id_salt("font_size")
-                    .selected_text(i18n::ui(self.font_size.label_id(), self.language))
-                    .show_ui(ui, |ui| {
-                        for size in FontSize::ALL {
-                            let label = i18n::ui(size.label_id(), self.language);
-                            ui.selectable_value(&mut self.font_size, size, label);
+                    ui.menu_button("⚙", |ui| {
+                        for theme in [egui::Theme::Light, egui::Theme::Dark] {
+                            let label = i18n::ui(theme_label_id(theme), self.language);
+                            if ui.selectable_label(self.theme == theme, label).clicked() {
+                                self.theme = theme;
+                            }
                         }
-                    });
 
-                if ui.button(i18n::ui("action-quit", self.language)).clicked() {
-                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
-                }
+                        ui.separator();
+                        ui.label(i18n::ui("font-size-label", self.language));
+                        egui::ComboBox::from_id_salt("font_size")
+                            .selected_text(i18n::ui(self.font_size.label_id(), self.language))
+                            .show_ui(ui, |ui| {
+                                for size in FontSize::ALL {
+                                    let label = i18n::ui(size.label_id(), self.language);
+                                    ui.selectable_value(&mut self.font_size, size, label);
+                                }
+                            });
+                    })
+                    .response
+                    .on_hover_text(i18n::ui("action-settings", self.language));
+                });
             });
         });
 

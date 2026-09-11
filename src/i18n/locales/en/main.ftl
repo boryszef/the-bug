@@ -153,6 +153,7 @@ action-experiment = Run experiment
 action-accept = Accept
 action-search = Search (s)
 action-hunt = Hunt (h)
+action-settings = Settings
 action-theme-light = Light
 action-theme-dark = Dark
 font-size-label = Font:

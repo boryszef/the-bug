@@ -9,9 +9,14 @@ mode switch, and a way to pick a base font size.
 ## Behaviour
 
 Both controls live in the top toolbar (`egui::Panel::top("tabs_and_quit")`
-in `App::ui`, `src/gui/mod.rs`), alongside the tab buttons and Quit — the
-one area drawn on every panel, so the controls are visible everywhere, not
-tucked into a settings screen.
+in `App::ui`, `src/gui/mod.rs`) — the one area drawn on every panel, so
+they're reachable everywhere, not tucked into a separate settings screen.
+They're not drawn inline, though: a `⚙` `ui.menu_button` sits at the right
+edge of the toolbar (via `ui.with_layout(Layout::right_to_left(...))`,
+alongside Quit), visually separated from the tab buttons on the left, and
+the theme/font controls only appear once that dropdown is opened —
+`TODO.md`'s "hide font selection and light/dark mode switch in a dropdown
+menu" request.
 
 - **Theme.** Two `selectable_label`s, `Light` / `Dark` — the same idiom the
   tab buttons already use in this toolbar. Clicking sets `App.theme:
@@ -62,14 +67,26 @@ problem and now calls the same `success_color`; `Experiment::render` gained
 a `theme: egui::Theme` parameter for it, threaded from `self.theme` at its
 one call site.
 
-### Not emoji
+### The dropdown is the one deliberate exception to "not emoji"
 
-Both controls use plain i18n text labels, not icon buttons (no 🌙/☀). This
-project already decided against emoji in the gui once, for POI marks
-(`docs/map-improvements.md`'s "Not emoji" section) — egui's bundled fonts
-may not carry a given glyph, and this codebase hit exactly that failure
-mode before (`TODO.md`'s DONE log: "arrow glyph in the event text does not
-render in egui"). Same reasoning applies here.
+The theme/font controls themselves still use plain i18n text labels, not
+icon buttons — this project decided against emoji in the gui once, for POI
+marks (`docs/map-improvements.md`'s "Not emoji" section), after hitting a
+real glyph-rendering failure (`TODO.md`'s DONE log: "arrow glyph in the
+event text does not render in egui"), later fixed there by switching to
+raster PNG icons (`docs/icons.md`).
+
+The dropdown's own toggle button is the one deliberate exception: it's
+labelled `⚙` (U+2699 GEAR), not text, per a direct request weighed against
+that same risk. It's a single BMP symbol rather than the multi-codepoint
+color-emoji sequences (🌙/☀) rejected before, which makes it somewhat more
+likely to be covered by egui's bundled font, but that's not a guarantee —
+this hasn't been screenshot-verified (this project doesn't screenshot its
+own gui; a human checks it). If `⚙` turns out not to render, the fix is the
+same one already proven for POI/player marks: a small hand-authored SVG in
+`assets/icons/`, rendered to PNG via `scripts/render-icons.sh`, loaded as
+an `egui::TextureHandle`, drawn on the button in place of the glyph — see
+`docs/icons.md`.
 
 ## Scope
 
@@ -82,9 +99,12 @@ render in egui"). Same reasoning applies here.
   the "Looks good!" hint via `super::success_color`.
 - `src/i18n/locales/{en,pl}/main.ftl` — `action-theme-light`,
   `action-theme-dark`, `font-size-label`, `font-size-{small,medium,large,
-  extra-large}`. Looked up at runtime via `i18n::ui(id, lang)`, the same
-  plain `loader().get(id)` path every other toolbar/panel-title label
-  already uses — not `fl!()`-macro-checked at compile time, so no new
+  extra-large}`, and `action-settings` (the `⚙` button's hover tooltip —
+  the glyph itself isn't localized, but the tooltip keeps this control
+  discoverable and consistent with every other toolbar control routing its
+  label through `i18n::ui`). Looked up at runtime via `i18n::ui(id, lang)`,
+  the same plain `loader().get(id)` path every other toolbar/panel-title
+  label already uses — not `fl!()`-macro-checked at compile time, so no new
   test-coverage gap relative to existing practice.
 
 ## Out of scope

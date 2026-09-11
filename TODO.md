@@ -2,7 +2,6 @@
 
 ## TODO
 
-* Hide font selection and light/dark mode switch in a dropdown menu; dropdown labeled with a cog icon, adjusted to the right to keep separate from other menu items
 * Flash background of new menu item when they appear for the first time
 * EPIC: the web build (docs/adr/0005-web-build.md)
   * a CI workflow — run cargo test / clippy / fmt on push (deploy.yml only builds+publishes)
@@ -18,6 +17,7 @@
 
 ## DONE
 
+* theme and font-size controls moved into a `⚙` dropdown menu at the right edge of the toolbar, separate from the tabs — a deliberate exception to the "not emoji" policy (docs/accessibility.md)
 * review events: removed the log line for a pure refusal that changes nothing — `UnknownRecipe`, `CraftShortage`, `CraftMissingTool` (from `craft()` only; `experiment()`'s post-spend `ExperimentMissingTool` stays), `ExperimentShortage`, `HuntUnprepared` — and deleted the now-unreachable `EventKind` variants end to end (enum, i18n rendering + `.ftl` strings, gui colour lookup) (docs/event-worthiness.md)
 * publish the web build — `.github/workflows/deploy.yml` builds with `trunk --release --public-url "/the-bug/"` and publishes `dist/` to GitHub Pages on a `v*` tag or manual dispatch; live at https://boryszef.github.io/the-bug/ (docs/adr/0005-web-build.md)
 * web persistence + language — the browser build autosaves the game JSON to `localStorage["the-bug-game"]` (`App::save`, resumed in `app_creator`; a corrupt blob falls back to a fresh game) and reads the UI language from `navigator.language`; `save.rs` grew filesystem-free `to_json`/`from_json` (docs/adr/0005-web-build.md)

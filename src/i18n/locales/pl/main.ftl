@@ -263,6 +263,7 @@ action-experiment = Eksperymentuj
 action-accept = Przyjmij
 action-search = Szukaj (s)
 action-hunt = Poluj (h)
+action-settings = Ustawienia
 action-theme-light = Jasny
 action-theme-dark = Ciemny
 font-size-label = Czcionka:
