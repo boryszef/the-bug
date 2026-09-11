@@ -34,10 +34,15 @@ each), in `POI_ITEMS` next to `TERRAIN_ITEMS` in `src/game/map.rs`.
 ## Generation
 
 `mapgen` produces terrain only — every cell, no holes, no scatter step
-(`docs/mapgen.md`). `Map::new` then lays the POI grid with `scatter_pois`:
-`Village` on the centre cell, then `Cave` and `Ruins` on other cells picked
-uniformly at random, at `CAVE_FRACTION` / `RUINS_FRACTION` of the tile count —
-the same densities the scatter terrain used, still scaling with map size.
+(`docs/mapgen.md`). Each time `Map::generate_block` generates a `17×17`
+block (`docs/map-growth.md`), it lays that block's POI grid with
+`scatter_pois`: `Cave` and `Ruins` on cells picked uniformly at random, at
+`CAVE_FRACTION` / `RUINS_FRACTION` of the block's tile count — the same
+densities the scatter terrain used. `Village` is placed separately, once —
+only for the centre block, the one generated at map creation — on the
+fixed grid's true centre cell, excluded from that block's `scatter_pois`
+call so a Cave/Ruins roll can never land there and get silently
+overwritten.
 
 ## Save format
 

@@ -60,11 +60,12 @@ and logs `LeveledUp` if it reports a change, so the "what happens when XP
 is granted" logic — including detecting a level-up — lives in exactly one
 place rather than being duplicated at each of the three call sites.
 
-`level` still only affects starting map size (`Map::new`,
-`MAP_PER_LEVEL_INCREMENT`) — a fixed-at-creation formula, so levelling up
-mid-game doesn't retroactively resize the current map. Anything more
-(unlocking content, progressively revealing the map) is a separate, larger
-future item (`TODO.md`).
+Crossing a threshold also reveals more of the map: `Game::grant_award`
+calls `Map::reveal_for_level(level, rng)` right alongside logging
+`LeveledUp`, generating and unlocking the next block(s) of the fixed
+`51×51` grid — see `docs/map-growth.md` for the level→block schedule and
+design. Difficulty/reward scaling by region isn't built yet — every block
+uses the same tuning today.
 
 ## Multi-resource search (confirmed)
 

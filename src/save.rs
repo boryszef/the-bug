@@ -271,6 +271,29 @@ mod tests {
         from_json(&to_json(game).unwrap()).unwrap()
     }
 
+    /// A minimal, valid `MAP_SIZE`x`MAP_SIZE` terrain grid as JSON array
+    /// syntax (all Meadow, no POIs) — for fixtures that need *some* valid
+    /// map JSON but don't care what's on it.
+    fn minimal_map_json() -> String {
+        padded_grid_json(&[], 'M')
+    }
+
+    /// Builds a full `MAP_SIZE`-sized grid (terrain or POI codes) as JSON
+    /// array syntax, with `pattern`'s rows placed at the top-left corner —
+    /// so a test's small hand-edited grid keeps the same tile indices —
+    /// and every other cell filled with `filler`.
+    fn padded_grid_json(pattern: &[&str], filler: char) -> String {
+        let rows: Vec<String> = (0..crate::game::MAP_SIZE)
+            .map(|y| {
+                let mut row: String = pattern.get(y).copied().unwrap_or_default().to_string();
+                let padding = crate::game::MAP_SIZE - row.chars().count();
+                row.extend(std::iter::repeat_n(filler, padding));
+                format!("{row:?}")
+            })
+            .collect();
+        format!("[{}]", rows.join(","))
+    }
+
     #[test]
     fn to_json_is_pretty_printed() {
         assert!(to_json(&Game::default()).unwrap().contains('\n'));
@@ -340,12 +363,15 @@ mod tests {
 
     #[test]
     fn player_without_an_equipment_field_defaults_to_empty() {
-        let json = r#"{
-            "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
-            "map": { "terrain": ["M"] },
+        let json = format!(
+            r#"{{
+            "player": {{ "level": 1, "coordinates": [0, 0], "inventory": {{}}, "recipes": [] }},
+            "map": {{ "terrain": {} }},
             "events": []
-        }"#;
-        let game = restore(serde_json::from_str(json).unwrap()).unwrap();
+        }}"#,
+            minimal_map_json()
+        );
+        let game = restore(serde_json::from_str(&json).unwrap()).unwrap();
         assert!(game.player.equipment.is_empty());
     }
 
@@ -361,24 +387,30 @@ mod tests {
 
     #[test]
     fn game_time_is_restored_from_the_save_not_inferred_from_the_events() {
-        let json = r#"{
+        let json = format!(
+            r#"{{
             "elapsed_secs": 3600.0,
-            "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
-            "map": { "terrain": ["M"] },
-            "events": [{ "kind": "Awoke", "elapsed_secs": 0.0 }]
-        }"#;
-        let game = restore(serde_json::from_str(json).unwrap()).unwrap();
+            "player": {{ "level": 1, "coordinates": [0, 0], "inventory": {{}}, "recipes": [] }},
+            "map": {{ "terrain": {} }},
+            "events": [{{ "kind": "Awoke", "elapsed_secs": 0.0 }}]
+        }}"#,
+            minimal_map_json()
+        );
+        let game = restore(serde_json::from_str(&json).unwrap()).unwrap();
         assert_elapsed_near(&game, 3600.0);
     }
 
     #[test]
     fn a_save_without_a_game_time_falls_back_to_the_last_event() {
-        let json = r#"{
-            "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
-            "map": { "terrain": ["M"] },
-            "events": [{ "kind": "Awoke", "elapsed_secs": 4.5 }]
-        }"#;
-        let game = restore(serde_json::from_str(json).unwrap()).unwrap();
+        let json = format!(
+            r#"{{
+            "player": {{ "level": 1, "coordinates": [0, 0], "inventory": {{}}, "recipes": [] }},
+            "map": {{ "terrain": {} }},
+            "events": [{{ "kind": "Awoke", "elapsed_secs": 4.5 }}]
+        }}"#,
+            minimal_map_json()
+        );
+        let game = restore(serde_json::from_str(&json).unwrap()).unwrap();
         assert_elapsed_near(&game, 4.5);
     }
 
@@ -447,25 +479,31 @@ mod tests {
 
     #[test]
     fn player_without_experience_fields_defaults_to_zero() {
-        let json = r#"{
-            "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
-            "map": { "terrain": ["M"] },
+        let json = format!(
+            r#"{{
+            "player": {{ "level": 1, "coordinates": [0, 0], "inventory": {{}}, "recipes": [] }},
+            "map": {{ "terrain": {} }},
             "events": []
-        }"#;
-        let game = restore(serde_json::from_str(json).unwrap()).unwrap();
+        }}"#,
+            minimal_map_json()
+        );
+        let game = restore(serde_json::from_str(&json).unwrap()).unwrap();
         assert_eq!(game.player.experience, 0);
         assert_eq!(game.player.crafts_completed, 0);
     }
 
     #[test]
     fn unknown_recipe_names_are_skipped() {
-        let json = r#"{
-            "player": { "level": 1, "coordinates": [0, 0], "inventory": {},
-                        "recipes": ["Cord", "Nonsense"] },
-            "map": { "terrain": ["M"] },
+        let json = format!(
+            r#"{{
+            "player": {{ "level": 1, "coordinates": [0, 0], "inventory": {{}},
+                        "recipes": ["Cord", "Nonsense"] }},
+            "map": {{ "terrain": {} }},
             "events": []
-        }"#;
-        let game = restore(serde_json::from_str(json).unwrap()).unwrap();
+        }}"#,
+            minimal_map_json()
+        );
+        let game = restore(serde_json::from_str(&json).unwrap()).unwrap();
         let recipes: Vec<&str> = game
             .player
             .known_recipes()
@@ -503,12 +541,15 @@ mod tests {
 
     #[test]
     fn player_without_quest_fields_defaults_to_no_quests() {
-        let json = r#"{
-            "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
-            "map": { "terrain": ["M"] },
+        let json = format!(
+            r#"{{
+            "player": {{ "level": 1, "coordinates": [0, 0], "inventory": {{}}, "recipes": [] }},
+            "map": {{ "terrain": {} }},
             "events": []
-        }"#;
-        let game = restore(serde_json::from_str(json).unwrap()).unwrap();
+        }}"#,
+            minimal_map_json()
+        );
+        let game = restore(serde_json::from_str(&json).unwrap()).unwrap();
         assert_eq!(game.player.open_quest(), None);
         assert_eq!(game.player.quest_progress(), 0);
         assert!(game.player.completed_quests().is_empty());
@@ -578,26 +619,33 @@ mod tests {
 
     #[test]
     fn save_without_a_pois_grid_loads_with_no_pois() {
-        let json = r#"{
-            "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
-            "map": { "terrain": ["FMF", "M.M", "FMM"] },
+        let json = format!(
+            r#"{{
+            "player": {{ "level": 1, "coordinates": [0, 0], "inventory": {{}}, "recipes": [] }},
+            "map": {{ "terrain": {} }},
             "events": []
-        }"#;
-        let game = restore(serde_json::from_str(json).unwrap()).unwrap();
+        }}"#,
+            padded_grid_json(&["FMF", "M.M", "FMM"], 'M')
+        );
+        let game = restore(serde_json::from_str(&json).unwrap()).unwrap();
         assert!(game.map.tiles.iter().flatten().all(|t| t.poi.is_none()));
     }
 
     #[test]
     fn load_reads_a_hand_edited_pois_grid() {
-        let json = r#"{
-            "player": { "level": 1, "coordinates": [0, 0], "inventory": {}, "recipes": [] },
-            "map": {
-                "terrain": ["FMF", "M.M", "FM."],
-                "pois":    ["c..", "...", "..v"]
-            },
+        let json = format!(
+            r#"{{
+            "player": {{ "level": 1, "coordinates": [0, 0], "inventory": {{}}, "recipes": [] }},
+            "map": {{
+                "terrain": {},
+                "pois":    {}
+            }},
             "events": []
-        }"#;
-        let game = restore(serde_json::from_str(json).unwrap()).unwrap();
+        }}"#,
+            padded_grid_json(&["FMF", "M.M", "FM."], 'M'),
+            padded_grid_json(&["c..", "...", "..v"], '.')
+        );
+        let game = restore(serde_json::from_str(&json).unwrap()).unwrap();
         assert_eq!(game.map.tiles[0][0].poi, Some(Poi::Cave));
         assert_eq!(game.map.tiles[2][2].poi, Some(Poi::Village));
         assert_eq!(game.map.tiles[1][1].poi, None);
@@ -628,19 +676,23 @@ mod tests {
 
     #[test]
     fn load_reads_a_hand_edited_file() {
-        let json = r#"{
-            "player": {
+        let json = format!(
+            r#"{{
+            "player": {{
                 "level": 3,
                 "coordinates": [0, 0],
-                "inventory": { "Vine": 9, "Stone": 2 },
+                "inventory": {{ "Vine": 9, "Stone": 2 }},
                 "recipes": ["Cord"]
-            },
-            "map": {
-                "terrain": ["FMF", "M.M", "FMM"],
-                "pois":    ["c..", "...", "..r"]
-            },
-            "events": [{ "kind": "Awoke", "elapsed_secs": 4.5 }]
-        }"#;
+            }},
+            "map": {{
+                "terrain": {},
+                "pois":    {}
+            }},
+            "events": [{{ "kind": "Awoke", "elapsed_secs": 4.5 }}]
+        }}"#,
+            padded_grid_json(&["FMF", "M.M", "FMM"], 'M'),
+            padded_grid_json(&["c..", "...", "..r"], '.')
+        );
         let mut path = std::env::temp_dir();
         path.push(format!("the-bug-test-edit-{}.json", now_epoch()));
         std::fs::write(&path, json).unwrap();
@@ -650,8 +702,8 @@ mod tests {
 
         assert_eq!(game.player.level, 3);
         assert_eq!(game.player.inventory.get(&Item::Vine), Some(&9));
-        assert_eq!(game.map.tiles.len(), 3);
-        assert_eq!(game.map.half, 1);
+        assert_eq!(game.map.tiles.len(), crate::game::MAP_SIZE);
+        assert_eq!(game.map.half, (crate::game::MAP_SIZE / 2) as i32);
         assert_eq!(game.events().len(), 1);
         assert_eq!(game.events()[0].kind(), &EventKind::Awoke);
     }

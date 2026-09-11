@@ -20,17 +20,23 @@ separate tool).
 ## Where the knobs live
 
 `src/mapgen/` is policy-free — it takes a `Spec` and an RNG. The tuning is in
-`src/game/map.rs`, as consts next to `Map::new`:
+`src/game/map.rs`, as consts next to `Map::generate_block`:
 
 | const | value | meaning |
 |---|---|---|
 | `MAP_AFFINITY` | `0.75` | `0.0` confetti … `1.0` one contiguous block per terrain |
 | `DEADLAND_PERCENT` / `MEADOW_PERCENT` / `FOREST_PERCENT` | `40 : 30 : 20` of 90, renormalised to sum 100 | clustering-terrain shares (the old per-tile weights, kept) |
-| `CAVE_FRACTION` / `RUINS_FRACTION` | `0.07` / `0.03` of the tile count | POI density (`docs/map-pois.md`), placed by `Map::new`, not by `mapgen` |
+| `CAVE_FRACTION` / `RUINS_FRACTION` | `0.05` / `0.02` of the tile count | POI density (`docs/map-pois.md`), placed by `Map::generate_block`, not by `mapgen` |
 
-`Map::new` builds the `Spec` from these, calls `mapgen::generate`, sprinkles
-the POI overlay grid (`scatter_pois`), and hands terrain + POIs to the existing
-`Map::from_terrain` (the same entry point save-load uses).
+The map itself is a fixed `51×51` grid, generated one `17×17` block at a
+time as the player reaches it rather than all at once — see
+`docs/map-growth.md`. `Map::generate_block` builds the `Spec` from these
+consts at that fixed block size, calls `mapgen::generate`, sprinkles the
+POI overlay grid for that block (`scatter_pois`), and splices both into the
+live `Map`. `Map::from_terrain` (the same entry point save-load uses)
+still builds a whole grid from an explicit terrain+POI grid in one call —
+`Map::new` uses it once, upfront, for an all-Deadland/no-POI grid, before
+the first block is generated into it.
 
 `mapgen` only knows about terrain — every cell gets one, no holes. The village,
 caves and ruins used to be `TerrainType` variants placed here (village at the
@@ -64,6 +70,12 @@ centre cell.
   persisted, which is all load needs.
 - Roads, rivers, or any `Feature` overlay — `docs/gui-map.md` #2.
 - Points of interest (village, caves, ruins) — a separate `Poi` overlay laid
-  on by `Map::new`, see `docs/map-pois.md`.
+  on by `Map::generate_block`, see `docs/map-pois.md`.
 - Biome realism (elevation, moisture, coastlines), non-square maps, terrain
   beyond the existing kinds.
+- Clustering across block boundaries — each of the map's nine `17×17`
+  blocks (`docs/map-growth.md`) is its own independent `mapgen::generate`
+  call, so a block edge can show a visible seam where two blocks' terrain
+  doesn't line up. Accepted for this increment, same as the seam already
+  present wherever two independently-generated maps would ever be placed
+  side by side.

@@ -1,15 +1,20 @@
 use super::item::Item;
-use super::player::Player;
 use rand::RngExt;
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::io;
+use std::ops::Range;
 use web_time::Instant;
 
-const MAP_MIN_SIZE: u32 = 21;
-const MAP_PER_LEVEL_INCREMENT: u32 = 2;
+/// One block's edge length — odd, since mapgen requires it. The fixed map
+/// is a 3×3 grid of these, revealed by level. See docs/map-growth.md.
+const BLOCK_SIZE: usize = 17;
+/// The whole map's fixed edge length: 3 blocks wide, 3 tall (51). Odd, so
+/// `half` is exact and the block grid has a true centre block. `pub(crate)`
+/// so `save.rs` (and its tests) can build/expect a validly-sized grid.
+pub(crate) const MAP_SIZE: usize = BLOCK_SIZE * 3;
 const DECAY_WINDOW_SECS: f64 = 60.0;
 
 /// How strongly terrain clumps: `0.0` confetti .. `1.0` one blob per terrain.
@@ -222,12 +227,61 @@ pub struct Map {
     pub half: i32,
 }
 
-impl Map {
-    pub fn new(player: &Player) -> Map {
-        let size = (MAP_MIN_SIZE + player.level * MAP_PER_LEVEL_INCREMENT) as usize;
+impl Default for Map {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
+impl Map {
+    /// A fresh, fixed `MAP_SIZE`×`MAP_SIZE` map: every tile starts as
+    /// Deadland with no POI, then the level-1 block (the centre, holding
+    /// the Village) is generated for real. The rest stays Deadland until
+    /// `reveal_for_level` reaches it.
+    pub fn new() -> Map {
+        let mut map = Map::from_terrain(
+            vec![vec![TerrainType::Deadland; MAP_SIZE]; MAP_SIZE],
+            vec![vec![None; MAP_SIZE]; MAP_SIZE],
+        );
+        map.reveal_for_level(1, &mut rand::rng());
+        map
+    }
+
+    /// Generates real terrain/POIs for any block `level` newly reaches
+    /// that hasn't been generated yet. Idempotent and safe to call
+    /// redundantly — "already generated" is detected by the block still
+    /// being all Deadland, a reliable (not probabilistic) signal: mapgen's
+    /// quota step always allocates a nonzero Meadow/Forest count for any
+    /// real generation run. Handles a single XP grant that skips a level
+    /// (e.g. 1→3) by checking every block up to `level`, not just the
+    /// newest. See docs/map-growth.md for the level→block schedule.
+    ///
+    /// A no-op on any map that isn't a genuine `MAP_SIZE` grid — the block
+    /// scheme doesn't apply to a test fixture like `tiny_map()` (used by
+    /// the cucumber suite), which is far smaller and would otherwise index
+    /// out of bounds.
+    pub fn reveal_for_level(&mut self, level: u32, rng: &mut impl rand::Rng) {
+        if self.tiles.len() != MAP_SIZE {
+            return;
+        }
+        for block in unlocked_blocks(level) {
+            if self.block_is_ungenerated(block) {
+                self.generate_block(block, rng);
+            }
+        }
+    }
+
+    fn block_is_ungenerated(&self, block: (usize, usize)) -> bool {
+        let (mut rows, cols) = block_bounds(block);
+        rows.all(|row| {
+            cols.clone()
+                .all(|col| self.tiles[row][col].terrain_type == TerrainType::Deadland)
+        })
+    }
+
+    fn generate_block(&mut self, block: (usize, usize), rng: &mut impl rand::Rng) {
         let spec = crate::mapgen::Spec {
-            size,
+            size: BLOCK_SIZE,
             clusters: vec![
                 (TerrainType::Deadland, DEADLAND_PERCENT),
                 (TerrainType::Meadow, MEADOW_PERCENT),
@@ -235,11 +289,46 @@ impl Map {
             ],
             affinity: MAP_AFFINITY,
         };
+        let local_terrain = crate::mapgen::generate(&spec, rng).expect("hardcoded spec is valid");
+        // The centre block's Village tile is placed separately, right
+        // below — excluded here so a Cave/Ruins roll never lands on it
+        // and gets silently overwritten, which would make the density
+        // tests (and the real game) lose a slot to chance.
+        let village_local = (block == (1, 1)).then_some((BLOCK_SIZE / 2, BLOCK_SIZE / 2));
+        let local_pois = scatter_pois(BLOCK_SIZE, village_local, rng);
 
-        let mut rng = rand::rng();
-        let grid = crate::mapgen::generate(&spec, &mut rng).expect("hardcoded spec is valid");
-        let pois = scatter_pois(grid.len(), &mut rng);
-        Map::from_terrain(grid, pois)
+        let (rows, cols) = block_bounds(block);
+        for (local_row, row) in rows.enumerate() {
+            for (local_col, col) in cols.clone().enumerate() {
+                self.tiles[row][col] = MapTile::with_terrain_and_poi(
+                    local_terrain[local_row][local_col],
+                    local_pois[local_row][local_col],
+                );
+            }
+        }
+
+        if let Some((lx, ly)) = village_local {
+            let (rows, cols) = block_bounds(block);
+            self.tiles[rows.start + ly][cols.start + lx].poi = Some(Poi::Village);
+        }
+    }
+
+    /// Whether `pos` is inside the map's boundary *and*, for a real
+    /// full-grown map, inside a block `level` has unlocked. Any
+    /// differently-sized map (test fixtures like `tiny_map()`, built
+    /// directly through `from_terrain`) falls back to the plain boundary
+    /// check — the block-unlock scheme only applies to a genuine
+    /// `MAP_SIZE` grid.
+    pub(super) fn is_unlocked(&self, pos: (i32, i32), level: u32) -> bool {
+        if !self.contains(pos) {
+            return false;
+        }
+        if self.tiles.len() != MAP_SIZE {
+            return true;
+        }
+        let (x, y) = self.world_to_tile(pos);
+        let block = (x / BLOCK_SIZE, y / BLOCK_SIZE);
+        unlocked_blocks(level).any(|b| b == block)
     }
 
     /// Builds a map from an explicit terrain grid and its parallel POI grid.
@@ -340,27 +429,73 @@ impl super::RestoreState for Map {
     fn restore_state(saved: Self::Saved) -> io::Result<Map> {
         let terrain = crate::save::parse_terrain(&saved.terrain)?;
         let width = terrain.first().map_or(0, Vec::len);
+        if terrain.len() != MAP_SIZE || width != MAP_SIZE {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "map must be {MAP_SIZE}x{MAP_SIZE} (got {}x{width})",
+                    terrain.len()
+                ),
+            ));
+        }
         let pois = crate::save::parse_pois(&saved.pois, terrain.len(), width)?;
         Ok(Map::from_terrain(terrain, pois))
     }
 }
 
-/// Lays out the map's points of interest as a grid parallel to the terrain
-/// grid: `Village` dead-centre (fixed), then `Cave` and `Ruins` on other cells
-/// picked uniformly at random, at the same densities the old scatter terrain
-/// used.
-fn scatter_pois(size: usize, rng: &mut impl rand::Rng) -> Vec<Vec<Option<Poi>>> {
-    let mid = size / 2;
+/// (level at which a block becomes reachable, its `(col, row)` index in
+/// the 3×3 grid of `BLOCK_SIZE` blocks) — the exact growth sequence. See
+/// docs/map-growth.md.
+const BLOCK_UNLOCKS: &[(u32, (usize, usize))] = &[
+    (1, (1, 1)),
+    (2, (1, 0)),
+    (3, (0, 0)),
+    (3, (0, 1)),
+    (4, (2, 0)),
+    (4, (2, 1)),
+    (5, (0, 2)),
+    (5, (1, 2)),
+    (5, (2, 2)),
+];
+
+/// The blocks unlocked at `level` — cumulative (every block from a lower
+/// threshold stays included).
+fn unlocked_blocks(level: u32) -> impl Iterator<Item = (usize, usize)> {
+    BLOCK_UNLOCKS
+        .iter()
+        .filter(move |&&(lv, _)| lv <= level)
+        .map(|&(_, block)| block)
+}
+
+/// The tile-index `(rows, cols)` ranges `block` occupies in the fixed grid.
+fn block_bounds((col, row): (usize, usize)) -> (Range<usize>, Range<usize>) {
+    (
+        row * BLOCK_SIZE..(row + 1) * BLOCK_SIZE,
+        col * BLOCK_SIZE..(col + 1) * BLOCK_SIZE,
+    )
+}
+
+/// Scatters `Cave`/`Ruins` POI overlays across a `size`×`size` local grid,
+/// at the same fractions the old whole-map scatter used — called once per
+/// revealed block. `exclude`, when given, is skipped as a candidate (used
+/// for the centre block, whose `Village` tile `Map::generate_block` places
+/// separately — excluding it here keeps the Cave/Ruins counts exact rather
+/// than occasionally losing a slot to a since-overwritten roll). Doesn't
+/// place `Village` itself; that's the one-off step for the centre block.
+fn scatter_pois(
+    size: usize,
+    exclude: Option<(usize, usize)>,
+    rng: &mut impl rand::Rng,
+) -> Vec<Vec<Option<Poi>>> {
     let count = |fraction: f64| (fraction * (size * size) as f64).round() as usize;
 
     let mut cells: Vec<(usize, usize)> = (0..size)
         .flat_map(|y| (0..size).map(move |x| (x, y)))
-        .filter(|&c| c != (mid, mid))
+        .filter(|&c| Some(c) != exclude)
         .collect();
     cells.shuffle(rng);
 
     let mut pois = vec![vec![None; size]; size];
-    pois[mid][mid] = Some(Poi::Village);
     let (caves, rest) = cells.split_at(count(CAVE_FRACTION));
     for &(x, y) in caves {
         pois[y][x] = Some(Poi::Cave);
@@ -390,8 +525,7 @@ mod tests {
 
     #[test]
     fn world_to_tile_corners() {
-        let player = Player::default();
-        let map = Map::new(&player);
+        let map = Map::new();
         let h = map.half;
         assert_eq!(map.world_to_tile((-h, -h)), (0usize, 0usize));
         let last = map.tiles.len() - 1;
@@ -400,8 +534,7 @@ mod tests {
 
     #[test]
     fn world_to_tile_center_is_the_village() {
-        let player = Player::default();
-        let map = Map::new(&player);
+        let map = Map::new();
         // center in world coords is (0,0)
         let (cx, cy) = map.world_to_tile((0, 0));
         // the village POI sits on the centre tile
@@ -414,8 +547,7 @@ mod tests {
 
     #[test]
     fn world_to_tile_out_of_bounds() {
-        let player = Player::default();
-        let map = Map::new(&player);
+        let map = Map::new();
         // get_tile should return None for positions outside the boundary
         let outside = (map.half + 1, map.half + 1);
         assert!(map.get_tile(outside).is_none());
@@ -423,7 +555,7 @@ mod tests {
 
     #[test]
     fn contains_agrees_with_get_tile_on_an_odd_map() {
-        let map = Map::new(&Player::default());
+        let map = Map::new();
         let h = map.half;
         // one step past the boundary in every direction, plus the boundary
         // itself and the centre, on both axes
@@ -469,7 +601,7 @@ mod tests {
 
     #[test]
     fn tile_to_world_round_trips_with_world_to_tile() {
-        let map = Map::new(&Player::default());
+        let map = Map::new();
         for pos in [(0, 0), (3, -2), (map.half, -map.half)] {
             let (x, y) = map.world_to_tile(pos);
             assert_eq!(map.tile_to_world(x, y), pos);
@@ -513,22 +645,86 @@ mod tests {
     }
 
     #[test]
-    fn new_map_size_tracks_the_player_level() {
-        for level in [1, 3, 7] {
-            let mut player = Player::default();
-            player.level = level;
-            let map = Map::new(&player);
-            let expected = (MAP_MIN_SIZE + level * MAP_PER_LEVEL_INCREMENT) as usize;
-            assert_eq!(map.tiles.len(), expected);
-            assert!(map.tiles.iter().all(|row| row.len() == expected));
-            assert_eq!(map.get_tile((0, 0)).unwrap().poi, Some(Poi::Village));
+    fn new_map_is_fixed_size_with_only_the_centre_block_populated() {
+        let map = Map::new();
+        assert_eq!(map.tiles.len(), MAP_SIZE);
+        assert!(map.tiles.iter().all(|row| row.len() == MAP_SIZE));
+        assert_eq!(map.get_tile((0, 0)).unwrap().poi, Some(Poi::Village));
+
+        // every block but the centre is still untouched Deadland
+        for block in [
+            (0, 0),
+            (1, 0),
+            (2, 0),
+            (0, 1),
+            (2, 1),
+            (0, 2),
+            (1, 2),
+            (2, 2),
+        ] {
+            assert!(
+                map.block_is_ungenerated(block),
+                "block {block:?} should still be Deadland at level 1"
+            );
         }
     }
 
     #[test]
-    fn new_map_places_poi_overlays_at_the_expected_density() {
-        let map = Map::new(&Player::default());
-        let side = map.tiles.len();
+    fn reveal_for_level_generates_every_newly_unlocked_block_and_is_idempotent() {
+        let mut map = Map::new();
+        assert!(!map.block_is_ungenerated((1, 1)));
+
+        // a single jump straight to level 5 must not skip levels 2-4's blocks
+        map.reveal_for_level(5, &mut rand::rng());
+        for block in [
+            (1, 0),
+            (0, 0),
+            (0, 1),
+            (2, 0),
+            (2, 1),
+            (0, 2),
+            (1, 2),
+            (2, 2),
+        ] {
+            assert!(
+                !map.block_is_ungenerated(block),
+                "block {block:?} should be generated by level 5"
+            );
+        }
+
+        // calling it again (e.g. a second XP grant at the same level) must
+        // not re-roll anything already generated
+        let before = terrain_grid(&map);
+        map.reveal_for_level(5, &mut rand::rng());
+        assert_eq!(terrain_grid(&map), before);
+    }
+
+    #[test]
+    fn is_unlocked_gates_by_level_on_a_real_map_but_not_on_a_test_fixture() {
+        let map = Map::new();
+        assert!(map.is_unlocked((0, 0), 1)); // the village, always reachable
+        let (row_start, col_start) = {
+            let (rows, cols) = block_bounds((1, 0));
+            (rows.start, cols.start)
+        };
+        let level2_tile = map.tile_to_world(col_start, row_start);
+        assert!(!map.is_unlocked(level2_tile, 1));
+        assert!(map.is_unlocked(level2_tile, 2));
+
+        // a small hand-built map (any size but MAP_SIZE) is never gated
+        let small = Map::from_terrain(
+            vec![vec![TerrainType::Meadow; 3]; 3],
+            vec![vec![None; 3]; 3],
+        );
+        assert!(small.is_unlocked((0, 0), 1));
+        assert!(small.is_unlocked((1, 1), 1));
+    }
+
+    #[test]
+    fn revealing_every_block_places_poi_overlays_at_the_expected_density() {
+        let mut map = Map::new();
+        map.reveal_for_level(5, &mut rand::rng());
+
         let count = |want: Poi| {
             map.tiles
                 .iter()
@@ -536,7 +732,10 @@ mod tests {
                 .filter(|t| t.poi == Some(want))
                 .count()
         };
-        let expect = |frac: f64| (frac * (side * side) as f64).round() as usize;
+        // each of the 9 blocks rolls its own quota independently, so the
+        // expected total is the sum of 9 per-block roundings, not one
+        // rounding over the whole MAP_SIZE grid.
+        let expect = |frac: f64| (frac * (BLOCK_SIZE * BLOCK_SIZE) as f64).round() as usize * 9;
 
         assert_eq!(count(Poi::Cave), expect(CAVE_FRACTION));
         assert_eq!(count(Poi::Ruins), expect(RUINS_FRACTION));
@@ -594,13 +793,17 @@ mod tests {
     }
 
     #[test]
-    fn new_map_terrain_is_clustered_not_confetti() {
-        // The old per-tile roll left Forest+Meadow+Deadland in ~200 specks
-        // between them; at affinity 0.75 they average well under half that.
-        // Averaged over a few maps so one unlucky melt can't flake the test.
+    fn revealed_blocks_have_clustered_not_confetti_terrain() {
+        // Each block is clustered independently (its own mapgen::generate
+        // call), so a fully-revealed map has roughly 9x one block's
+        // component count, not the single-block figure the old whole-map
+        // test used. Averaged over a few maps so one unlucky melt can't
+        // flake the test.
         let total: usize = (0..5)
             .map(|_| {
-                let grid = terrain_grid(&Map::new(&Player::default()));
+                let mut map = Map::new();
+                map.reveal_for_level(5, &mut rand::rng());
+                let grid = terrain_grid(&map);
                 [
                     TerrainType::Forest,
                     TerrainType::Meadow,
@@ -613,7 +816,7 @@ mod tests {
             .sum();
         let average = total / 5;
         assert!(
-            average < 130,
+            average < 130 * 9,
             "terrain barely clustered: {average} components on average across Forest+Meadow+Deadland"
         );
     }

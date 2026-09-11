@@ -8,6 +8,8 @@ mod unlock;
 
 pub use event::{Event, EventKind};
 pub use item::Item;
+#[cfg(test)]
+pub(crate) use map::MAP_SIZE;
 pub use map::{Direction, FoundIn, Map, MapTile, Poi, TerrainType};
 pub use player::Player;
 pub use quest::{Quest, QuestError, QuestID};
@@ -53,7 +55,7 @@ enum GrantType {
 impl Default for Game {
     fn default() -> Self {
         let player = Player::default();
-        let map = Map::new(&player);
+        let map = Map::new();
         Self {
             player,
             map,
@@ -70,13 +72,19 @@ impl Game {
     /// logged after the load — continues from where the saved game left off.
     pub(crate) fn from_saved(
         player: Player,
-        map: Map,
+        mut map: Map,
         events: Vec<Event>,
         elapsed: Duration,
     ) -> Game {
         let started = Instant::now()
             .checked_sub(elapsed)
             .unwrap_or_else(Instant::now);
+
+        // Self-healing: a no-op over already-revealed blocks, but ensures a
+        // hand-edited save with a bumped level against never-regenerated
+        // terrain doesn't leave the player able to walk into blank,
+        // POI-less Deadland.
+        map.reveal_for_level(player.level, &mut rand::rng());
 
         Game {
             player,
@@ -194,6 +202,7 @@ impl Game {
             GrantType::Experience(amount) => {
                 if let Some(level) = self.player.add_experience(amount) {
                     self.log(EventKind::LeveledUp { level });
+                    self.map.reveal_for_level(level, &mut rand::rng());
                 }
             }
         }
@@ -201,7 +210,7 @@ impl Game {
 
     pub fn walk(&mut self, dir: Direction) {
         let next = self.player.coordinates_after(dir);
-        if !self.map.contains(next) {
+        if !self.map.is_unlocked(next, self.player.level) {
             return;
         }
 

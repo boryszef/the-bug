@@ -77,18 +77,18 @@ pub fn world_tiles(map: &Map) -> impl Iterator<Item = ((i32, i32), &MapTile)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::{Player, Poi, TerrainType};
+    use crate::game::{Poi, TerrainType};
 
     #[test]
     fn visits_every_tile() {
-        let map = Map::new(&Player::default());
+        let map = Map::new();
         let side = map.tiles.len();
         assert_eq!(world_tiles(&map).count(), side * side);
     }
 
     #[test]
     fn origin_carries_the_village_poi() {
-        let map = Map::new(&Player::default());
+        let map = Map::new();
         let (_, tile) = world_tiles(&map)
             .find(|&(coords, _)| coords == (0, 0))
             .expect("a tile at the origin");
@@ -96,7 +96,7 @@ mod tests {
     }
     #[test]
     fn tile_views_pairs_every_world_coord_with_its_terrain() {
-        let map = Map::new(&Player::default());
+        let map = Map::new();
 
         let from_views: Vec<_> = tile_views(&map).map(|t| (t.world, t.terrain)).collect();
         let from_world_tiles: Vec<_> = world_tiles(&map)
@@ -107,7 +107,7 @@ mod tests {
     }
     #[test]
     fn tile_views_reports_the_village_poi_at_the_origin() {
-        let map = Map::new(&Player::default());
+        let map = Map::new();
 
         let origin = tile_views(&map)
             .find(|t| t.world == (0, 0))
@@ -117,7 +117,7 @@ mod tests {
     }
     #[test]
     fn tile_at_returns_the_village_at_the_origin() {
-        let map = Map::new(&Player::default());
+        let map = Map::new();
 
         let here = tile_at(&map, (0, 0)).expect("the origin is on the map");
 
@@ -126,14 +126,14 @@ mod tests {
     }
     #[test]
     fn tile_at_is_none_past_the_map_edge() {
-        let map = Map::new(&Player::default());
+        let map = Map::new();
         assert!(tile_at(&map, (9999, 9999)).is_none());
     }
     #[test]
     fn tile_views_reports_each_tiles_four_neighbours() {
         use std::collections::HashMap;
 
-        let map = Map::new(&Player::default());
+        let map = Map::new();
         let by_coord: HashMap<(i32, i32), TerrainType> = world_tiles(&map)
             .map(|(world, tile)| (world, tile.terrain_type))
             .collect();
@@ -151,7 +151,7 @@ mod tests {
     }
     #[test]
     fn tile_views_has_none_neighbours_past_the_map_edge() {
-        let map = Map::new(&Player::default());
+        let map = Map::new();
         let h = map.half;
         // The far (north-east) corner: only West and South are on the map.
         let corner = tile_views(&map).find(|t| t.world == (h, h)).unwrap();

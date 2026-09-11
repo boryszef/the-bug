@@ -11,12 +11,13 @@
 * EPIC: more complex game mechanics
   * implement workshops as additional craftable locations alongside the Village (docs/village-crafting.md)
   * quests should have closing narrative, sometimes revealing part of the story, sometimes commenting the reward item
-  * level up with increasing XP, when leveling up, uncover next portions of the map. Initially 13x13, then 21x13 to the West, then 34x21 to the north and so on. The whole map should be generated at the beginning of the game, but hidden parts will be inaccessible. Each new block introduces new tiles and POIs - with better resources, but possibly also more dangerous.
+  * map growth: generate the whole map upfront instead of block-by-block on demand, and give later-revealed blocks better resources but possibly more danger (docs/map-growth.md)
 * EPIC: the story
   * add more quests
 
 ## DONE
 
+* map growth, first increment — fixed 51x51 map (a 3x3 grid of 17x17 blocks), the centre block populated at the start (holding the Village), each other block generated on demand and unlocked as the player levels up (docs/map-growth.md has the exact level→block schedule); still to come: generating the whole map upfront instead of on demand, and better-but-more-dangerous resources on later blocks
 * theme and font-size controls moved into a `⚙` dropdown menu at the right edge of the toolbar, separate from the tabs — a deliberate exception to the "not emoji" policy (docs/accessibility.md)
 * review events: removed the log line for a pure refusal that changes nothing — `UnknownRecipe`, `CraftShortage`, `CraftMissingTool` (from `craft()` only; `experiment()`'s post-spend `ExperimentMissingTool` stays), `ExperimentShortage`, `HuntUnprepared` — and deleted the now-unreachable `EventKind` variants end to end (enum, i18n rendering + `.ftl` strings, gui colour lookup) (docs/event-worthiness.md)
 * publish the web build — `.github/workflows/deploy.yml` builds with `trunk --release --public-url "/the-bug/"` and publishes `dist/` to GitHub Pages on a `v*` tag or manual dispatch; live at https://boryszef.github.io/the-bug/ (docs/adr/0005-web-build.md)
