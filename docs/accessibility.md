@@ -16,7 +16,8 @@ edge of the toolbar (via `ui.with_layout(Layout::right_to_left(...))`,
 alongside Quit), visually separated from the tab buttons on the left, and
 the theme/font controls only appear once that dropdown is opened —
 `TODO.md`'s "hide font selection and light/dark mode switch in a dropdown
-menu" request.
+menu" request. The same dropdown also holds the in-game language switch,
+added later — see `docs/i18n.md`.
 
 - **Theme.** Two `selectable_label`s, `Light` / `Dark` — the same idiom the
   tab buttons already use in this toolbar. Clicking sets `App.theme:

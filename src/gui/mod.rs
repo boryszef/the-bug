@@ -234,6 +234,12 @@ impl eframe::App for App {
                             let label = i18n::ui(size.label_id(), self.language);
                             ui.selectable_value(&mut self.font_size, size, label);
                         }
+
+                        ui.separator();
+                        ui.label(i18n::ui("language-label", self.language));
+                        for lang in Language::ALL {
+                            ui.selectable_value(&mut self.language, lang, lang.display_name());
+                        }
                     })
                     .response
                     .on_hover_text(i18n::ui("action-settings", self.language));
@@ -413,13 +419,19 @@ fn render_player(game: &Game, lang: Language, ui: &mut Ui) {
 fn render_events(game: &Game, lang: Language, theme: egui::Theme, ui: &mut Ui) {
     ui.heading(i18n::ui("panel-events-title", lang));
 
-    for event in viewmodel::events::recent(game, 10) {
-        let text = format!("[{}] {}", event.timestamp, i18n::event(event.kind, lang));
-        match event_color(event.kind, theme) {
-            Some(color) => ui.label(RichText::new(text).color(color)),
-            None => ui.label(text),
-        };
-    }
+    egui::ScrollArea::vertical()
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            // usize::MAX: show the whole session's history, not just the
+            // most recent N — see docs/event-log.md.
+            for event in viewmodel::events::recent(game, usize::MAX) {
+                let text = format!("[{}] {}", event.timestamp, i18n::event(event.kind, lang));
+                match event_color(event.kind, theme) {
+                    Some(color) => ui.label(RichText::new(text).color(color)),
+                    None => ui.label(text),
+                };
+            }
+        });
 }
 
 /// The "something good happened" green, theme-aware: a bright dark-mode

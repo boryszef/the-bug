@@ -3,7 +3,7 @@
 //! its description, so completed quests read back as the story so far.
 //! Mouse-driven — no cursor.
 
-use eframe::egui::{self, Ui};
+use eframe::egui::{self, RichText, Ui};
 
 use crate::game::QuestID;
 use crate::i18n::{self, Language};
@@ -19,12 +19,10 @@ pub(super) fn render(ui: &mut Ui, overview: &Overview, lang: Language) -> Option
         ui.strong(i18n::ui("panel-active-title", lang));
         match &overview.active {
             Some(active) => {
-                ui.label(format!(
-                    "{} — {}/{}",
-                    i18n::quest_name(active.quest.id, lang),
-                    active.progress,
-                    active.quest.goal(),
-                ));
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(i18n::quest_name(active.quest.id, lang)).strong());
+                    ui.label(format!(" — {}/{}", active.progress, active.quest.goal()));
+                });
                 ui.label(i18n::quest_description(active.quest.id, lang));
             }
             None => {
@@ -40,7 +38,8 @@ pub(super) fn render(ui: &mut Ui, overview: &Overview, lang: Language) -> Option
             ui.label(i18n::ui("quests-available-empty", lang));
         } else {
             for quest in &overview.available {
-                ui.collapsing(i18n::quest_name(quest.id, lang), |ui| {
+                let name = RichText::new(i18n::quest_name(quest.id, lang)).strong();
+                ui.collapsing(name, |ui| {
                     ui.label(i18n::quest_description(quest.id, lang));
                     if ui.button(i18n::ui("action-accept", lang)).clicked() {
                         accept = Some(quest.id);
@@ -55,7 +54,8 @@ pub(super) fn render(ui: &mut Ui, overview: &Overview, lang: Language) -> Option
             ui.label(i18n::ui("quests-completed-empty", lang));
         } else {
             for quest in &overview.completed {
-                ui.collapsing(i18n::quest_name(quest.id, lang), |ui| {
+                let name = RichText::new(i18n::quest_name(quest.id, lang)).strong();
+                ui.collapsing(name, |ui| {
                     ui.label(i18n::quest_description(quest.id, lang));
                 });
             }

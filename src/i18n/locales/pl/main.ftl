@@ -267,6 +267,7 @@ action-settings = Ustawienia
 action-theme-light = Jasny
 action-theme-dark = Ciemny
 font-size-label = Czcionka:
+language-label = Język:
 font-size-small = Mała
 font-size-medium = Średnia
 font-size-large = Duża

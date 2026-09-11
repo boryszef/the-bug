@@ -1,8 +1,8 @@
 //! Player-facing text, in English and Polish, via Project Fluent
 //! (`i18n-embed` + `i18n-embed-fl`). See `docs/i18n-plan.md`.
 //!
-//! `Language` is chosen once at startup ([`detect`]) — nothing here supports
-//! switching languages mid-session.
+//! `Language` is chosen once at startup ([`detect`]) but can also be
+//! switched in-game (the `⚙` cog menu, `src/gui/mod.rs`).
 
 use std::collections::HashMap;
 use std::sync::OnceLock;
@@ -21,8 +21,8 @@ use crate::game::{EventKind, FoundIn, Item, Poi, QuestID, TerrainType, disassemb
 #[folder = "src/i18n/locales/"]
 struct Localizations;
 
-/// The player-facing language. Startup-only: detected once in `main`, then
-/// threaded down as a plain value — no in-game switch, no stored preference.
+/// The player-facing language. Detected once at startup (`main`) but can be
+/// changed in-game via the `⚙` cog menu; not persisted across launches.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Language {
     #[default]
@@ -31,10 +31,23 @@ pub enum Language {
 }
 
 impl Language {
+    pub const ALL: [Language; 2] = [Language::English, Language::Polish];
+
     fn code(self) -> &'static str {
         match self {
             Language::English => "en",
             Language::Polish => "pl",
+        }
+    }
+
+    /// This language's own endonym (`"English"`/`"Polski"`), for the
+    /// language-switch dropdown. Deliberately not routed through
+    /// `i18n::ui` — a language picker lists each option in itself, not
+    /// translated into whichever language happens to be active.
+    pub fn display_name(self) -> &'static str {
+        match self {
+            Language::English => "English",
+            Language::Polish => "Polski",
         }
     }
 

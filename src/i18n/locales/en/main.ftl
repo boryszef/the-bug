@@ -157,6 +157,7 @@ action-settings = Settings
 action-theme-light = Light
 action-theme-dark = Dark
 font-size-label = Font:
+language-label = Language:
 font-size-small = Small
 font-size-medium = Medium
 font-size-large = Large
