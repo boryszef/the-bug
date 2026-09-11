@@ -5,8 +5,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QuestID {
-    CraftAxe,
     ExploreRuins,
+    OldCivilization,
+    CraftAxe,
     StockUp,
 }
 
@@ -26,6 +27,7 @@ pub enum QuestError {
 /// not stored or replayed, see docs/quest-system.md for why.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum EventTypeID {
+    FindItem(Item),
     CraftItem(Item),
     VisitTerrain(TerrainType),
     VisitPoi(Poi),
@@ -81,20 +83,32 @@ pub(super) const QUESTS: &[Quest] = &[
             count: 1,
         },
         reward_xp: 10,
-        reward_items: &[(Item::CircuitBoard, 1)],
+        reward_items: &[],
         unlocks_on_accept: &[Unlocked::Map],
         unlocks_on_complete: &[],
     },
     Quest {
-        id: QuestID::CraftAxe,
+        id: QuestID::OldCivilization,
         dependencies: &[QuestID::ExploreRuins],
+        condition: QuestCondition {
+            event: EventTypeID::FindItem(Item::CopperWire),
+            count: 1,
+        },
+        reward_xp: 10,
+        reward_items: &[(Item::CircuitBoard, 1)],
+        unlocks_on_accept: &[Unlocked::Items],
+        unlocks_on_complete: &[],
+    },
+    Quest {
+        id: QuestID::CraftAxe,
+        dependencies: &[QuestID::OldCivilization],
         condition: QuestCondition {
             event: EventTypeID::CraftItem(Item::StoneAxe),
             count: 1,
         },
         reward_xp: 20,
         reward_items: &[(Item::SolarPanel, 1)],
-        unlocks_on_accept: &[Unlocked::Experiment, Unlocked::Items],
+        unlocks_on_accept: &[Unlocked::Experiment],
         unlocks_on_complete: &[Unlocked::Craft, Unlocked::Disassemble],
     },
     Quest {

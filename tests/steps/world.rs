@@ -58,6 +58,7 @@ pub fn item(name: &str) -> Item {
 pub fn quest(name: &str) -> QuestID {
     match name {
         "The Digital Civilization" | "the ruins quest" => QuestID::ExploreRuins,
+        "What the Ruins Kept" | "the search quest" => QuestID::OldCivilization,
         "Trouble in the East" | "the axe quest" => QuestID::CraftAxe,
         "Stock Up for Hard Times" | "the stock-up quest" => QuestID::StockUp,
         other => panic!("no QuestID mapping for {other:?} — add it to tests/steps/world.rs"),
@@ -113,8 +114,15 @@ pub fn complete_quest(game: &mut Game, id: QuestID) {
             accept_if_needed(game, QuestID::ExploreRuins);
             game.walk(Direction::South); // onto the Ruins at (0, -1)
         }
-        QuestID::CraftAxe => {
+        QuestID::OldCivilization => {
             complete_quest(game, QuestID::ExploreRuins);
+            game.player.coordinates = (0, -1); // the Ruins tile
+            accept_if_needed(game, QuestID::OldCivilization);
+            game.map.guarantee_find((0, -1), Item::CopperWire);
+            game.search();
+        }
+        QuestID::CraftAxe => {
+            complete_quest(game, QuestID::OldCivilization);
             game.player.coordinates = (0, 0);
             accept_if_needed(game, QuestID::CraftAxe);
             for (it, n) in [(Item::Branch, 1), (Item::Stone, 1), (Item::Cord, 1)] {

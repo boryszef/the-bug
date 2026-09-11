@@ -229,6 +229,7 @@ impl Game {
         for (item, source) in found {
             if self.player.add_to_equipment(item, 1) {
                 self.log(EventKind::Found { item, source });
+                self.note_quest_event(EventTypeID::FindItem(item));
             } else {
                 self.log(EventKind::EquipmentFull { item });
             }
@@ -1168,12 +1169,16 @@ mod tests {
         unlocks_on_complete: &[],
     };
 
-    /// A game with `ExploreRuins` already completed, so the axe quest — which
-    /// depends on it — can be accepted.
+    /// A game with `ExploreRuins` and `OldCivilization` already completed,
+    /// so the axe quest — which depends on `OldCivilization` — can be
+    /// accepted.
     fn game_with_the_axe_quest_unlocked() -> Game {
         let mut game = Game::default();
-        game.player
-            .restore_quest_state(None, 0, vec![QuestID::ExploreRuins]);
+        game.player.restore_quest_state(
+            None,
+            0,
+            vec![QuestID::ExploreRuins, QuestID::OldCivilization],
+        );
         game
     }
 
@@ -1378,6 +1383,30 @@ mod tests {
         assert_eq!(game.player.completed_quests(), [QuestID::ExploreRuins]);
         // walking itself still logs nothing; only the completion line is new.
         assert_eq!(game.events().len(), events_before + 1);
+    }
+
+    #[test]
+    fn finding_the_target_item_via_search_completes_old_civilization() {
+        let mut game = Game::default();
+        game.player.coordinates = (0, 0);
+        let (tx, ty) = game.map.world_to_tile((0, 0));
+        game.map.tiles[ty][tx] =
+            MapTile::with_terrain_and_poi(TerrainType::Meadow, Some(Poi::Ruins));
+        for (probability, _) in game.map.tiles[ty][tx].items.values_mut() {
+            *probability = 1.0; // a sure find, not a coin flip
+        }
+        game.player
+            .restore_quest_state(None, 0, vec![QuestID::ExploreRuins]);
+        game.accept_quest(QuestID::OldCivilization).unwrap();
+
+        game.search();
+
+        assert_eq!(game.player.open_quest(), None);
+        assert!(
+            game.player
+                .completed_quests()
+                .contains(&QuestID::OldCivilization)
+        );
     }
 
     #[test]

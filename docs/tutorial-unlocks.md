@@ -39,9 +39,12 @@ branches, and means a future quest earns its own onboarding beat just by
 filling in those two fields.
 
 The current schedule: accepting "The Digital Civilization" (`ExploreRuins`)
-unlocks Map; accepting "Trouble in the East" (`CraftAxe`) unlocks Experiment
-and Items; *completing* it unlocks Craft and Disassemble (by then the
-player has actually discovered the Stone Axe recipe via Experiment, so
+unlocks Map; accepting "What the Ruins Kept" (`OldCivilization`, which
+depends on `ExploreRuins`) unlocks Items — this is the quest that teaches
+`search`, and Items is where the player sees what they've found; accepting
+"Trouble in the East" (`CraftAxe`, which depends on `OldCivilization`)
+unlocks Experiment; *completing* it unlocks Craft and Disassemble (by then
+the player has actually discovered the Stone Axe recipe via Experiment, so
 being able to craft it directly and take things apart both make sense).
 "Stock Up for Hard Times" (`StockUp`) unlocks nothing further today.
 
@@ -60,10 +63,12 @@ is unlocked at game start.
 
 ## What is *not* built here
 
-- No per-action gating within a tab — e.g. the `search` mechanic itself
-  isn't gated, only the Map tab that hosts it. A future quest that
-  specifically teaches search (finding specific items) doesn't need a new
-  `Unlocked` variant unless it should also reveal a new tab.
+- No per-action gating within a tab — e.g. `search` itself isn't gated,
+  only the tabs that surface its results. `OldCivilization` teaches search
+  by requiring a specific find, but that's ordinary quest-condition
+  plumbing (`EventTypeID::FindItem`, fired from `Game::search()`); it
+  didn't need a new kind of gate, only a new `Unlocked` variant (`Items`)
+  for what it reveals.
 - No gating of the always-visible left column (player stats, event feed) or
   the theme/font-size controls — those aren't tabs, and cutting them off
   would remove feedback a new player still needs.
@@ -87,7 +92,11 @@ is unlocked at game start.
 - `src/game/quest.rs` — `Quest.unlocks_on_accept`/`.unlocks_on_complete`,
   populated in the `QUESTS` table.
 - `src/game/mod.rs` — the unlock loops in `accept_quest`/
-  `complete_open_quest`.
+  `complete_open_quest`; `Game::search()` firing
+  `EventTypeID::FindItem(item)` for the `OldCivilization` quest.
+- `src/game/map.rs` — `Map::guarantee_find`, a `pub` test-support method
+  that forces a guaranteed find so a `search()`-gated quest can be driven
+  from a functional test (see `docs/functional-tests.md`).
 - `src/save.rs` — `PlayerState.unlocked` (`#[serde(default)]`).
 - `src/viewmodel/panel.rs` — `Panel::required_unlock`/`is_visible`/
   `visible`, gated `next`/`prev`/`cycle`, `Panel::default() = Quests`.

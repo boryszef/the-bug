@@ -30,10 +30,17 @@ Feature: Quests
     And the player has accepted "The Digital Civilization"
     Then no quest is available
 
-  Scenario: Completing a quest unlocks the quest that depends on it
+  Scenario: Completing the ruins quest unlocks the search for old artifacts
     Given a new game
     And the player has completed "The Digital Civilization"
     Then "The Digital Civilization" is completed
+    And "What the Ruins Kept" is available
+    And there is no active quest
+
+  Scenario: Completing the search quest unlocks the axe quest
+    Given a new game
+    And the player has completed "What the Ruins Kept"
+    Then "What the Ruins Kept" is completed
     And "Trouble in the East" is available
     And there is no active quest
 
@@ -45,7 +52,7 @@ Feature: Quests
 
   Scenario: Crafting the target item completes the quest
     Given a new game
-    And the player has completed "The Digital Civilization"
+    And the player has completed "What the Ruins Kept"
     And the player has accepted "Trouble in the East"
     And the player knows the "Stone Axe" recipe
     And the player has 1 Branch in storage
@@ -57,7 +64,7 @@ Feature: Quests
 
   Scenario: Experimenting the target item also completes the quest
     Given a new game
-    And the player has completed "The Digital Civilization"
+    And the player has completed "What the Ruins Kept"
     And the player has accepted "Trouble in the East"
     And the player has 1 Branch in storage
     And the player has 1 Stone in storage
@@ -67,7 +74,7 @@ Feature: Quests
 
   Scenario: Crafting a different item does not advance the quest
     Given a new game
-    And the player has completed "The Digital Civilization"
+    And the player has completed "What the Ruins Kept"
     And the player has accepted "Trouble in the East"
     And the player knows the "Cord" recipe
     And the player has 2 Vine in storage
@@ -81,14 +88,22 @@ Feature: Quests
     When the player accepts "The Digital Civilization"
     Then "Map" is unlocked
 
-  Scenario: Accepting the axe quest unlocks Experiment and Items, but not yet Craft or Disassemble
+  Scenario: Accepting the search quest unlocks Items
     Given a new game
     And the player has completed "The Digital Civilization"
+    Then "Items" is not unlocked
+    When the player accepts "What the Ruins Kept"
+    Then "Items" is unlocked
+    And "Experiment" is not unlocked
+    And "Craft" is not unlocked
+    And "Disassemble" is not unlocked
+
+  Scenario: Accepting the axe quest unlocks Experiment
+    Given a new game
+    And the player has completed "What the Ruins Kept"
     Then "Experiment" is not unlocked
-    And "Items" is not unlocked
     When the player accepts "Trouble in the East"
     Then "Experiment" is unlocked
-    And "Items" is unlocked
     And "Craft" is not unlocked
     And "Disassemble" is not unlocked
 

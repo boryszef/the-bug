@@ -302,6 +302,19 @@ impl Map {
             tile.last_hunt_time = Some(Instant::now());
         }
     }
+
+    /// Forces `item`'s find probability to `1.0` on the tile at `pos`, if
+    /// it's among that tile's possible finds — a guaranteed find on the
+    /// next `search()` there (decay aside). `pub` so a functional test can
+    /// drive a quest gated by `search()` without relying on real
+    /// randomness — see docs/functional-tests.md.
+    pub fn guarantee_find(&mut self, pos: (i32, i32), item: Item) {
+        if let Some(tile) = self.get_tile_mut(pos)
+            && let Some(entry) = tile.items.get_mut(&item)
+        {
+            entry.0 = 1.0;
+        }
+    }
 }
 
 impl super::SaveState for Map {

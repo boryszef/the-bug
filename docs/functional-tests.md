@@ -74,6 +74,11 @@ scenario by `Given a new game`.
   flaky by construction. Drive deterministic actions and, when geography
   matters, use [`tiny_map`] — a 3×3 fixed grid (village centre, Ruins one
   tile south) via the `pub` `Map::from_terrain`. Never poke `game.map.tiles`.
+  When a quest's own condition is gated by `search()` (e.g.
+  `OldCivilization`'s `FindItem`), widen the API instead of reaching past
+  it: `Map::guarantee_find(pos, item)` is `pub` precisely so a step can
+  force a `1.0` probability and get a deterministic find through the real
+  `search()` call, rather than the scenario depending on a roll.
 - **Item / quest names.** Gherkin uses the English `i18n` name (`Branch`,
   `Stone Axe`; the quest titles like `"The Digital Civilization"`);
   `world.rs`'s `item()` / `quest()` map them. Hand-maintained tables (the
