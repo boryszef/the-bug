@@ -230,14 +230,10 @@ impl eframe::App for App {
 
                         ui.separator();
                         ui.label(i18n::ui("font-size-label", self.language));
-                        egui::ComboBox::from_id_salt("font_size")
-                            .selected_text(i18n::ui(self.font_size.label_id(), self.language))
-                            .show_ui(ui, |ui| {
-                                for size in FontSize::ALL {
-                                    let label = i18n::ui(size.label_id(), self.language);
-                                    ui.selectable_value(&mut self.font_size, size, label);
-                                }
-                            });
+                        for size in FontSize::ALL {
+                            let label = i18n::ui(size.label_id(), self.language);
+                            ui.selectable_value(&mut self.font_size, size, label);
+                        }
                     })
                     .response
                     .on_hover_text(i18n::ui("action-settings", self.language));

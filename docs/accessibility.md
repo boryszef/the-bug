@@ -24,16 +24,21 @@ menu" request.
   egui 0.36's `Theme`/`set_theme` do the actual `Visuals` swap; no manual
   `Visuals` construction needed. Default: `Theme::Dark`, matching egui's own
   default look, so a fresh launch is visually unchanged.
-- **Font size.** A `ComboBox` with four presets — `Small` / `Medium` /
-  `Large` / `Extra Large` (`FontSize` enum, `src/gui/mod.rs`) — each a
-  multiplier (`0.85` / `1.0` / `1.2` / `1.45`) applied to egui's own default
-  `TextStyle` sizes (`Small=9.0, Body=13.0, Button=13.0, Heading=18.0,
-  Monospace=13.0`) via `apply_font_size`, called every frame with
-  `ctx.all_styles_mut(...)` (mutates both the light and dark `Style` at
-  once, so a later theme switch doesn't lose the size). Recomputed from the
-  fixed base every call rather than scaling whatever's currently installed,
-  so repeated calls can't compound drift. Default: `Medium` (egui's own
-  sizes, unscaled).
+- **Font size.** Four stacked `selectable_value`s, `Small` / `Medium` /
+  `Large` / `Extra Large` (`FontSize` enum, `src/gui/mod.rs`) — the same
+  idiom as the theme toggle, not a `ComboBox`: a `ComboBox` nested inside a
+  `ui.menu_button`'s popup doesn't open (both are separate egui `Area`s,
+  and the outer menu's click-outside-closes logic fires on the click meant
+  to open the inner combo popup, closing it before it can show — found
+  after moving these controls into the `⚙` dropdown, see the "cog dropdown"
+  entry in `TODO.md`'s DONE log). Each preset is a multiplier (`0.85` /
+  `1.0` / `1.2` / `1.45`) applied to egui's own default `TextStyle` sizes
+  (`Small=9.0, Body=13.0, Button=13.0, Heading=18.0, Monospace=13.0`) via
+  `apply_font_size`, called every frame with `ctx.all_styles_mut(...)`
+  (mutates both the light and dark `Style` at once, so a later theme switch
+  doesn't lose the size). Recomputed from the fixed base every call rather
+  than scaling whatever's currently installed, so repeated calls can't
+  compound drift. Default: `Medium` (egui's own sizes, unscaled).
 
 Scales only text (`TextStyle` sizes) — not `set_pixels_per_point`/
 `set_zoom_factor`, which would also scale the map's `Painter`-drawn tile
